@@ -1,0 +1,137 @@
+Licensed under the following terms:
+
+1. General. A non-exclusive, nontransferable, perpetual license is
+granted to the Licensee to install and use the Software for academic
+or non-profit research purposes. Use of the Software under this
+License is restricted to non-commercial purposes. Commercial use of
+the Software requires a separately executed written license agreement.
+
+2. Permitted Use and Restrictions. Licensee agrees that it will use
+the Software, and any modifications, improvements, or derivatives to
+the Software that the Licensee may create (collectively,
+"Improvements") solely for internal, non-commercial purposes and shall
+not distribute or transfer the Software or Improvements to any person
+or third parties without prior written permission from the
+Licensor. The term "non-commercial," as used in this License, means
+academic or other scholarly research which (a) is not undertaken for
+profit, or (b) is not intended to produce works, services, or data for
+commercial use, or (c) is neither conducted, nor funded, by a person
+or an entity engaged in the commercial use, application or
+exploitation of works similar to the Software.
+
+3. Ownership and Assignment of Copyright. The Licensee acknowledges
+that the Licensor hold copyright in the Software and associated
+documentation, and the Software and associated documentation are the
+property of the Licensor. The Licensee agrees that any Improvements
+made by Licensee shall be subject to the same terms and conditions as
+the Software. Licensee agrees not to assert a claim of infringement in
+Licensee copyrights in Improvements in the event the Licensor prepares
+substantially similar modifications or derivative works. The Licensee
+agrees to use his/her reasonable best efforts to protect the contents
+of the Software and to prevent unauthorized disclosure by its agents,
+officers, employees, and consultants. If the Licensee receives a
+request to furnish all or any portion of the Software to a third
+party, Licensee will not fulfill such a request but will refer the
+third party to the Licensor's resources so that the third party's use
+of this Software will be subject to the terms and conditions of this
+License. Notwithstanding the above, Licensee may disclose any
+Improvements that do not involve disclosure of the Software.
+
+4. Copies. The Licensee may make a reasonable number of copies of the
+Software for the purposes of backup, maintenance of the Software or
+the development of derivative works based on the Software. These
+additional copies shall carry the copyright notice and shall be
+controlled by this License, and will be destroyed along with the
+original by the Licensee upon termination of the License.
+
+5. Acknowledgement. Licensee agrees that any publication of results
+obtained with the Software will acknowledge its use by an appropriate
+citation as specified in the documentation.
+
+6. Disclaimer of Warranties and Limitation of Liability. THE LICENSEE
+AGREES THAT ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. THE LICENSOR MAKES NO
+REPRESENTATION OR WARRANTY THAT THE SOFTWARE WILL NOT INFRINGE ANY
+PATENT OR OTHER PROPRIETARY RIGHT. UNDER NO CIRCUMSTANCES AND UNDER NO
+LEGAL THEORY, WHETHER IN TORT (INCLUDING NEGLIGENCE), CONTRACT, OR
+OTHERWISE, SHALL THE LICENSOR BE LIABLE TO ANYONE FOR ANY DIRECT,
+INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES OF ANY
+CHARACTER ARISING AS A RESULT OF THIS LICENSE OR THE USE OF THE
+ORIGINAL WORK INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF
+GOODWILL, WORK STOPPAGE, COMPUTER FAILURE OR MALFUNCTION, OR ANY AND
+ALL OTHER COMMERCIAL DAMAGES OR LOSSES, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE. THIS LIMITATION OF LIABILITY SHALL NOT
+APPLY TO THE EXTENT APPLICABLE LAW PROHIBITS SUCH LIMITATION.
+
+7. Termination. This License is effective until terminated by either
+party. Licensee's rights under this License will terminate
+automatically without notice from the Licensor if Licensee fails to
+comply with any term(s) of this License. Licensee may terminate the
+License by giving written notice of termination to the Licensor. Upon
+termination of this License, Licensee shall immediately discontinue
+all use of the Software and destroy the original and all copies, full
+or partial, of the Software, including any modifications or derivative
+works, and associated documentation.
+
+8. Termination for Patent Action. This License shall terminate
+automatically and You may no longer exercise any of the rights granted
+to You by this License as of the date You commence an action,
+including a cross-claim or counterclaim, against Licensor or any
+licensee alleging that the Original Work infringes a patent. This
+termination provision shall not apply for an action alleging patent
+infringement by combinations of the Original Work with other software
+or hardware.
+
+9. Governing Law and General Provisions.  Any action or suit relating
+to this License may be brought only in the courts of a jurisdiction
+wherein the Licensor resides or in which Licensor conducts its primary
+business, and under the laws of that jurisdiction excluding its
+conflict-of-law provisions.  The application of the United Nations
+Convention on Contracts for the International Sale of Goods is
+expressly excluded. Any use of the Original Work outside the scope of
+this License or after its termination shall be subject to the
+requirements and penalties of copyright or patent law in the
+appropriate jurisdiction.  If any provisions of this License are held
+invalid or unenforceable for any reason, the remaining provisions
+shall remain in full force and effect.  This section shall survive the
+termination of this License.  If any provision of this License is held
+to be unenforceable, such provision shall be reformed only to the
+extent necessary to make it enforceable. This License is binding upon
+any heirs and assigns of the Licensee. The License granted to Licensee
+hereunder may not be assigned or transferred to any other person or
+entity without the express consent of the Licensor. This License
+constitutes the entire agreement between the parties with respect to
+the use of the Software licensed hereunder and supersedes all other
+previous or contemporaneous agreements or understandings between the
+parties, whether verbal or written, concerning the subject matter. Any
+translation of this License is done for local requirements and in the
+event of a dispute between the English and any non-English versions,
+the English version of this License shall govern.
+
+--
+
+This work is derived from the code of Forbus and de Kleer released
+with their book "Building Problem Solvers", released under the license
+below.  See the
+[README file from that code](README-forbus-dekleer.txt)
+for more information.
+
+Copyright (c) 1986-1993 Kenneth D. Forbus, Johan de Kleer and Xerox
+Corporation.  All Rights Reserved.
+
+Use, reproduction, and preparation of derivative works are permitted.
+Any copy of this software or of any derivative work must include the
+above copyright notice and this paragraph.  Any distribution of this
+software or derivative works must comply with all applicable United
+States export control laws.  This software is made available as is, and
+Kenneth D. Forbus, Johan de Kleer and Xerox Corporation disclaim all
+warranties, express or implied, including without limitation the implied
+warranties of merchantability and fitness for a particular purpose, and
+notwithstanding any other provision contained herein, any liability for
+damages resulting from the software or its use is expressly disclaimed,
+whether arising in contract, tort (including negligence) or strict
+liability, even if Kenneth D. Forbus, Johan de Kleer or Xerox
+Corporation is advised of the possibility of such damages.
+
+--
