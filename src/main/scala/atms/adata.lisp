@@ -29,19 +29,19 @@
 		     &aux datum node)
   (setq datum (referent fact t)
 	node (datum-tms-node datum))
-  (cond ((not (datum-assumption? datum))
-	 (setf (datum-assumption? datum) reason)
+  (cond ((not (datum-isAssumption datum))
+	 (setf (datum-isAssumption datum) reason)
 	 (debugging-atre
 	  "~%    Assuming ~A via ~A." fact reason)
 	 (assume-node node))
-	((eq reason (datum-assumption? datum)))
+	((eq reason (datum-isAssumption datum)))
 	(t (error
   "Fact ~A assumed because of ~A assumed again because of ~A"
-  (show-datum datum) (datum-assumption? datum) reason)))
+  (show-datum datum) (datum-isAssumption datum) reason)))
   datum)
 
 (defun already-assumed? (fact)
-  (tms-node-assumption? (get-tms-node fact)))
+  (tms-node-isAssumption (get-tms-node fact)))
 
 (defun assume-if-needed (fact reason &optional (*atre* *atre*))
   (unless (already-assumed? fact) (assume! fact reason)))
@@ -141,7 +141,7 @@
   (setq env (atms-emptyEnv (atre-atms *atre*)))
   (dolist (fact facts)
 	  (setq node (get-tms-node fact *atre*))
-	  (unless (tms-node-assumption? node)
+	  (unless (tms-node-isAssumption node)
   (error "Non-assumption in ENVIRONMENT-OF: ~A." fact))
 	  (setq env (cons-env node env))
 	  (when (env-nogood? env)

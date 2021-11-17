@@ -47,47 +47,12 @@ class ATMS(val title: String) {
   var emptyEnv = {}
   var nodeString = {}
   var enqueueProcedure = {}
+
+  override def toString(): String = s"<ATMS: $title>"
+
 }
 
 /*
-
-(defstruct (atms (:PRINT-FUNCTION print-atms))
-  (title nil)
-  (nodeCounter 0)              ; unique namer for nodes.
-  (justCounter 0)              ; unique namer for justifications.
-  (envCounter 0)               ; Unique id for environments.
-  (nodes nil)                   ; List of all atms nodes.
-  (justs nil)                   ; List of all justifications.
-  (contradictions nil)          ; List of contradiction nodes.
-  (assumptions nil)             ; List of all atms assumptions.
-  (debugging nil)               ; Trace grungy details.
-  (nogoodTable nil)
-  (contraNode nil)             ; A dummy contradiction node.
-  (envTable nil)
-  (emptyEnv nil)               ; Empty environment.
-  (nodeString nil)
-  (enqueueProcedure nil))
-
-(defun print-atms (atms stream ignore)
-  (declare (ignore ignore))
-  (format stream "#<ATMS: ~A>" (atms-title atms)))
-
-(defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
-  (index 0)                                             ;; Unique name.
-  (datum nil)                   ; Pointer to IE data structures.
-  (label nil)                   ; minimal envs believed under
-  (justs nil)                   ; providers of support
-  (consequences nil)            ; provides support for.
-  (contradictory? nil)          ; flag marking it as contradictory.
-  (assumption? nil)             ; flag marking it as n assumption.
-  (rules nil)                   ; run when label non-empty.
-  (atms nil))
-
-(defun print-tms-node (node stream ignore)
-  (declare (ignore ignore))
-  (if (tms-node-assumption? node)
-      (format stream "A-~D" (tms-node-index node))
-      (format stream "#<NODE: ~A>" (nodeString node))))
 
 (defstruct (just (:PRINT-FUNCTION print-just))
            (index 0)
@@ -181,8 +146,8 @@ class ATMS(val title: String) {
                                    &aux node)
   (setq node (make-tms-node :INDEX (incf (atms-nodeCounter atms))
                             :DATUM datum
-                            :ASSUMPTION? assumptionp
-                            :CONTRADICTORY? contradictoryp
+                            :ISASSUMPTION assumptionp
+                            :ISCONTRADICTORY contradictoryp
                             :ATMS atms))
   (push node (atms-nodes atms))
   (if contradictoryp (push node (atms-contradictions atms)))
@@ -193,10 +158,10 @@ class ATMS(val title: String) {
 
 
 (defun assume-node (node &aux atms)
-  (unless (tms-node-assumption? node)
+  (unless (tms-node-isAssumption node)
     (setq atms (tms-node-atms node))
     (debugging atms  "~%Converting ~A into an assumption" node)
-    (setf (tms-node-assumption? node) t)
+    (setf (tms-node-isAssumption node) t)
     (push node (atms-assumptions atms))
     (update (list (create-env atms (list node)))
             node
@@ -204,8 +169,8 @@ class ATMS(val title: String) {
 
 (defun make-contradiction
        (node &aux (atms (tms-node-atms node)) nogood)
-  (unless (tms-node-contradictory? node)
-    (setf (tms-node-contradictory? node) t)
+  (unless (tms-node-isContradictory node)
+    (setf (tms-node-isContradictory node) t)
     (push node (atms-contradictions atms))
     (do nil (nil)
       (if (setq nogood (car (tms-node-label node)))
@@ -242,7 +207,7 @@ class ATMS(val title: String) {
 
 (defun update (new-envs consequence just &aux atms enqueuef)
   (setq atms (tms-node-atms consequence))
-  (when (tms-node-contradictory? consequence)
+  (when (tms-node-isContradictory consequence)
     (dolist (env new-envs) (new-nogood atms env just))
     (return-from update nil))
   (setq new-envs (update-label consequence new-envs))
@@ -512,7 +477,7 @@ class ATMS(val title: String) {
 
 (defun explain-node-1 (env node queued-nodes explanation)
   (cond ((member node queued-nodes) nil)
-        ((and (tms-node-assumption? node)
+        ((and (tms-node-isAssumption node)
               (member node (env-assumptions env)))
          (cons (cons 'ASSUME node) explanation))
         ((dolist (just explanation)

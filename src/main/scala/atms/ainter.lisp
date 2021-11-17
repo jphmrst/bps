@@ -62,7 +62,7 @@
   lisp-form            ; Expression for pattern-matching
   (tms-node nil)       ; Pointer into TMS
   dbclass                ; Dbclass of the corresponding pattern
-  (assumption? nil)    ; if non-nil, indicates informant
+  (isAssumption nil)    ; if non-nil, indicates informant
   (plist nil))         ; local property list
 
 (defun print-atre-datum (d st ignore) (declare (ignore ignore))
