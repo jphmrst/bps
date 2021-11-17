@@ -54,17 +54,6 @@ class ATMS(val title: String) {
 
 /*
 
-(defstruct (just (:PRINT-FUNCTION print-just))
-           (index 0)
-           (informant nil)
-           (consequence nil)
-           (antecedents nil))
-
-(defun print-just (just stream ignore)
-  (declare (ignore ignore))
-  (format stream "<~A ~D>" (just-informant just)
-          (just-index just)))
-
 (defstruct (env (:PREDICATE env?)
                 (:PRINT-FUNCTION print-env-structure))
            (index 0)
