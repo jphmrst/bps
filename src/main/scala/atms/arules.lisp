@@ -294,7 +294,7 @@
 (defun in-triggers-ready?
   (nodes atre &optional (env (ATMS.emptyEnv
 			      (atre-atms atre))))
-  (cond ((env-nogood? env) nil) ;; Combination was nogood
+  (cond ((Env.isNogood env) nil) ;; Combination was nogood
 	((null nodes) t) ;; Nothing else to combine
 	(t (dolist (new (TMSnode.label (car nodes)))
 	     (let ((u (union-env new env)))

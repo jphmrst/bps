@@ -115,7 +115,7 @@
 (defun apply-operator (state op-inst)
   (let ((operator (fetch-operator (car op-inst)))
 	(vals (cdr op-inst))
-	(assumptions (env-assumptions state))
+	(assumptions (Env.assumptions state))
 	(bindings nil)
 	(add-list nil)
 	(delete-list nil)

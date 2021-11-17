@@ -148,7 +148,7 @@
   (unless (atre? atre) ;; Users do slip, sometimes
     (error "Must change the focus of some ATRE, not ~A." atre))
   (when (and (env? env)
-	     (not (env-nogood? env)))
+	     (not (Env.isNogood env)))
     (setf (atre-focus atre) env) ;; change focus
     (setf (atre-queue atre) ;; re-queue implied-by rules
 	  (nconc (atre-queue atre) (atre-imp-rules atre)))
@@ -157,7 +157,7 @@
 
 (defun focus-okay? (atre)
   (and (atre-focus atre)
-       (not (env-nogood? (atre-focus atre)))))
+       (not (Env.isNogood (atre-focus atre)))))
 
 (defmacro with-focus (focus atre &rest forms)
   `(let ((old-focus (atre-focus ,atre)))
@@ -168,6 +168,6 @@
 ;; Interface to contradiction rules in ATMS
 
 (defun contradiction-rule (env proc atre)
-  (cond ((env-nogood? env)
+  (cond ((Env.isNogood env)
 	 (enqueue (list proc (list env) nil) atre))
-	(t (push (list proc (list env) nil) (env-rules env)))))
+	(t (push (list proc (list env) nil) (Env.rules env)))))

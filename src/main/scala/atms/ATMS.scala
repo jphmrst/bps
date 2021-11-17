@@ -54,19 +54,6 @@ class ATMS(val title: String) {
 
 /*
 
-(defstruct (env (:PREDICATE env?)
-                (:PRINT-FUNCTION print-env-structure))
-           (index 0)
-           (count 0)                            ; Number of assumptions.
-           (assumptions nil)
-           (nodes nil)
-           (nogood? nil)
-           (rules nil))                         ; Call this if becomes nogood.
-
-(defun print-env-structure (env stream ignore)
-  (declare (ignore ignore))
-  (format stream "E-~D" (env-index env)))
-
 (defun nodeString (node)
   (funcall (atms-nodeString (tms-node-atms node)) node))
 

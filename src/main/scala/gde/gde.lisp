@@ -31,9 +31,9 @@
 	diagnoses (interpretations atms nil (ATMS.assumptions atms)))
   (unless diagnoses (return-from smallest-diagnoses nil))
   (dolist (diagnosis diagnoses)
-    (if (> (env-count diagnosis) smallest-size)
-	(setq smallest-size (env-count diagnosis))))
-  (remove-if #'(lambda (env) (< (env-count env) smallest-size))
+    (if (> (Env.count diagnosis) smallest-size)
+	(setq smallest-size (Env.count diagnosis))))
+  (remove-if #'(lambda (env) (< (Env.count env) smallest-size))
 	     diagnoses))
 
 (defun print-smallest-diagnoses (&aux diagnoses)
@@ -43,7 +43,7 @@
   (mapc #'print-diagnosis diagnoses))
 
 (defun print-diagnosis (env &aux assumptions faults printer atms)
-  (setq assumptions (env-assumptions env)
+  (setq assumptions (Env.assumptions env)
 	atms (atcon-atms *atcon*)
 	printer (ATMS.nodeString atms))
   (dolist (a (ATMS.assumptions (atcon-atms *atcon*)))

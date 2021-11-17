@@ -144,7 +144,7 @@
 	  (unless (TMSnode.isAssumption node)
   (error "Non-assumption in ENVIRONMENT-OF: ~A." fact))
 	  (setq env (cons-env node env))
-	  (when (env-nogood? env)
+	  (when (Env.isNogood env)
 		(return-from ENVIRONMENT-OF
 			     (values nil env))))
   env)
@@ -153,7 +153,7 @@
   (cons-env (get-tms-node fact) env))    
 
 (defun view-env (env)
-  (mapcar #'view-node (env-assumptions env)))
+  (mapcar #'view-node (Env.assumptions env)))
 
 (defun justifications (fact &optional (*atre* *atre*)
 			    (stream *standard-output*))
