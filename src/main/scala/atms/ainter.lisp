@@ -86,19 +86,19 @@
  (let ((j (make-atre
 	   :TITLE title 
 	   :ATMS (create-atms (list :ATMS-OF title) 
-			      :NODE-STRING 'stringify-node)
+			      :NODESTRING 'stringify-node)
 	   :DBCLASS-TABLE (make-hash-table :TEST #'eq)
 	   :DEBUGGING debugging))
        (false nil))
    (in-atre j)
    (change-atms (atre-atms j)
-		:ENQUEUE-PROCEDURE
+		:ENQUEUEPROCEDURE
 		#'(lambda (pair) (enqueue pair j)))
    ;; Create a default contradiction
    (setq false (make-datum :COUNTER (incf (atre-datum-counter j))
 			   :ATRE j :LISP-FORM 'FALSE
 			   :DBCLASS (get-dbclass 'FALSE)))
-   (setf (datum-tms-node false) (atms-contra-node (atre-atms j)))
+   (setf (datum-tms-node false) (atms-contraNode (atre-atms j)))
    (setf (tms-node-datum (datum-tms-node false)) false)
    (push false (dbclass-facts (datum-dbclass false)))
    j))

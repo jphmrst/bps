@@ -292,7 +292,7 @@
     (apply (car queued-rule) (cadr queued-rule))))
 
 (defun in-triggers-ready?
-  (nodes atre &optional (env (atms-empty-env
+  (nodes atre &optional (env (atms-emptyEnv
 			      (atre-atms atre))))
   (cond ((env-nogood? env) nil) ;; Combination was nogood
 	((null nodes) t) ;; Nothing else to combine

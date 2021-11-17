@@ -138,7 +138,7 @@
 
 (defun environment-of (facts &optional (*atre* *atre*)
 			     &aux node env)
-  (setq env (atms-empty-env (atre-atms *atre*)))
+  (setq env (atms-emptyEnv (atre-atms *atre*)))
   (dolist (fact facts)
 	  (setq node (get-tms-node fact *atre*))
 	  (unless (tms-node-assumption? node)
