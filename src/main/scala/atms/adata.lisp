@@ -41,7 +41,7 @@
   datum)
 
 (defun already-assumed? (fact)
-  (tms-node-isAssumption (get-tms-node fact)))
+  (TMSnode.isAssumption (get-tms-node fact)))
 
 (defun assume-if-needed (fact reason &optional (*atre* *atre*))
   (unless (already-assumed? fact) (assume! fact reason)))
@@ -138,10 +138,10 @@
 
 (defun environment-of (facts &optional (*atre* *atre*)
 			     &aux node env)
-  (setq env (atms-emptyEnv (atre-atms *atre*)))
+  (setq env (ATMS.emptyEnv (atre-atms *atre*)))
   (dolist (fact facts)
 	  (setq node (get-tms-node fact *atre*))
-	  (unless (tms-node-isAssumption node)
+	  (unless (TMSnode.isAssumption node)
   (error "Non-assumption in ENVIRONMENT-OF: ~A." fact))
 	  (setq env (cons-env node env))
 	  (when (env-nogood? env)
@@ -168,13 +168,13 @@
   (datum-tms-node (referent fact t)))
 
 (defun view-node (node)
-  (datum-lisp-form (tms-node-datum node)))
+  (datum-lisp-form (TMSnode.datum node)))
 
 (defun stringify-node (node)
   (format nil "~A" (view-node node)))
 
 (defun assumptions-of (fact)
-  (tms-node-label (datum-tms-node (referent fact t))))
+  (TMSnode.label (datum-tms-node (referent fact t))))
 
 (defun get-datum (num &optional (*atre* *atre*))
   (maphash #'(lambda (key dbclass)
@@ -185,8 +185,8 @@
 	   (atre-dbclass-table *atre*)))
 
 (defun get-just (num &optional (*atre* *atre*))
-  (dolist (just (atms-justs (atre-atms *atre*)))
-    (when (= (just-index just) num)
+  (dolist (just (ATMS.justs (atre-atms *atre*)))
+    (when (= (Just.index just) num)
       (return-from GET-just just))))
 
 ;;; Extra printing routines

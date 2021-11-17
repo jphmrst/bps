@@ -70,23 +70,23 @@
     ;; arrives.
     (setq node (get-tms-node `(,n1 <= ,n2)))
     (push `(update-ineqs-as-needed ,node :TRUE)
-	  (tms-node-true-rules node))
+	  (TMSnode.trueRules node))
     (push `(update-ineqs-as-needed ,node :FALSE)
-	  (tms-node-false-rules node))
+	  (TMSnode.falseRules node))
     (setq node (get-tms-node `(,n2 <= ,n1)))
     (push `(update-ineqs-as-needed ,node :TRUE)
-	  (tms-node-true-rules node))
+	  (TMSnode.trueRules node))
     (push `(update-ineqs-as-needed ,node :FALSE)
-	  (tms-node-false-rules node)) 
+	  (TMSnode.falseRules node)) 
     node))
 
 (defun update-ineqs-as-needed (node label)
   (setf (tgizmo-update-ineqs? *tgizmo*) t)
   (case label
 	(:TRUE (push `(update-ineqs-as-needed ,node ,label)
-		     (tms-node-true-rules node)))
+		     (TMSnode.trueRules node)))
 	(:FALSE (push `(update-ineqs-as-needed ,node ,label)
-		      (tms-node-false-rules node)))
+		      (TMSnode.falseRules node)))
 	(t (error "Inappropriate label ~A in update-ineqs-as-needed: ~A."
 		  label node))))
 

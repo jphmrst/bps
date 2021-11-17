@@ -49,9 +49,9 @@ class ATMS(val title: String) {
   var enqueueProcedure = {}
 
   override def toString(): String = s"<ATMS: $title>"
-
 }
 
+
 /*
 
 (defstruct (just (:PRINT-FUNCTION print-just))

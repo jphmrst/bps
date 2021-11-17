@@ -86,7 +86,7 @@
 (defun ltms-error (string &optional thing) (error string thing))
 
 (defun default-node-string (n)
-  (format nil "~A" (tms-node-datum n)))
+  (format nil "~A" (TMSnode.datum n)))
 
 (defmacro satisfied-clause? (clause) `(> (clause-sats ,clause) 0))
 
@@ -144,13 +144,13 @@
   (if complete? (setf (ltms-complete ltms) complete))
   (if delay-sat? (setf (ltms-delay-sat ltms) delay-sat)))
 
-(defun unknown-node? (node) (eq (tms-node-label node) :UNKNOWN))
+(defun unknown-node? (node) (eq (TMSnode.label node) :UNKNOWN))
 
-(defun known-node? (node) (not (eq (tms-node-label node) :UNKNOWN)))
+(defun known-node? (node) (not (eq (TMSnode.label node) :UNKNOWN)))
 
-(defun true-node? (node) (eq (tms-node-label node) :TRUE))
+(defun true-node? (node) (eq (TMSnode.label node) :TRUE))
 
-(defun false-node? (node) (eq (tms-node-label node) :FALSE))
+(defun false-node? (node) (eq (TMSnode.label node) :FALSE))
 
 
 (defun tms-create-node (ltms datum &key assumptionp)
@@ -173,7 +173,7 @@
     node))
 
 (defun enable-assumption (node label)
-  (cond ((not (tms-node-assumption? node))
+  (cond ((not (TMSnode.isAssumption node))
 	 (ltms-error "Can't enable the non-assumption ~A" node))
 	((eq (tms-node-label node) label)
 	 (setf (tms-node-support node) :ENABLED-ASSUMPTION))
@@ -182,10 +182,10 @@
 	(t (ltms-error "Can't set an already set node" node))))
 
 (defun convert-to-assumption (node)
-  (unless (tms-node-assumption? node)
+  (unless (tms-node-isAssumption node)
     (debugging-ltms (tms-node-ltms node)
 		    "~%Converting ~A into an assumption" node)
-    (setf (tms-node-assumption? node) T)))
+    (setf (tms-node-isAssumption node) T)))
 
 (defun retract-assumption (node)
   (when (and (known-node? node)

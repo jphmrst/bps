@@ -35,7 +35,7 @@
   'DONE)
 
 (defun ole-string (node &aux value)
-  (setq value (tms-node-datum node))
+  (setq value (TMSnode.datum node))
   (cond ((stringp value) value)
 	((value-string value))
 	((eq (cell-name (value-cell value)) 'OK)

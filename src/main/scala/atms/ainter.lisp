@@ -98,8 +98,8 @@
    (setq false (make-datum :COUNTER (incf (atre-datum-counter j))
 			   :ATRE j :LISP-FORM 'FALSE
 			   :DBCLASS (get-dbclass 'FALSE)))
-   (setf (datum-tms-node false) (atms-contraNode (atre-atms j)))
-   (setf (tms-node-datum (datum-tms-node false)) false)
+   (setf (datum-tms-node false) (ATMS.contraNode (atre-atms j)))
+   (setf (TMSnode.datum (datum-tms-node false)) false)
    (push false (dbclass-facts (datum-dbclass false)))
    j))
 

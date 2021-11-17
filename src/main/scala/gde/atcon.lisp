@@ -279,7 +279,7 @@
 
 (defun lookup-node (cell datum &aux value node)
   (dolist (node (cell-nodes cell))
-    (if (nearly-equal? datum (value-datum (tms-node-datum node))
+    (if (nearly-equal? datum (value-datum (TMSnode.datum node))
 		       (cell-atcon cell))
 	(return-from lookup-node node)))
   ;; Go through process of creating the value.
@@ -292,7 +292,7 @@
 	   (not (member datum (cell-domain cell) :test #'eq)))
       (make-contradiction node))
   (dolist (user (cell-users cell))
-    (push (cons user node) (tms-node-rules node)))
+    (push (cons user node) (TMSnode.rules node)))
   node)
 
 (defun known? (cell &optional (env nil))
@@ -305,7 +305,7 @@
 
 (defun assume-parameter (cell expression &optional string &aux node)
   (setq node (lookup-node cell expression))
-  (setf (value-string (tms-node-datum node)) string)
+  (setf (value-string (TMSnode.datum node)) string)
   (assume-node node)
   (fire-constraints (cell-atcon cell)))
 
@@ -327,9 +327,9 @@
       (setq signal (cons users constraint))
       (push signal (cell-users cell))
       (dolist (node (cell-nodes cell))
-        (if (and (in-node? node nil) (null (tms-node-rules node)))
+        (if (and (in-node? node nil) (null (TMSnode.rules node)))
             (consider-node (cons signal node))
-            (push (cons signal node) (tms-node-rules node)))))))
+            (push (cons signal node) (TMSnode.rules node)))))))
 
 (defun fire-constraints (&optional (atcon *atcon*))
   (do ((rule-object)
@@ -337,38 +337,38 @@
       ((null (atcon-queue atcon)))
     (setq rule-object (pop (atcon-queue atcon))
 	  node (cdr rule-object))
-    (if (eq (tms-node-datum node) *temporary-datum*)
+    (if (eq (TMSnode.datum node) *temporary-datum*)
         (if (and (in-node? node nil)
                  (or (atcon-delay atcon)
                      (has-complete-external-support
-                       (just-antecedents (car (tms-node-justs node)))
-                       (cdr (just-informant
-			      (car (tms-node-justs node)))))))
+                       (Just.antecedents (car (TMSnode.justs node)))
+                       (cdr (Just.informant
+			      (car (TMSnode.justs node)))))))
             (fire-delayed-constraint (car rule-object) (cdr rule-object))
-            (push rule-object (tms-node-rules node)))
+            (push rule-object (TMSnode.rules node)))
         (if (and (in-node? node nil)
                  (or (atcon-delay atcon)
                      (has-external-support node (cdar rule-object))))
             (fire-constraint (car rule-object) (cdr rule-object))))))
 
 (defun has-external-support (node constraint)
-  (or (tms-node-assumption? node)
-      (dolist (just (tms-node-justs node))
-	(unless (and (consp (just-informant just))
-		     (equal constraint (cdr (just-informant just))))
-	  (if (in-antecedent? (just-antecedents just)) (return T))))))
+  (or (TMSnode.isAssumption node)
+      (dolist (just (TMSnode.justs node))
+	(unless (and (consp (Just.informant just))
+		     (equal constraint (cdr (Just.informant just))))
+	  (if (in-antecedent? (Just.antecedents just)) (return T))))))
 
 (defun has-complete-external-support (nodes constraint &aux empty-list)
-  (setq empty-list (list (atms-empty-env (tms-node-atms (car nodes)))))
+  (setq empty-list (list (ATMS.emptyEnv (TMSnode.atms (car nodes)))))
   (dolist (env (weave nil empty-list nodes))
     (unless
       (dolist (node nodes)
         (unless
-	  (or (tms-node-assumption? node)
-	      (dolist (just (tms-node-justs node))
-		(unless (and (consp (just-informant just))
-			     (equal constraint (cdr (just-informant just))))
-		  (if (supporting-antecedent? (just-antecedents just) env)
+	  (or (TMSnode.isAssumption node)
+	      (dolist (just (TMSnode.justs node))
+		(unless (and (consp (Just.informant just))
+			     (equal constraint (cdr (Just.informant just))))
+		  (if (supporting-antecedent? (Just.antecedents just) env)
 		      (return T)))))
 	  (return T)))
       (return T))))
@@ -397,19 +397,19 @@
 	    (justify-node informant t-node invoke-nodes)
 	    (push (cons (cons (list function set-cell) constraint)
 			t-node)
-		  (tms-node-rules t-node))))))
-  (push constraint (value-processed (tms-node-datum new-node))))
+		  (TMSnode.rules t-node))))))
+  (push constraint (value-processed (TMSnode.datum new-node))))
 
 (defun fire-delayed-constraint (rule-pair new-node
 				&aux atcon function antecedents)
   (setq atcon (constraint-atcon (cdr rule-pair))
 	function (first (car rule-pair))
-	antecedents (just-antecedents (car (tms-node-justs new-node))))
+	antecedents (Just.antecedents (car (TMSnode.justs new-node))))
   (debugging-atcon atcon
 		   "~%Executing delayed ~A on ~A"
 		   function antecedents)
   (execute-rule function antecedents
-		atcon (just-informant (car (tms-node-justs new-node)))
+		atcon (Just.informant (car (TMSnode.justs new-node)))
 		(second (car rule-pair))
 		new-node))
 
@@ -418,7 +418,7 @@
   (incf (atcon-executions atcon))
   (setq result (apply function
 		      (mapcar #'(lambda (node)
-				  (value-datum (tms-node-datum node)))
+				  (value-datum (TMSnode.datum node)))
 			      nodes)))
   (case result
     (:DISMISS (if trigger (remove-node trigger)))
@@ -439,11 +439,11 @@
     (push invoke-list *results*)
     (return-from rule-weave-1))
   (setq cell (lookup-part (car uses) constraint))
-  (if (and new-node (eq cell (value-cell (tms-node-datum new-node))))
+  (if (and new-node (eq cell (value-cell (TMSnode.datum new-node))))
       (rule-weave-1 (cdr uses) (cons new-node invoke-list)
                         nil constraint)
       (dolist (node (cell-nodes cell))
-        (if (member constraint (value-processed (tms-node-datum node))
+        (if (member constraint (value-processed (TMSnode.datum node))
                     :test #'eq)
             (rule-weave-1 (cdr uses) (cons node invoke-list)
 			  new-node constraint)))))
@@ -453,7 +453,7 @@
 (defun solutions (&optional (atcon *atcon*) &aux atms solutions)
   (setq atms (atcon-atms atcon)
 	solutions (interpretations atms (atcon-disjunctions atcon)
-				        (atms-assumptions atms)))
+				        (ATMS.assumptions atms)))
   (format T "~%The solutions are:")
   (mapc #'print-env solutions))
 
@@ -487,11 +487,11 @@
       (list (constraint-name con))))
 
 (defun label-string (node &aux envs)
-  (dolist (env (tms-node-label node)) (push (env-string env) envs))
+  (dolist (env (TMSnode.label node)) (push (env-string env) envs))
   (format nil "{~{~A~}}" envs))
     
 (defun cell-value-string (node &aux value)
-  (setq value (tms-node-datum node))
+  (setq value (TMSnode.datum node))
   (cond ((stringp value) value)
 	((value-string value))
 	((eq (cell-name (value-cell value)) 'OK)
@@ -509,14 +509,14 @@
 		 (nodes
 		  (format stream "~%~A ~A = ~A."
 			  indent (cell-pretty-name cell)
-			  (value-datum (tms-node-datum (car nodes)))))
+			  (value-datum (TMSnode.datum (car nodes)))))
 		 (t (format stream "~%~A ~A is unknown."
 			    indent (cell-pretty-name cell))))))
 	((cell-nodes cell)
 	 (format stream "~%~A ~A = " indent (cell-pretty-name cell))
 	   (dolist (node (cell-nodes cell))
-	     (if (tms-node-label node)
-		 (format stream "[~A,~A]" (value-datum (tms-node-datum node))
+	     (if (TMSnode.label node)
+		 (format stream "[~A,~A]" (value-datum (TMSnode.datum node))
 			 (label-string node)))))
 	(t (format stream "~%~A ~A is unknown."
 			    indent (cell-pretty-name cell)))))
@@ -551,7 +551,7 @@
 
 (defun why (cell expression &aux node)
   (setq node (lookup-node cell expression))
-  (dolist (env (tms-node-label node))
+  (dolist (env (TMSnode.label node))
     (format T "~% ~A under environment ~A:"
 	    (cell-value-string node) (env-string env))
     (dolist (reason (explain-node node env))
@@ -559,13 +559,13 @@
 	     (format T "~%  Assuming that ~A."
 		     (cell-value-string (cdr reason))))
 	    (t (format T "~%  ~A via ~A"
-		       (cell-value-string (just-consequence reason))
-		       (if (consp (just-informant reason))
-			   (cdr (just-informant reason))
-			   (just-informant reason)))
-	       (when (just-antecedents reason)
+		       (cell-value-string (Just.consequence reason))
+		       (if (consp (Just.informant reason))
+			   (cdr (Just.informant reason))
+			   (Just.informant reason)))
+	       (when (Just.antecedents reason)
 		 (format T " and inputs:")
-		 (dolist (ante (just-antecedents reason))
+		 (dolist (ante (Just.antecedents reason))
 		   (format T "~%      ~A" (cell-value-string ante))))
 	       (format T "."))))))
 

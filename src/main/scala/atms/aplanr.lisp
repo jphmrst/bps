@@ -135,7 +135,7 @@
     (setq assumptions
 	  (remove-if #'(lambda (a) 
 			 (member (datum-lisp-form
-				   (tms-node-datum a))
+				   (TMSnode.datum a))
 				 delete-list
 				 :TEST #'equal)) assumptions))
     (dolist (new add-list)

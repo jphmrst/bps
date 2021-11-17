@@ -15,11 +15,11 @@
 
 (defun get-node (datum jtms)
   (dolist (node (jtms-nodes jtms))
-    (if (equal datum (tms-node-datum node)) (return node))))
+    (if (equal datum (TMSnode.datum node)) (return node))))
 
 (defun get-justification (num jtms)
   (dolist (just (jtms-justs jtms))
-    (if (= num (just-index just)) (return just))))
+    (if (= num (Just.index just)) (return just))))
 
 (declare (special na nb nc nd ne nf ng contra *jtms*))
 

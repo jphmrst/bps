@@ -77,7 +77,7 @@
 		      (*JTRE* *JTRE*) &aux datum node)
   (setq datum (referent fact t)
 	node (datum-tms-node datum))
-  (cond ((not (tms-node-assumption? node))
+  (cond ((not (TMSnode.isAssumption node))
 	 (unless quiet?
 	   (format t "~%~A isn't an assumption."
 		   (show-datum datum))))
@@ -139,10 +139,10 @@
 	       ((null queue) (format t "~%--------") fact)
 	     (why-node (car queue))
 	     (unless (or (out-node? (car queue))
-			 (tms-node-assumption? (car queue)))
+			 (TMSnode.isAssumption (car queue)))
 	       ;; Go down the support
-	       (dolist (ante (just-antecedents
-			      (tms-node-support (car queue))))
+	       (dolist (ante (Just.antecedents
+			      (TMSnode.support (car queue))))
 		 (unless (member ante so-far)
 		   (push ante so-far)
 		   (push ante new-antes))))))))
@@ -156,15 +156,15 @@
 (defun show-justifications (fact &optional (*jtre* *jtre*))
   (format t "~% ~A::" fact)
   (let* ((node (get-tms-node fact *jtre*))
-	 (justs (tms-node-justs node)))
+	 (justs (TMSnode.justs node)))
     (unless justs
 	    (format t " No justifications.")
 	    (return-from show-justifications node))
     (dolist (j justs)
-	    (format t "~% ~A" (just-informant j))
-	    (cond ((just-antecedents j) 
+	    (format t "~% ~A" (Just.informant j))
+	    (cond ((Just.antecedents j) 
 		   (format t ", on:")
-		   (dolist (ante (just-antecedents j))
+		   (dolist (ante (Just.antecedents j))
 			   (say-datum-belief
 			    (view-node ante) *jtre* "  "))
 		   (format t "."))
@@ -240,7 +240,7 @@
   (datum-tms-node (referent fact t)))
 
 (defun view-node (node)
-  (datum-lisp-form (tms-node-datum node)))
+  (datum-lisp-form (TMSnode.datum node)))
 
 ;;;; More query routines
 
@@ -256,5 +256,5 @@
 
 (defun get-just (num &optional (*JTRE* *JTRE*))
   (dolist (just (jtms-justs (jtre-jtms *JTRE*)))
-    (when (= (just-index just) num)
+    (when (= (Just.index just) num)
 	  (return-from GET-just just))))

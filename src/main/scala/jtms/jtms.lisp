@@ -58,12 +58,12 @@
 
 (defun print-just (just stream ignore)
   (declare (ignore ignore))
-  (format stream "#<Just ~D>" (just-index just)))
+  (format stream "#<Just ~D>" (Just.index just)))
 
 (defun tms-node-premise? (node &aux support)
   (and (setq support (tms-node-support node))
        (not (eq support :ENABLED-ASSUMPTION))
-       (null (just-antecedents support))))
+       (null (Just.antecedents support))))
 
 ;;; Simple utilities:
 
@@ -156,11 +156,11 @@
 ;;;; Support for adding justifications
 
 (defun check-justification (just)
-  (and (out-node? (just-consequence just))
+  (and (out-node? (Just.consequence just))
        (justification-satisfied? just)))
 
 (defun justification-satisfied? (just) 
-  (every #'in-node? (just-antecedents just)))
+  (every #'in-node? (Just.antecedents just)))
 
 (defun install-support (conseq just)
   (make-node-in conseq just)
@@ -171,8 +171,8 @@
     (debugging-jtms jtms "~%   Propagating belief in ~A." node)
     (dolist (justification (tms-node-consequences node))
       (when (check-justification justification)
-	(make-node-in (just-consequence justification) justification)
-	(push (just-consequence justification) q)))))
+	(make-node-in (Just.consequence justification) justification)
+	(push (Just.consequence justification) q)))))
 
 (defun make-node-in (conseq reason &aux jtms enqueuef)
   (setq jtms (tms-node-jtms conseq)
@@ -181,9 +181,9 @@
 	     conseq
 	     (if (symbolp reason)
 		 reason
-		 (cons (just-informant reason)
+		 (cons (Just.informant reason)
 		       (mapcar (jtms-node-string jtms)
-			       (just-antecedents reason)))))
+			       (Just.antecedents reason)))))
   (setf (tms-node-label conseq) :IN)
   (setf (tms-node-support conseq) reason)
   (when enqueuef
@@ -206,7 +206,7 @@
   (cond ((out-node? node) (make-node-in node :ENABLED-ASSUMPTION)
 	                  (propagate-inness node))
 	((or (eq (tms-node-support node) :ENABLED-ASSUMPTION)
-	     (null (just-antecedents (tms-node-support node)))))
+	     (null (Just.antecedents (tms-node-support node)))))
 	(t (setf (tms-node-support node) :ENABLED-ASSUMPTION)))
   (check-for-contradictions jtms))
 
@@ -229,7 +229,7 @@
     ;;For each justification using the node, check to see if
     ;;it supports some other node.  If so, forget that node,
     ;;queue up the node to look for other support, and recurse
-    (setq conseq (just-consequence (car js)))
+    (setq conseq (Just.consequence (car js)))
     (when (eq (tms-node-support conseq) (car js)) 
       (make-node-out conseq)
       (push conseq out-queue)
@@ -241,7 +241,7 @@
     (unless (in-node? node)
       (dolist (just (tms-node-justs node))
 	(when (check-justification just)
-	  (install-support (just-consequence just)
+	  (install-support (Just.consequence just)
 				 just)
 	  (return just))))))
 
@@ -298,7 +298,7 @@
 	    ((eq (tms-node-support node) :ENABLED-ASSUMPTION)
 	     (push node assumptions))
 	    ((in-node? node)
-	     (setq new (just-antecedents (tms-node-support node)))))
+	     (setq new (Just.antecedents (tms-node-support node)))))
       (setf (tms-node-mark node) marker))))
 
 (defun enabled-assumptions (jtms &aux result)
@@ -315,8 +315,8 @@
 	(justification
 	 (format t "~%~A is IN via ~A on"
 		 (node-string node)
-		 (just-informant justification))
-	 (dolist (anode (just-antecedents justification))
+		 (Just.informant justification))
+	 (dolist (anode (Just.antecedents justification))
 	   (format t "~%  ~A" (node-string anode))))
 	(T (format t "~%~A is OUT." (node-string node))))
   node)
@@ -376,7 +376,7 @@
       (done? current)
       (why-node current)
       (setq options (if (typep (tms-node-support current) 'just)
-			(just-antecedents (tms-node-support current))))
+			(Just.antecedents (tms-node-support current))))
       (setq olen (length options))
       (do ((good? nil)
 	   (choice 0))
