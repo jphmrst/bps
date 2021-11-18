@@ -20,16 +20,27 @@
 
 package org.maraist.tms.atms
 
-class Env {
+class Env[D](val assumptions: List[TMSnode[D]]) {
+
+  def this(atms: ATMS[D], assumptions: List[TMSnode[D]]) = this(assumptions)
+
   var index: Int = 0
+
   /** Number of assumptions. */
   var count: Int = 0
-  var assumptions = {}
+
   var nodes = {}
+
   var isNogood: Boolean = false
 
   /** Call this if becomes nogood. */
   var rules = {}
 
   override def toString(): String = s"E-$index"
+
+  def envOrder(that: Env[?]): Boolean = index < that.index
+
+  def isSubset(that: Env[D]): Boolean = ???
+
+  def +(that: Env[D]): Env[D] = ???
 }

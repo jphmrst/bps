@@ -19,118 +19,103 @@
 // Translated from KDF/JdK version 61 of 7/21/92.
 
 package org.maraist.tms.atms
+import scala.collection.mutable.HashSet
 
 // Definitions
 
-class ATMS(val title: String) {
+class Contra private ()
+object Contra extends Contra {
+  override def toString(): String = "the contradiction"
+}
+
+type Rule = Unit
+
+/**
+  *
+  *
+  * @param title
+  * @param nodeString
+  * @param debugging Trace grungy details.
+  */
+class ATMS[D](
+  val title: String,
+  val nodeString: (TMSnode[D]) => String =
+    (n: TMSnode[D]) => s"${n.datum.toString()}",
+  val debugging: Boolean = false,
+  val enqueueProcedure: Option[(Rule) => Unit] = None
+) {
+
   /** Unique names for nodes. */
-  var nodeCounter: Int = 0
+  private var nodeCounter: Int = 0
+
   /** Unique namer for justifications. */
   var justCounter: Int = 0
+
   /** Unique id for environments. */
   var envCounter = 0
+
   /** List of all atms nodes. */
-  var nodes = {}
+  val nodes: HashSet[TMSnode[D]] = new HashSet[TMSnode[D]]
+
   /** List of all justifications. */
   var justs = {}
+
   /** List of contradiction nodes. */
-  var contradictions = {}
+  var contradictions: HashSet[TMSnode[D]] = new HashSet[TMSnode[D]]
+
   /** List of all atms assumptions. */
-  var assumptions = {}
-  /** Trace grungy details. */
-  var debugging = {}
+  var assumptions: HashSet[TMSnode[D]] = new HashSet[TMSnode[D]]
+
   var nogoodTable = {}
   /** A dummy contradiction node. */
-  var contraNode = {}
+  val contraNode: TMSnode[D] =
+    new TMSnode(this, Contra, isContradictory = true)
   var envTable = {}
   /** Empty environment. */
-  var emptyEnv = {}
-  var nodeString = {}
-  var enqueueProcedure = {}
+  var emptyEnv = new Env(this, Nil)
 
   override def toString(): String = s"<ATMS: $title>"
+
+  def nextNodeIndex: Int = {
+    val result = nodeCounter
+    nodeCounter = nodeCounter + 1
+    result
+  }
+}
+
+extension [T](xs: List[T]) {
+  def orderedInsert(item: T, test: (T, T) => Boolean): List[T] = xs match {
+    case x :: xs => { if test(item, x) then item :: xs
+      else if item.equals(x) then xs
+      else x :: xs.orderedInsert(item, test)
+    }
+    case Nil => List(item)
+  }
 }
 
 
 /*
-
-(defun nodeString (node)
-  (funcall (atms-nodeString (tms-node-atms node)) node))
 
 (defmacro debugging (atms msg &optional node &rest args)
   `(when (atms-debugging ,atms)
      (format *trace-output*
              ,msg (if ,node (nodeString ,node)) ,@args)))
 
-(defun default-nodeString (n) (format nil "~A" (tms-node-datum n)))
-
-(defun ordered-insert (item list test)
-  (cond ((null list) (list item))
-        ((funcall test item (car list)) (cons item list))
-        ((eq item (car list)) list)
-        (t (cons (car list) (ordered-insert item (cdr list) test)))))
-
 (defmacro ordered-push (item list test)
   `(setq ,list (ordered-insert ,item ,list ,test)))
 
-(defun assumption-order (a1 a2)
-  (< (tms-node-index a1) (tms-node-index a2)))
-
-(defun env-order (e1 e2)
-  (< (env-index e1) (env-index e2)))
-
-
 ;;; Basic inference engine interface.
 
-(defun create-atms (title &key (nodeString 'default-nodeString)
-                               (debugging NIL)
-                               (enqueueProcedure NIL))
-  (let ((atms (make-atms :TITLE title
-                         :NODESTRING nodeString
-                         :DEBUGGING debugging
-                         :ENQUEUEPROCEDURE enqueueProcedure)))
-    (setf (atms-contraNode atms)
-          (tms-create-node atms "The contradiction"
-                           :CONTRADICTORYP t))
-    (setf (atms-emptyEnv atms) (create-env atms nil))
-    atms))
-
-(defun change-atms (atms &key nodeString
-                              enqueueProcedure debugging)
-  (if nodeString (setf (atms-nodeString atms) nodeString))
-  (if debugging (setf (atms-debugging atms) debugging))
-  (if enqueueProcedure
-      (setf (atms-enqueueProcedure atms) enqueueProcedure)))
-
-(defun true-node? (node)
-  (eq (car (tms-node-label node))
-      (atms-emptyEnv (tms-node-atms node))))
-
-(defun in-node? (n &optional env)
-  (if env
-      (some #'(lambda (le) (subset-env? le env))
-            (tms-node-label n))
-      (not (null (tms-node-label n)))))
-
-(defun out-node? (n env) (not (in-node? n env)))
-
-(defun node-consistent-with? (n env)
-  (some #'(lambda (le) (not (env-nogood? (union-env le env))))
-        (tms-node-label n)))
-
-(defun tms-create-node (atms datum &key assumptionp contradictoryp
-                                   &aux node)
-  (setq node (make-tms-node :INDEX (incf (atms-nodeCounter atms))
-                            :DATUM datum
-                            :ISASSUMPTION assumptionp
-                            :ISCONTRADICTORY contradictoryp
-                            :ATMS atms))
-  (push node (atms-nodes atms))
-  (if contradictoryp (push node (atms-contradictions atms)))
-  (when assumptionp
-    (push node (atms-assumptions atms))
-    (push (create-env atms (list node)) (tms-node-label node)))
-  node)
+// (defun change-atms (atms &key nodeString
+//                               enqueueProcedure debugging)
+//   (if nodeString (setf (atms-nodeString atms) nodeString))
+//   (if debugging (setf (atms-debugging atms) debugging))
+//   (if enqueueProcedure
+//       (setf (atms-enqueueProcedure atms) enqueueProcedure)))
+//
+// (defun true-node? (node)
+//   (eq (car (tms-node-label node))
+//       (atms-emptyEnv (tms-node-atms node))))
 
 
 (defun assume-node (node &aux atms)
@@ -253,7 +238,7 @@ class ATMS(val title: String) {
                    (return T)))))))
 
 (defun supporting-antecedent? (nodes env)
-  (dolist (node nodes t) (unless (in-node? node env) (return nil))))
+  (dolist (node nodes t) (unless (isInNode node env) (return nil))))
 
 
 (defun remove-node (node &aux atms)
@@ -463,7 +448,7 @@ class ATMS(val title: String) {
         (t (setq queued-nodes (cons node queued-nodes))
            (dolist (just (tms-node-justs node))
              (unless (dolist (a (just-antecedents just))
-                       (unless (in-node? a env) (return t)))
+                       (unless (isInNode a env) (return t)))
               (let ((new-explanation explanation))
                 (dolist (a (just-antecedents just)
                            (return-from explain-node-1 (cons just new-explanation)))
