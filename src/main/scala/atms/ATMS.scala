@@ -66,13 +66,16 @@ class ATMS[D](
   /** List of all atms assumptions. */
   var assumptions: HashSet[TMSnode[D]] = new HashSet[TMSnode[D]]
 
-  var nogoodTable = {}
   /** A dummy contradiction node. */
   val contraNode: TMSnode[D] =
     new TMSnode(this, Contra, isContradictory = true)
-  var envTable = {}
+
   /** Empty environment. */
   var emptyEnv = new Env(this, Nil)
+
+  var nogoodTable = {}
+
+  var envTable = {}
 
   override def toString(): String = s"<ATMS: $title>"
 
