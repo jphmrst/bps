@@ -36,7 +36,7 @@ class TMSnode[D](
   val atms: ATMS[D],
   val datum: D | Contra,
   val isContradictory: Boolean = false,
-  val isAssumption: Boolean = false
+  var isAssumption: Boolean = false
 ) {
   /** Unique name. */
   val index = atms.nextNodeIndex
@@ -74,4 +74,29 @@ class TMSnode[D](
 
   def inConsistentWith(givenEnv: Env[D]): Boolean =
     label.exists((env) => !(env + givenEnv).isNogood)
+
+
+  def updateLabel(newEnvs: List[Env[D]]): List[Env[D]] = {
+    ???
+  /*
+(defun update-label (node new-envs &aux envs)
+  (setq envs (tms-node-label node))
+  (do ((new-envs new-envs (cdr new-envs)))
+      ((null new-envs))
+    (do ((nenvs envs (cdr nenvs)))
+        ((null nenvs) (push (car new-envs) envs))
+      (cond ((null (car nenvs)))
+            ((null (car new-envs)))
+            ((case (compare-env (car new-envs) (car nenvs))
+               ((:EQ :S21) (rplaca new-envs nil))
+               (:S12 (setf (env-nodes (car nenvs))
+                           (delete node (env-nodes (car nenvs))
+                                   :COUNT 1))
+                     (rplaca nenvs nil)))))))
+  (setq new-envs (delete nil new-envs :TEST #'eq))
+  (dolist (new-env new-envs) (push node (env-nodes new-env)))
+  (setf (tms-node-label node) (delete nil envs :TEST #'eq))
+  new-envs)
+  */
+  }
 }

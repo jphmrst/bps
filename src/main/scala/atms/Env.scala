@@ -20,14 +20,15 @@
 
 package org.maraist.tms.atms
 
-class Env[D](val assumptions: List[TMSnode[D]]) {
+class Env[D](
+  val assumptions: List[TMSnode[D]],
+  var index: Int = 0,
+  var count: Int = 0
+) {
 
   def this(atms: ATMS[D], assumptions: List[TMSnode[D]]) = this(assumptions)
 
-  var index: Int = 0
-
   /** Number of assumptions. */
-  var count: Int = 0
 
   var nodes = {}
 

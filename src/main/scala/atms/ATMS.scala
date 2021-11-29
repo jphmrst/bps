@@ -19,16 +19,33 @@
 // Translated from KDF/JdK version 61 of 7/21/92.
 
 package org.maraist.tms.atms
-import scala.collection.mutable.HashSet
+import scala.collection.mutable.{HashSet, HashMap}
 
 // Definitions
 
 class Contra private ()
 object Contra extends Contra {
-  override def toString(): String = "the contradiction"
+  override def toString(): String = "contradiction"
 }
 
 type Rule = Unit
+
+class EnvTable[D]
+    extends HashMap[Int, List[Env[D]]] {
+  def insert(env: Env[D]): Unit = {
+    ???
+/*
+(defun insert-in-table (table env &aux count entry)
+  (setq count (env-count env)
+        entry (assoc count table :TEST #'=))
+  (cond (entry (setf (cdr entry) (cons env (cdr entry))) table)
+        (t (ordered-insert
+             (list count env) table
+             #'(lambda (entry1 entry2)
+                 (< (car entry1) (car entry2)))))))
+ */
+  }
+}
 
 /**
   *
@@ -75,7 +92,7 @@ class ATMS[D](
 
   var nogoodTable = {}
 
-  var envTable = {}
+  var envTable: EnvTable[D] = new EnvTable[D]
 
   override def toString(): String = s"<ATMS: $title>"
 
@@ -84,6 +101,103 @@ class ATMS[D](
     nodeCounter = nodeCounter + 1
     result
   }
+
+  def assumeNode(node: TMSnode[D]): Unit = if !node.isAssumption then {
+    if debugging then println(s"Converting $node into an assumption")
+    node.isAssumption = true
+    assumptions += node
+    update(List(createEnv(List(node))), node, AssumeNode.JUST)
+  }
+
+  def update(
+    newEnvs: List[Env[D]], consequence: TMSnode[D], just: Justification):
+      Unit = {
+    ???
+
+    /*
+(defun update (new-envs consequence just &aux  enqueuef)
+  (when (tms-node-isContradictory consequence)
+    (dolist (env new-envs) (new-nogood atms env just))
+    (return-from update nil))
+  (setq new-envs (update-label consequence new-envs))  ;  --> on TMSnode
+  (unless new-envs (return-from update nil))
+  (when (setq enqueuef (atms-enqueueProcedure atms)) ; is val field
+    (dolist (rule (tms-node-rules consequence))
+      (funcall enqueuef rule))
+    (setf (tms-node-rules consequence) nil))
+  (dolist (supported-just (tms-node-consequences consequence))
+    (propagate supported-just consequence new-envs)
+  (do ((new-envs new-envs (cdr new-envs)))
+      ((null new-envs))
+    (unless (member (car new-envs) (tms-node-label consequence))
+      (rplaca new-envs nil)))
+  (setq new-envs (delete nil new-envs :TEST #'eq))
+  (unless new-envs (return-from update nil))))
+     */
+  }
+
+  def createEnv(assumptions: List[TMSnode[D]]): Env[D] = {
+    envCounter = 1 + envCounter
+    val e = new Env[D](assumptions, envCounter, assumptions.length)
+    envTable.insert(e)
+    setEnvContradictory(e)
+    e
+  }
+
+  def newNogood(cenv: Env[D], just: TMSnode[D]): Unit = {
+    ???
+  /*
+(defun new-nogood (atms cenv just &aux count)
+  (debugging atms (format nil "~%  ~A new minimal nogood." cenv))
+  (setf (env-nogood? cenv) just)
+  (remove-env-from-labels cenv atms)
+  (setf (atms-nogoodTable atms)
+        (insert-in-table (atms-nogoodTable atms) cenv)) ;  mutator method on EnvTable
+  (setq count (env-count cenv))
+  (dolist (entry (atms-nogoodTable atms))
+    (when (> (car entry) count)
+      (dolist (old (cdr entry))
+        (if (subset-env? cenv old)
+            (setf (cdr entry) (delete old (cdr entry) :COUNT 1))))))
+  (dolist (entry (atms-envTable atms))
+    (when (> (car entry) count)
+      (dolist (old (cdr entry))
+        (when (and (not (env-nogood? old))
+                   (subset-env? cenv old))
+          (setf (env-nogood? old) cenv)
+          (remove-env-from-labels old atms))))))
+   */
+  }
+
+  def setEnvContradictory(env: Env[D]): Boolean = {
+    ???
+
+  /*
+(defun set-env-contradictory (atms env &aux count)
+  (cond ((env-nogood? env) t)
+        (t (setq count (env-count env))
+           (dolist (entry (atms-nogoodTable atms))
+             (cond ((> (car entry) count)
+                    (return nil))
+                   (t (dolist (cenv (cdr entry))
+                        (when (subset-env? cenv env)
+                          (setf (env-nogood? env)
+                                cenv)
+                          (return t)))))))))
+   */
+  }
+
+  /*
+   */
+
+  /*
+   */
+
+  /*
+   */
+
+  /*
+   */
 }
 
 extension [T](xs: List[T]) {
@@ -119,18 +233,13 @@ extension [T](xs: List[T]) {
 // (defun true-node? (node)
 //   (eq (car (tms-node-label node))
 //       (atms-emptyEnv (tms-node-atms node))))
+
+
+;;; Methods on other classes
+
+;; (defun update-label (node new-envs &aux envs) ==> On TMSnode
 
 
-(defun assume-node (node &aux atms)
-  (unless (tms-node-isAssumption node)
-    (setq atms (tms-node-atms node))
-    (debugging atms  "~%Converting ~A into an assumption" node)
-    (setf (tms-node-isAssumption node) t)
-    (push node (atms-assumptions atms))
-    (update (list (create-env atms (list node)))
-            node
-            'ASSUME-NODE)))
-
 (defun make-contradiction
        (node &aux (atms (tms-node-atms node)) nogood)
   (unless (tms-node-isContradictory node)
@@ -169,44 +278,8 @@ extension [T](xs: List[T]) {
   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
       (update new-envs (just-consequence just) just)))
 
-(defun update (new-envs consequence just &aux atms enqueuef)
-  (setq atms (tms-node-atms consequence))
-  (when (tms-node-isContradictory consequence)
-    (dolist (env new-envs) (new-nogood atms env just))
-    (return-from update nil))
-  (setq new-envs (update-label consequence new-envs))
-  (unless new-envs (return-from update nil))
-  (when (setq enqueuef (atms-enqueueProcedure atms))
-    (dolist (rule (tms-node-rules consequence))
-      (funcall enqueuef rule))
-    (setf (tms-node-rules consequence) nil))
-  (dolist (supported-just (tms-node-consequences consequence))
-    (propagate supported-just consequence new-envs)
-  (do ((new-envs new-envs (cdr new-envs)))
-      ((null new-envs))
-    (unless (member (car new-envs) (tms-node-label consequence))
-      (rplaca new-envs nil)))
-  (setq new-envs (delete nil new-envs :TEST #'eq))
-  (unless new-envs (return-from update nil))))
 
-(defun update-label (node new-envs &aux envs)
-  (setq envs (tms-node-label node))
-  (do ((new-envs new-envs (cdr new-envs)))
-      ((null new-envs))
-    (do ((nenvs envs (cdr nenvs)))
-        ((null nenvs) (push (car new-envs) envs))
-      (cond ((null (car nenvs)))
-            ((null (car new-envs)))
-            ((case (compare-env (car new-envs) (car nenvs))
-               ((:EQ :S21) (rplaca new-envs nil))
-               (:S12 (setf (env-nodes (car nenvs))
-                           (delete node (env-nodes (car nenvs))
-                                   :COUNT 1))
-                     (rplaca nenvs nil)))))))
-  (setq new-envs (delete nil new-envs :TEST #'eq))
-  (dolist (new-env new-envs) (push node (env-nodes new-env)))
-  (setf (tms-node-label node) (delete nil envs :TEST #'eq))
-  new-envs)
+
 
 (defun weave (antecedent envs antecedents &aux new-envs new-env)
   (setq envs (copy-list envs))
@@ -261,14 +334,6 @@ extension [T](xs: List[T]) {
 
 ;;; Creating and extending environments.
 
-(defun create-env (atms assumptions &aux e)
-  (setq e (make-env :INDEX (incf (atms-envCounter atms))
-                    :ASSUMPTIONS assumptions
-                    :COUNT (length assumptions)))
-  (setf (atms-envTable atms)
-        (insert-in-table (atms-envTable atms) e))
-  (set-env-contradictory atms e)
-  e)
 
 (defun union-env (e1 e2)
   (when (> (env-count e1)
@@ -295,14 +360,6 @@ extension [T](xs: List[T]) {
 
 ;;; Env tables.
 
-(defun insert-in-table (table env &aux count entry)
-  (setq count (env-count env)
-        entry (assoc count table :TEST #'=))
-  (cond (entry (setf (cdr entry) (cons env (cdr entry))) table)
-        (t (ordered-insert
-             (list count env) table
-             #'(lambda (entry1 entry2)
-                 (< (car entry1) (car entry2)))))))
 
 (defun lookup-env (assumes)
   (dolist (env (cdr (assoc (length assumes)
@@ -330,37 +387,6 @@ extension [T](xs: List[T]) {
 
 ;;; Processing nogoods
 
-(defun new-nogood (atms cenv just &aux count)
-  (debugging atms (format nil "~%  ~A new minimal nogood." cenv))
-  (setf (env-nogood? cenv) just)
-  (remove-env-from-labels cenv atms)
-  (setf (atms-nogoodTable atms)
-        (insert-in-table (atms-nogoodTable atms) cenv))
-  (setq count (env-count cenv))
-  (dolist (entry (atms-nogoodTable atms))
-    (when (> (car entry) count)
-      (dolist (old (cdr entry))
-        (if (subset-env? cenv old)
-            (setf (cdr entry) (delete old (cdr entry) :COUNT 1))))))
-  (dolist (entry (atms-envTable atms))
-    (when (> (car entry) count)
-      (dolist (old (cdr entry))
-        (when (and (not (env-nogood? old))
-                   (subset-env? cenv old))
-          (setf (env-nogood? old) cenv)
-          (remove-env-from-labels old atms))))))
-
-(defun set-env-contradictory (atms env &aux count)
-  (cond ((env-nogood? env) t)
-        (t (setq count (env-count env))
-           (dolist (entry (atms-nogoodTable atms))
-             (cond ((> (car entry) count)
-                    (return nil))
-                   (t (dolist (cenv (cdr entry))
-                        (when (subset-env? cenv env)
-                          (setf (env-nogood? env)
-                                cenv)
-                          (return t)))))))))
 
 (defun remove-env-from-labels (env atms &aux enqueuef)
   (when (setq enqueuef (atms-enqueueProcedure atms))

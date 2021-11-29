@@ -29,3 +29,11 @@ class Just {
 
   override def toString(): String = s"$informant $index"
 }
+
+class AssumeNode private ()
+object AssumeNode {
+  val JUST = new AssumeNode()
+}
+
+type Justification = Just | AssumeNode
+
