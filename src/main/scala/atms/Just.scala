@@ -35,5 +35,5 @@ object AssumeNode {
   val JUST = new AssumeNode()
 }
 
-type Justification = Just | AssumeNode
+type Justification[D] = Just | AssumeNode | TMSnode[D]
 

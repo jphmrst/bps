@@ -19,6 +19,9 @@
 // Translated from KDF/JdK version 61 of 7/21/92.
 
 package org.maraist.tms.atms
+import scala.collection.mutable.ListBuffer
+
+type EnvList[D] = ListBuffer[Option[Env[D]]]
 
 class Env[D](
   val assumptions: List[TMSnode[D]],
@@ -30,7 +33,7 @@ class Env[D](
 
   /** Number of assumptions. */
 
-  var nodes = {}
+  var nodes: ListBuffer[TMSnode[D]] = ListBuffer.empty
 
   var isNogood: Boolean = false
 

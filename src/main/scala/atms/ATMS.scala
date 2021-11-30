@@ -19,7 +19,7 @@
 // Translated from KDF/JdK version 61 of 7/21/92.
 
 package org.maraist.tms.atms
-import scala.collection.mutable.{HashSet, HashMap}
+import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
 // Definitions
 
@@ -31,7 +31,7 @@ object Contra extends Contra {
 type Rule = Unit
 
 class EnvTable[D]
-    extends HashMap[Int, List[Env[D]]] {
+    extends HashMap[Int, EnvList[D]] {
   def insert(env: Env[D]): Unit = {
     ???
 /*
@@ -106,34 +106,68 @@ class ATMS[D](
     if debugging then println(s"Converting $node into an assumption")
     node.isAssumption = true
     assumptions += node
-    update(List(createEnv(List(node))), node, AssumeNode.JUST)
+    update(ListBuffer(Some(createEnv(List(node)))), node, AssumeNode.JUST)
   }
 
   def update(
-    newEnvs: List[Env[D]], consequence: TMSnode[D], just: Justification):
+    newEnvs: EnvList[D],
+    consequence: TMSnode[D],
+    just: Justification[D]):
+      Unit =
+    if consequence.isContradictory then {
+      for (envOpt <- newEnvs) do envOpt match {
+        case Some(env) => newNogood(env, just)
+        case None => { }
+      }
+    } else {
+      consequence.updateLabel(newEnvs)
+      if !newEnvs.isEmpty then {
+        enqueueProcedure.map((enqueuef) => {
+          for (rule <- consequence.rules) do enqueuef(rule)
+          consequence.rules = List.empty
+        })
+        for (supportedJust <- consequence.consequences)
+          do propagate(supportedJust, consequence, newEnvs)
+
+        for (i <- 0 until newEnvs.length) {
+          newEnvs(i) match {
+            case Some(env) =>
+              if !consequence.label.contains(env) then newEnvs(i) = None
+            case None => { }
+          }
+        }
+      }
+
+      // (defun update (new-envs consequence just &aux  enqueuef)
+      //   (when (tms-node-isContradictory consequence)
+      //     (dolist (env new-envs) (new-nogood atms env just))
+      //     (return-from update nil))
+      //   (setq new-envs (update-label consequence new-envs))  ;  --> on TMSnode
+      //   (unless new-envs (return-from update nil))
+      //   (when (setq enqueuef (atms-enqueueProcedure atms)) ; is val field
+      //     (dolist (rule (tms-node-rules consequence))
+      //       (funcall enqueuef rule))
+      //     (setf (tms-node-rules consequence) nil))
+      //   (dolist (supported-just (tms-node-consequences consequence))
+      //     (propagate supported-just consequence new-envs)
+      //   (do ((new-envs new-envs (cdr new-envs)))
+      //       ((null new-envs))
+      //     (unless (member (car new-envs) (tms-node-label consequence))
+      //       (rplaca new-envs nil)))
+      //   (setq new-envs (delete nil new-envs :TEST #'eq))
+      //   (unless new-envs (return-from update nil))))
+  }
+
+  /** Label updating. */
+  def propagate(
+    just: Justification[D], antecedent: TMSnode[D], envs: EnvList[D]):
       Unit = {
     ???
-
-    /*
-(defun update (new-envs consequence just &aux  enqueuef)
-  (when (tms-node-isContradictory consequence)
-    (dolist (env new-envs) (new-nogood atms env just))
-    (return-from update nil))
-  (setq new-envs (update-label consequence new-envs))  ;  --> on TMSnode
-  (unless new-envs (return-from update nil))
-  (when (setq enqueuef (atms-enqueueProcedure atms)) ; is val field
-    (dolist (rule (tms-node-rules consequence))
-      (funcall enqueuef rule))
-    (setf (tms-node-rules consequence) nil))
-  (dolist (supported-just (tms-node-consequences consequence))
-    (propagate supported-just consequence new-envs)
-  (do ((new-envs new-envs (cdr new-envs)))
-      ((null new-envs))
-    (unless (member (car new-envs) (tms-node-label consequence))
-      (rplaca new-envs nil)))
-  (setq new-envs (delete nil new-envs :TEST #'eq))
-  (unless new-envs (return-from update nil))))
-     */
+  /*
+(defun propagate (just antecedent envs &aux new-envs)
+  (if (setq new-envs (weave antecedent envs (just-antecedents just)))
+      (update new-envs (just-consequence just) just)))
+   */
   }
 
   def createEnv(assumptions: List[TMSnode[D]]): Env[D] = {
@@ -144,7 +178,7 @@ class ATMS[D](
     e
   }
 
-  def newNogood(cenv: Env[D], just: TMSnode[D]): Unit = {
+  def newNogood(cenv: Env[D], just: Justification[D]): Unit = {
     ???
   /*
 (defun new-nogood (atms cenv just &aux count)
@@ -272,14 +306,6 @@ extension [T](xs: List[T]) {
                 (atms-contraNode (tms-node-atms (car nodes)))
                 nodes))
 
-;;; Label updating
-
-(defun propagate (just antecedent envs &aux new-envs)
-  (if (setq new-envs (weave antecedent envs (just-antecedents just)))
-      (update new-envs (just-consequence just) just)))
-
-
-
 
 (defun weave (antecedent envs antecedents &aux new-envs new-env)
   (setq envs (copy-list envs))

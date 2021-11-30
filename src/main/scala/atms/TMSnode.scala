@@ -20,7 +20,7 @@
 
 package org.maraist.tms.atms
 import scala.util.control.NonLocalReturns.*
-import scala.collection.mutable.HashSet
+import scala.collection.mutable.{HashSet, ListBuffer}
 
 // Definitions
 
@@ -55,9 +55,9 @@ class TMSnode[D](
   /** Providers of support */
   var justs = {}
   /** Provides support for. */
-  var consequences = {}
+  var consequences: List[TMSnode[D]] = List.empty
   /** Run when label non-empty. */
-  var rules = {}
+  var rules: List[D] = List.empty
 
   override def toString(): String =
     if isAssumption then s"A-$index" else s"#<NODE: ${atms.nodeString}>"
@@ -76,7 +76,7 @@ class TMSnode[D](
     label.exists((env) => !(env + givenEnv).isNogood)
 
 
-  def updateLabel(newEnvs: List[Env[D]]): List[Env[D]] = {
+  def updateLabel(newEnvs: EnvList[D]): Unit = {
     ???
   /*
 (defun update-label (node new-envs &aux envs)
