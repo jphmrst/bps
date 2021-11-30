@@ -30,8 +30,7 @@ object Contra extends Contra {
 
 type Rule = Unit
 
-class EnvTable[D]
-    extends HashMap[Int, EnvList[D]] {
+class EnvTable[D] extends HashMap[Int, EnvList[D]] {
   def insert(env: Env[D]): Unit = {
     ???
 /*
@@ -163,11 +162,9 @@ class ATMS[D](
     just: Justification[D], antecedent: TMSnode[D], envs: EnvList[D]):
       Unit = {
     ???
-  /*
-(defun propagate (just antecedent envs &aux new-envs)
-  (if (setq new-envs (weave antecedent envs (just-antecedents just)))
-      (update new-envs (just-consequence just) just)))
-   */
+    // (defun propagate (just antecedent envs &aux new-envs)
+    //   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
+    //       (update new-envs (just-consequence just) just)))
   }
 
   def createEnv(assumptions: List[TMSnode[D]]): Env[D] = {
@@ -180,58 +177,43 @@ class ATMS[D](
 
   def newNogood(cenv: Env[D], just: Justification[D]): Unit = {
     ???
-  /*
-(defun new-nogood (atms cenv just &aux count)
-  (debugging atms (format nil "~%  ~A new minimal nogood." cenv))
-  (setf (env-nogood? cenv) just)
-  (remove-env-from-labels cenv atms)
-  (setf (atms-nogoodTable atms)
-        (insert-in-table (atms-nogoodTable atms) cenv)) ;  mutator method on EnvTable
-  (setq count (env-count cenv))
-  (dolist (entry (atms-nogoodTable atms))
-    (when (> (car entry) count)
-      (dolist (old (cdr entry))
-        (if (subset-env? cenv old)
-            (setf (cdr entry) (delete old (cdr entry) :COUNT 1))))))
-  (dolist (entry (atms-envTable atms))
-    (when (> (car entry) count)
-      (dolist (old (cdr entry))
-        (when (and (not (env-nogood? old))
-                   (subset-env? cenv old))
-          (setf (env-nogood? old) cenv)
-          (remove-env-from-labels old atms))))))
-   */
+    // (defun new-nogood (atms cenv just &aux count)
+    //   (debugging atms (format nil "~%  ~A new minimal nogood." cenv))
+    //   (setf (env-nogood? cenv) just)
+    //   (remove-env-from-labels cenv atms)
+    //   (setf (atms-nogoodTable atms)
+    //         (insert-in-table (atms-nogoodTable atms) cenv)) ;  mutator method on EnvTable
+    //   (setq count (env-count cenv))
+    //   (dolist (entry (atms-nogoodTable atms))
+    //     (when (> (car entry) count)
+    //       (dolist (old (cdr entry))
+    //         (if (subset-env? cenv old)
+    //             (setf (cdr entry) (delete old (cdr entry) :COUNT 1))))))
+    //   (dolist (entry (atms-envTable atms))
+    //     (when (> (car entry) count)
+    //       (dolist (old (cdr entry))
+    //         (when (and (not (env-nogood? old))
+    //                    (subset-env? cenv old))
+    //           (setf (env-nogood? old) cenv)
+    //           (remove-env-from-labels old atms))))))
   }
 
   def setEnvContradictory(env: Env[D]): Boolean = {
     ???
 
-  /*
-(defun set-env-contradictory (atms env &aux count)
-  (cond ((env-nogood? env) t)
-        (t (setq count (env-count env))
-           (dolist (entry (atms-nogoodTable atms))
-             (cond ((> (car entry) count)
-                    (return nil))
-                   (t (dolist (cenv (cdr entry))
-                        (when (subset-env? cenv env)
-                          (setf (env-nogood? env)
-                                cenv)
-                          (return t)))))))))
-   */
+    // (defun set-env-contradictory (atms env &aux count)
+    //   (cond ((env-nogood? env) t)
+    //         (t (setq count (env-count env))
+    //            (dolist (entry (atms-nogoodTable atms))
+    //              (cond ((> (car entry) count)
+    //                     (return nil))
+    //                    (t (dolist (cenv (cdr entry))
+    //                         (when (subset-env? cenv env)
+    //                           (setf (env-nogood? env)
+    //                                 cenv)
+    //                           (return t)))))))))
   }
 
-  /*
-   */
-
-  /*
-   */
-
-  /*
-   */
-
-  /*
-   */
 }
 
 extension [T](xs: List[T]) {
