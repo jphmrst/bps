@@ -23,6 +23,13 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
 // Definitions
 
+inline def dbg[D](atms: ATMS[D], msg: String) =
+  if atms.debugging then println(msg)
+// (defmacro debugging (atms msg &optional node &rest args)
+//   `(when (atms-debugging ,atms)
+//      (format *trace-output*
+//              ,msg (if ,node (nodeString ,node)) ,@args)))
+
 class Contra private ()
 object Contra extends Contra {
   override def toString(): String = "contradiction"
@@ -60,6 +67,35 @@ class ATMS[D](
   val debugging: Boolean = false,
   val enqueueProcedure: Option[(Rule) => Unit] = None
 ) {
+  // (defstruct (atms (:PRINT-FUNCTION print-atms))
+  //   (title nil)
+  //   (node-counter 0)              ; unique namer for nodes.
+  //   (just-counter 0)              ; unique namer for justifications.
+  //   (env-counter 0)               ; Unique id for environments.
+  //   (nodes nil)                   ; List of all atms nodes.
+  //   (justs nil)                   ; List of all justifications.
+  //   (contradictions nil)          ; List of contradiction nodes.
+  //   (assumptions nil)             ; List of all atms assumptions.
+  //   (debugging nil)               ; Trace grungy details.
+  //   (nogood-table nil)
+  //   (contra-node nil)             ; A dummy contradiction node.
+  //   (env-table nil)
+  //   (empty-env nil)               ; Empty environment.
+  //   (node-string nil)
+  //   (enqueue-procedure nil))
+
+  // (defun create-atms (title &key (node-string 'default-node-string)
+  //                           (debugging NIL)
+  //                           (enqueue-procedure NIL))
+  //   (let ((atms (make-atms :TITLE title
+  //                     :NODE-STRING node-string
+  //                     :DEBUGGING debugging
+  //                     :ENQUEUE-PROCEDURE enqueue-procedure)))
+  //     (setf (atms-contra-node atms)
+  //      (tms-create-node atms "The contradiction"
+  //                            :CONTRADICTORYP t))
+  //     (setf (atms-empty-env atms) (create-env atms nil))
+  //     atms))
 
   /** Unique names for nodes. */
   private var nodeCounter: Int = 0
@@ -94,6 +130,9 @@ class ATMS[D](
   var envTable: EnvTable[D] = new EnvTable[D]
 
   override def toString(): String = s"<ATMS: $title>"
+  // (defun print-atms (atms stream ignore)
+  //   (declare (ignore ignore))
+  //   (format stream "#<ATMS: ~A>" (atms-title atms)))
 
   def nextNodeIndex: Int = {
     val result = nodeCounter
@@ -106,6 +145,16 @@ class ATMS[D](
     node.isAssumption = true
     assumptions += node
     update(ListBuffer(Some(createEnv(List(node)))), node, AssumeNode.JUST)
+
+    // (defun assume-node (node &aux atms)
+    //   (unless (tms-node-assumption? node)
+    //     (setq atms (tms-node-atms node))
+    //     (debugging atms  "~%Converting ~A into an assumption" node)
+    //     (setf (tms-node-assumption? node) t)
+    //     (push node (atms-assumptions atms))
+    //     (update (list (create-env atms (list node)))
+    //             node
+    //             'ASSUME-NODE)))
   }
 
   def update(
@@ -218,6 +267,12 @@ class ATMS[D](
 
 extension [T](xs: List[T]) {
   def orderedInsert(item: T, test: (T, T) => Boolean): List[T] = xs match {
+    // (defun ordered-insert (item list test)
+    //   (cond ((null list) (list item))
+    //  ((funcall test item (car list)) (cons item list))
+    //  ((eq item (car list)) list)
+    //  (t (cons (car list) (ordered-insert item (cdr list) test)))))
+
     case x :: xs => { if test(item, x) then item :: xs
       else if item.equals(x) then xs
       else x :: xs.orderedInsert(item, test)

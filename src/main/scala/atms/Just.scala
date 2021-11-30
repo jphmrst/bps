@@ -22,12 +22,22 @@
 package org.maraist.tms.atms
 
 class Just {
+  // (defstruct (just (:PRINT-FUNCTION print-just))
+  //       (index 0)
+  //       (informant nil)
+  //       (consequence nil)
+  //       (antecedents nil))
+
   var index: Int = 0
   var informant = {}
   var consequence = {}
   var antecedents = {}
 
   override def toString(): String = s"$informant $index"
+  // (defun print-just (just stream ignore)
+  //   (declare (ignore ignore))
+  //   (format stream "<~A ~D>" (just-informant just)
+  //      (just-index just)))
 }
 
 class AssumeNode private ()

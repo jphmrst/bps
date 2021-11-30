@@ -4,10 +4,10 @@
 // All rights reserved.
 //
 // See the LICENSE.txt and README-forbus-dekleer.txt files distributed
-// with this work for a paragraph stating scope of permission
-// and disclaimer of warranty, and for additional
-// information regarding copyright ownership.    The above copyright notice and that
-// paragraph must be included in any separate copy of this file.
+// with this work for a paragraph stating scope of permission and
+// disclaimer of warranty, and for additional information regarding
+// copyright ownership.  The above copyright notice and that paragraph
+// must be included in any separate copy of this file.
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,14 @@ class Env[D](
   var index: Int = 0,
   var count: Int = 0
 ) {
+  // (defstruct (env (:PREDICATE env?)
+  //            (:PRINT-FUNCTION print-env-structure))
+  //       (index 0)
+  //       (count 0)                            ; Number of assumptions.
+  //       (assumptions nil)
+  //       (nodes nil)
+  //       (nogood? nil)
+  //       (rules nil))
 
   def this(atms: ATMS[D], assumptions: List[TMSnode[D]]) = this(assumptions)
 
@@ -41,10 +49,16 @@ class Env[D](
   var rules = {}
 
   override def toString(): String = s"E-$index"
+  // (defun print-env-structure (env stream ignore)
+  //   (declare (ignore ignore))
+  //   (format stream "E-~D" (env-index env)))
 
   def envOrder(that: Env[?]): Boolean = index < that.index
 
   def isSubset(that: Env[D]): Boolean = ???
 
   def +(that: Env[D]): Env[D] = ???
+
+  // Adding this for TMSnode.isTrueNode
+  def isEmpty: Boolean = assumptions.isEmpty && nodes.isEmpty
 }

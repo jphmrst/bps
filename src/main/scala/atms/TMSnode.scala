@@ -38,11 +38,36 @@ class TMSnode[D](
   val isContradictory: Boolean = false,
   var isAssumption: Boolean = false
 ) {
+  // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
+  //   (index 0)                                        ;; Unique name.
+  //   (datum nil)                   ; Pointer to IE data structures.
+  //   (label nil)                   ; minimal envs believed under
+  //   (justs nil)                   ; providers of support
+  //   (consequences nil)            ; provides support for.
+  //   (contradictory? nil)          ; flag marking it as contradictory.
+  //   (assumption? nil)             ; flag marking it as n assumption.
+  //   (rules nil)                   ; run when label non-empty.
+  //   (atms nil))
+
+  // (defun tms-create-node (atms datum &key assumptionp contradictoryp
+  //                                    &aux node)
+  //   (setq node (make-tms-node :INDEX (incf (atms-node-counter atms))
+  //                             :DATUM datum
+  //                             :ASSUMPTION? assumptionp
+  //                             :CONTRADICTORY? contradictoryp
+  //                             :ATMS atms))
+  //   (push node (atms-nodes atms))
+  //   (if contradictoryp (push node (atms-contradictions atms)))
+  //   (when assumptionp
+  //     (push node (atms-assumptions atms))
+  //     (push (create-env atms (list node)) (tms-node-label node)))
+  //   node)
+
   /** Unique name. */
   val index = atms.nextNodeIndex
 
   /** Minimal envs believed under */
-  val label: HashSet[Env[D]] = new HashSet[Env[D]]
+  val label: ListBuffer[Env[D]] = ListBuffer.empty[Env[D]]
 
   atms.nodes += this
 
@@ -61,20 +86,39 @@ class TMSnode[D](
 
   override def toString(): String =
     if isAssumption then s"A-$index" else s"#<NODE: ${atms.nodeString}>"
+  // (defun print-tms-node (node stream ignore)
+  //   (declare (ignore ignore))
+  //   (if (tms-node-assumption? node)
+  //       (format stream "A-~D" (tms-node-index node))
+  //       (format stream "#<NODE: ~A>" (node-string node))))
 
   def nodeString: String = atms.nodeString(this)
 
   def assumptionOrder(that: TMSnode[D]): Boolean = index > that.index
 
+  def isTrueNode: Boolean = label.head.isEmpty
+  // (defun true-node? (node)
+  //   (eq (car (tms-node-label node))
+  //       (atms-empty-env (tms-node-atms node))))
+  //
+
   def isInNode: Boolean = !label.isEmpty
 
   def isInNode(givenEnv: Env[D]): Boolean = label.exists(_.isSubset(givenEnv))
+  // (defun in-node? (n &optional env)
+  //   (if env
+  //       (some #'(lambda (le) (subset-env? le env))
+  //        (tms-node-label n))
+  //       (not (null (tms-node-label n)))))
 
   def isOutNode(givenEnv: Env[D]): Boolean = !isInNode(givenEnv)
+  // (defun out-node? (n env) (not (in-node? n env)))
 
   def inConsistentWith(givenEnv: Env[D]): Boolean =
     label.exists((env) => !(env + givenEnv).isNogood)
-
+  // (defun node-consistent-with? (n env)
+  //   (some #'(lambda (le) (not (env-nogood? (union-env le env))))
+  //    (tms-node-label n)))
 
   def updateLabel(newEnvs: EnvList[D]): Unit = {
     ???
