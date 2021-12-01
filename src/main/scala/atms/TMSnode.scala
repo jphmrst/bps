@@ -143,4 +143,67 @@ class TMSnode[D](
   new-envs)
   */
   }
+
+  def isWeave(nodes: List[TMSnode[D]]): Boolean = ???
+  // (defun weave? (env nodes &aux new-env)
+  //   (cond ((null nodes) t)
+  //         (t (dolist (e (tms-node-label (car nodes)))
+  //              (setq new-env (union-env e env))
+  //              (unless (env-nogood? new-env)
+  //                (if (weave? new-env (cdr nodes))
+  //                    (return T)))))))
+
+  def consEnv(env: Env[D]): Env[D] = ???
+  // (defun cons-env (assumption env &aux nassumes)
+  //   (setq nassumes (ordered-insert assumption
+  //                                  (env-assumptions env)
+  //                                  #'assumption-order))
+  //   (or (lookup-env nassumes)
+  //       (create-env (tms-node-atms assumption) nassumes)))
+
+  // ;;; Generating explanations
+  // ;;; This returns a list of justifications which form a DAG for the
+  // ;;; derivation. This is quite complicated because this is really a
+  // ;;; simple consequent JTMS.
+
+  def explainNode(env: Env[D]): Unit = explainNode1(env, Nil, Nil)
+  // (defun explain-node (node env) (explain-node-1 env node nil nil))
+
+  def explainNode1(
+    env: Env[D], queuedNodes: List[TMSnode[D]], explanation: List[Any]):
+      Unit = ???
+  // (defun explain-node-1 (env node queued-nodes explanation)
+  //   (cond ((member node queued-nodes) nil)
+  //         ((and (tms-node-isAssumption node)
+  //               (member node (env-assumptions env)))
+  //          (cons (cons 'ASSUME node) explanation))
+  //         ((dolist (just explanation)
+  //            (if (if (listp just)
+  //                    (eq (cdr just) node) (eq (just-consequence just) node))
+  //                (return explanation))))
+  //         (t (setq queued-nodes (cons node queued-nodes))
+  //            (dolist (just (tms-node-justs node))
+  //              (unless (dolist (a (just-antecedents just))
+  //                        (unless (isInNode a env) (return t)))
+  //               (let ((new-explanation explanation))
+  //                 (dolist (a (just-antecedents just)
+  //                            (return-from explain-node-1 (cons just new-explanation)))
+  //                   (setq new-explanation
+  //                         (explain-node-1 env a queued-nodes new-explanation))
+  //                   (unless new-explanation (return nil)))))))))
+
+  // ;;; Printing
+
+  def whyNode: Unit = ???
+  // (defun why-node (node &optional (stream t) (prefix ""))
+  //   (format stream "~%<~A~A,{" prefix (tms-node-datum node))
+  //   (dolist (e (tms-node-label node))
+  //     (env-string e stream))
+  //   (format stream "}>"))
+
+  def nodeJustification: Unit = ???
+  // (defun node-justifications (node &optional (stream t))
+  //   (format t "~% For ~A:" (nodeString node))
+  //   (dolist (j (tms-node-justs node))
+  //     (print-justification j stream)))
 }

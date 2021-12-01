@@ -21,7 +21,7 @@
 
 package org.maraist.tms.atms
 
-class Just {
+class Just[D] {
   // (defstruct (just (:PRINT-FUNCTION print-just))
   //       (index 0)
   //       (informant nil)
@@ -30,14 +30,20 @@ class Just {
 
   var index: Int = 0
   var informant = {}
-  var consequence = {}
-  var antecedents = {}
+  var consequence: List[TMSnode[D]] = List.empty
+  var antecedents: List[TMSnode[D]] = List.empty
 
   override def toString(): String = s"$informant $index"
   // (defun print-just (just stream ignore)
   //   (declare (ignore ignore))
   //   (format stream "<~A ~D>" (just-informant just)
   //      (just-index just)))
+
+  def printJustification: Unit = ???
+  // (defun print-justification (j &optional (stream t))
+  //   (format stream "~%  ~A, " (just-informant j))
+  //   (dolist (a (just-antecedents j))
+  //     (why-node a stream "     ")))
 }
 
 class AssumeNode private ()
@@ -45,5 +51,5 @@ object AssumeNode {
   val JUST = new AssumeNode()
 }
 
-type Justification[D] = Just | AssumeNode | TMSnode[D]
+type Justification[D] = Just[D] | AssumeNode | TMSnode[D]
 
