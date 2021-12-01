@@ -18,8 +18,13 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-class Node[D, I] {
-  def datum = ???
+class Node[I](
+  val index: Int,
+  val datum: Datum[I],
+  val jtms: JTMS[I],
+  val isAssumption: Boolean = false,
+  val isContradoctory: Boolean = false
+) {
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
   //   (index 0)
   //   (datum nil)           ;; pointer to external problem solver

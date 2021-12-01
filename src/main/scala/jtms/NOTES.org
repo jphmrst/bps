@@ -1,0 +1,21 @@
+
+* Types to figure out
+** TODO Facts
+** TODO Constructor argument types in Rule
+
+* Add method stubs
+** TODO Just
+** TODO Node
+** TODO Rule
+** TODO JTRE
+** TODO Datum
+** TODO DbClass
+
+* Fill method stubs
+** TODO JTMS
+** TODO Just
+** TODO Node
+** TODO Rule
+** TODO JTRE
+** TODO Datum
+** TODO DbClass

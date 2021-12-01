@@ -18,7 +18,12 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-class JTRE {
+class JTRE[I](
+  val title: String,
+  val jtms: JTMS[I],
+  val dbClassTable: HashMap[Any, Any],
+  val debugging: Boolean
+) {
   // (defstruct (jtre (:PRINT-FUNCTION jtre-printer))
   //   title                   ; Pretty name
   //   jtms                    ; Pointer to its JTMS

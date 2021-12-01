@@ -18,42 +18,21 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-class Just[D, I] {
+class Just[I](
+  val index: Int,
+  val informant: I,
+  val consequence: Node[I],
+  val antecedents: ListBuffer[Node[I]]
+) {
   // (defstruct (just (:PRINT-FUNCTION print-just))
   //   (index 0)
   //   informant
   //   consequence
   //   antecedents)
 
-  // (defun create-jtms (title &key (node-string 'default-node-string)
-  //                                debugging
-  //                                (checking-contradictions t)
-  //                                (contradiction-handler 'ask-user-handler)
-  //                                enqueue-procedure)
-  //   (make-jtms :TITLE title
-  //         :NODE-STRING node-string
-  //         :DEBUGGING debugging
-  //         :CHECKING-CONTRADICTIONS checking-contradictions
-  //         :CONTRADICTION-HANDLER contradiction-handler
-  //         :ENQUEUE-PROCEDURE enqueue-procedure
-  //         ))
-
   // (defun print-just (just stream ignore)
   //   (declare (ignore ignore))
   //   (format stream "#<Just ~D>" (just-index just)))
-
-  // (defun change-jtms (jtms &key contradiction-handler node-string
-  //                          enqueue-procedure debugging
-  //                               checking-contradictions)
-  //   (if node-string (setf (jtms-node-string jtms) node-string))
-  //   (if debugging (setf (jtms-debugging jtms) debugging))
-  //   (if checking-contradictions
-  //       (setf (jtms-checking-contradictions jtms)
-  //        checking-contradictions))
-  //   (if contradiction-handler
-  //       (setf (jtms-contradiction-handler jtms) contradiction-handler))
-  //   (if enqueue-procedure
-  //       (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
 
   // (defun check-justification (just)
   //   (and (out-node? (just-consequence just))

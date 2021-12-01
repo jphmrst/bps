@@ -18,7 +18,12 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-class DbClass {
+class DbClass[I](
+  val name: Any,
+  val jtre: JTRE[I],
+  val fact: List[Any],
+  val rules: List[Rule[I]]
+) {
   // (defstruct (dbclass (:PRINT-FUNCTION jtre-dbclass-printer))
   //   name    ; Corresponding symbol
   //   jtre    ; JTRE it is part of.
