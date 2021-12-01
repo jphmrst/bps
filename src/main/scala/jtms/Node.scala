@@ -66,6 +66,7 @@ class Node[I](
   def isOutNode: Boolean = ???
   // (defun out-node? (node) (eq (tms-node-label node) :OUT))
 
+  def assumeNode: Unit = ???
   // ;;; Converts a regular node to an assumption and enables it.
   // (defun assume-node (node &aux (jtms (tms-node-jtms node)))
   //   (unless (or (tms-node-assumption? node) (tms-node-premise? node))
@@ -73,17 +74,20 @@ class Node[I](
   //     (setf (tms-node-assumption? node) t)
   //     (push node (jtms-assumptions jtms)))
   //   (enable-assumption node))
-  //
+
+  def makeContradiction: Unit = ???
   // (defun make-contradiction (node &aux (jtms (tms-node-jtms node)))
   //   (unless (tms-node-contradictory? node)
   //     (setf (tms-node-contradictory? node) t)
   //     (push node (jtms-contradictions jtms))
   //     (check-for-contradictions jtms)))
 
+  def installSupport(just: Just[I]): Unit = ???
   // (defun install-support (conseq just)
   //   (make-node-in conseq just)
   //   (propagate-inness conseq))
 
+  def propagateInness: Unit = ???
   // (defun propagate-inness (node &aux (jtms (tms-node-jtms node)) (q (list node)))
   //   (do () ((null (setq node (pop q))))
   //     (debugging-jtms jtms "~%   Propagating belief in ~A." node)
@@ -92,6 +96,7 @@ class Node[I](
   //    (make-node-in (just-consequence justification) justification)
   //    (push (just-consequence justification) q)))))
 
+  def makeNodeIn(reason: Just[I]) = ???
   // (defun make-node-in (conseq reason &aux jtms enqueuef)
   //   (setq jtms (tms-node-jtms conseq)
   //    enqueuef (jtms-enqueue-procedure jtms))
@@ -108,14 +113,19 @@ class Node[I](
   //     (dolist (in-rule (tms-node-in-rules conseq))
   //       (funcall enqueuef in-rule))
   //     (setf (tms-node-in-rules conseq) nil)))
+
+  def retractAssumption: Unit = ???
   // ;;; Assumption Manipulation
   // (defun retract-assumption (node &aux jtms)
   //   (when (eq (tms-node-support node) :ENABLED-ASSUMPTION)
   //     (setq jtms (tms-node-jtms node))
   //     (debugging-jtms jtms "~%  Retracting assumption ~A." node)
   //     (make-node-out node)
-  //     (find-alternative-support jtms (cons node (propagate-outness node jtms)))))
+  //     (find-alternative-support jtms
+  //                               (cons node
+  //                                     (propagate-outness node jtms)))))
 
+  def enableAssumption: Unit = ???
   // (defun enable-assumption (node &aux (jtms (tms-node-jtms node)))
   //   (unless (tms-node-assumption? node)
   //     (tms-error "Can't enable the non-assumption ~A" node))
@@ -127,6 +137,7 @@ class Node[I](
   //    (t (setf (tms-node-support node) :ENABLED-ASSUMPTION)))
   //   (check-for-contradictions jtms))
 
+  def makeNodeOut: Unit = ???
   // (defun make-node-out (node &aux jtms enqueuef)
   //   (setq jtms (tms-node-jtms node)
   //    enqueuef (jtms-enqueue-procedure jtms))
@@ -137,24 +148,11 @@ class Node[I](
   //             (funcall enqueuef out-rule)))
   //   (setf (tms-node-out-rules node) nil))
 
-  // (defun propagate-outness (node jtms &aux out-queue)
-  //   (debugging-jtms jtms "~%   Propagating disbelief in ~A." node)
-  //   (do ((js (tms-node-consequences node) (append (cdr js) new))
-  //        (new nil nil)
-  //        (conseq nil))
-  //       ((null js) out-queue)
-  //     ;;For each justification using the node, check to see if
-  //     ;;it supports some other node.  If so, forget that node,
-  //     ;;queue up the node to look for other support, and recurse
-  //     (setq conseq (just-consequence (car js)))
-  //     (when (eq (tms-node-support conseq) (car js))
-  //       (make-node-out conseq)
-  //       (push conseq out-queue)
-  //       (setq new (tms-node-consequences conseq)))))
-
+  def supportingJustificationForNode: Just[I] = ???
   // ;;; Well-founded support inqueries
   // (defun supporting-justification-for-node (node) (tms-node-support node))
 
+  def assumptionsOfNode: ContraAssumptions[I] = ???
   // (defun assumptions-of-node (node &aux assumptions (marker (list :MARK)))
   //   (do ((nodes (list node) (append (cdr nodes) new))
   //        (new nil nil))
@@ -167,6 +165,7 @@ class Node[I](
   //         (setq new (just-antecedents (tms-node-support node)))))
   //       (setf (tms-node-mark node) marker))))
 
+  def whyNode: Node[I] = ???
   // ;;; Inference engine stub to allow this JTMS to be used stand alone
   // (defun why-node (node &aux justification)
   //   (setq justification (tms-node-support node))
@@ -182,6 +181,7 @@ class Node[I](
   //    (T (format t "~%~A is OUT." (node-string node))))
   //   node)
 
+  def exploreNetwork: Unit = ???
   // (defun explore-network (node)
   //   (unless (in-node? node)
   //      (format t "~% Sorry, ~A not believed." (node-string node))
@@ -216,6 +216,7 @@ class Node[I](
   //                "~% Must be q or an integer from 0 to ~D."
   //                olen))))))
 
+  def viewNode: Matchable = ???
   // ;; From jdata.lisp
   // (defun view-node (node)
   //   (datum-lisp-form (tms-node-datum node)))

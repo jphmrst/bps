@@ -8,10 +8,10 @@
      - Need both JTMS and JTRE?  Need something more?
 
 * Add method stubs
-** TODO Node
 ** TODO Rule
 ** TODO JTRE
 ** TODO DbClass
+** DONE Node
 ** DONE JTMS
 ** DONE Just
 ** DONE Datum

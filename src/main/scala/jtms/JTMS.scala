@@ -24,6 +24,10 @@ inline def dbg[I](jtms: JTMS[I], msg: String) =
 //   `(when (jtms-debugging ,jtms)
 //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
 
+/** Temporary type placeholder, until we work out a final form. */
+type ContraAssumptions[I] = Option[Node[I]]
+
+
 class JTMS[I](
   val title: String,
   val nodeString: (Node[I]) => String =
@@ -152,6 +156,22 @@ class JTMS[I](
   //     (if contradictions
   //    (funcall (jtms-contradiction-handler jtms) jtms contradictions))))
 
+  def propagateOutness(node: Node[I]): Unit = ???
+  // (defun propagate-outness (node jtms &aux out-queue)
+  //   (debugging-jtms jtms "~%   Propagating disbelief in ~A." node)
+  //   (do ((js (tms-node-consequences node) (append (cdr js) new))
+  //        (new nil nil)
+  //        (conseq nil))
+  //       ((null js) out-queue)
+  //     ;;For each justification using the node, check to see if
+  //     ;;it supports some other node.  If so, forget that node,
+  //     ;;queue up the node to look for other support, and recurse
+  //     (setq conseq (just-consequence (car js)))
+  //     (when (eq (tms-node-support conseq) (car js))
+  //       (make-node-out conseq)
+  //       (push conseq out-queue)
+  //       (setq new (tms-node-consequences conseq)))))
+
   // (defmacro without-contradiction-check (jtms &body body)
   //   (contradiction-check jtms nil body))
 
@@ -201,7 +221,7 @@ class JTMS[I](
   //   (handle-one-contradiction (car contradictions))
   //   (check-for-contradictions jtms))
 
-  var contraAssumptions: Option[Node[I]] = None
+  var contraAssumptions: ContraAssumptions[I] = None
   // (proclaim '(special *contra-assumptions*))
 
   def handleOneContradiction(contraNode: Node[I]): Unit = ???
