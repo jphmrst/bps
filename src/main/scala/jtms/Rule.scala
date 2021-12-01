@@ -32,10 +32,21 @@ trait Rule[I] {
   //   matcher      ; Procedure that performs the match.
   //   body)        ; Procedure that does the work.
 
+  override def toString: String = s"<Rule $id>"
+  def jtreRulePrinter: Unit = print(toString)
+  def printRule: Unit = print(toString)
   // (defun jtre-rule-printer (r st ignore)
   //   (declare (ignore ignore))
   //   (format st "<Rule ~D>" (rule-id r)))
+  //
+  // (defun print-rule (rule &optional (stream *standard-output*))
+  //   (format stream "~% ~A: ~A, ~A" rule
+  //      (rule-matcher rule) (rule-body rule)))
+}
 
+object Rule {
+
+  def buildRule[I](trigger: Any, body: Any): Rule[I] = ???
   // (defun build-rule (trigger body &aux match-procedure body-procedure)
   //   (multiple-value-bind (pattern condition var test)
   //                   (parse-rule-trigger trigger)
@@ -196,16 +207,6 @@ trait Rule[I] {
 
   // ;;;; Running rules
 
-  // (defun insert-rule (dbclass matcher body &aux rule)
-  //   (let ((*JTRE* (dbclass-jtre dbclass)))
-  //     (setq rule (make-rule :MATCHER matcher
-  //                      :BODY body
-  //                      :DBCLASS dbclass
-  //                      :ID (incf (jtre-rule-counter *JTRE*))))
-  //     (push rule (dbclass-rules dbclass))
-  //     (dolist (candidate (dbclass-facts dbclass))
-  //        (try-rule-on rule candidate))))
-
   // (defun try-rules (datum)
   //   (dolist (rule (dbclass-rules (datum-dbclass datum)))
   //     (try-rule-on rule datum)))
@@ -236,27 +237,8 @@ trait Rule[I] {
 
   // ;;;; Display routines
 
-  // (defun show-rules (&optional (*JTRE* *JTRE*) (stream *standard-output*))
-  //   (format t "~%There are ~D rules in ~A:"
-  //      (jtre-rule-counter *JTRE*) (jtre-title *JTRE*))
-  //   (format stream "~% ~A queued." (if (null (jtre-queue *JTRE*)) "None"
-  //                               (length (jtre-queue *JTRE*))))
-  //   (map-dbclass #'(lambda (dbclass)
-  //             (dolist (rule (dbclass-rules dbclass))
-  //                     (print-rule rule stream)))))
-
-  // (defun print-rule (rule &optional (stream *standard-output*))
-  //   (format stream "~% ~A: ~A, ~A" rule
-  //      (rule-matcher rule) (rule-body rule)))
-
   // (defun test-rule-expansion ()
   //  (pprint (macroexpand
   //      '(rule ((:IN (implies ?p ?q) :VAR ?f1)
   //              (:IN ?p)) (rassert! ?q (:CE ?f1 ?p))))))
-
-  // (defun get-rule (num &optional (*JTRE* *JTRE*))
-  //   (map-dbclass #'(lambda (dbclass)
-  //             (dolist (rule (dbclass-rules dbclass))
-  //                     (when (= (rule-id rule) num)
-  //                           (return-from GET-RULE rule))))))
   //

@@ -35,6 +35,35 @@ class DbClass[I](
   //  (defun jtre-dbclass-printer (r st ignore)
   //    (declare (ignore ignore))
   //    (format st "<Dbclass ~A>" (dbclass-name r)))
+
+  def insertRule[V](
+    matcher: (Matchable) => Option[V],
+    body: (JTMS[I], JTRE[I], V) => Unit):
+      Unit = ???
+  // (defun insert-rule (dbclass matcher body &aux rule)
+  //   (let ((*JTRE* (dbclass-jtre dbclass)))
+  //     (setq rule (make-rule :MATCHER matcher
+  //                      :BODY body
+  //                      :DBCLASS dbclass
+  //                      :ID (incf (jtre-rule-counter *JTRE*))))
+  //     (push rule (dbclass-rules dbclass))
+  //     (dolist (candidate (dbclass-facts dbclass))
+  //        (try-rule-on rule candidate))))
+
+  def insert(fact: Matchable): Datum[I] = ???
+  // (defun insert (fact &aux datum)
+  //   (setq datum (referent1 fact))
+  //   (cond (datum (values datum t))
+  //    (t (setq datum
+  //             (make-datum
+  //              :ID (incf (jtre-datum-counter *JTRE*))
+  //              :LISP-FORM fact
+  //              :DBCLASS (get-dbclass fact)))
+  //       (setf (datum-tms-node datum)
+  //             (tms-create-node (jtre-jtms *JTRE*) datum))
+  //       (push datum (dbclass-facts (datum-dbclass datum)))
+  //       (try-rules datum)
+  //       (values datum nil))))
 }
 
   // (defmacro rassert! (fact just)
@@ -55,24 +84,7 @@ class DbClass[I](
   //      (when (equal (datum-lisp-form candidate) fact)
   //            (return candidate))))
 
-  // (defun insert (fact &aux datum)
-  //   (setq datum (referent1 fact))
-  //   (cond (datum (values datum t))
-  //    (t (setq datum
-  //             (make-datum
-  //              :ID (incf (jtre-datum-counter *JTRE*))
-  //              :LISP-FORM fact
-  //              :DBCLASS (get-dbclass fact)))
-  //       (setf (datum-tms-node datum)
-  //             (tms-create-node (jtre-jtms *JTRE*) datum))
-  //       (push datum (dbclass-facts (datum-dbclass datum)))
-  //       (try-rules datum)
-  //       (values datum nil))))
-
   // (defun get-candidates (pattern)
   //   (dbclass-facts (get-dbclass pattern)))
 
   // ;;;; More query routines
-
-  // (defun show-datum (datum)
-  //   (format nil "~A" (datum-lisp-form datum)))

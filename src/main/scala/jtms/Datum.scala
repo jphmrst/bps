@@ -38,5 +38,9 @@ class Datum[I] private[jtms] (
   // (defun jtre-datum-printer (d st ignore)
   //   (declare (ignore ignore))
   //   (format st "<Datum ~D>" (datum-id d)))
+
+  def showDatum: String = fact.toString
+  // (defun show-datum (datum)
+  //   (format nil "~A" (datum-lisp-form datum)))
 }
 

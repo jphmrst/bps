@@ -18,12 +18,12 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-class JTRE[I](
-  val title: String,
-  val jtms: JTMS[I],
-  val dbClassTable: HashMap[Any, Any],
-  val debugging: Boolean
-) {
+class JTRE[I](val title: String, val debugging: Boolean = false) {
+
+  val jtms: JTMS[I] = new JTMS[I](title, (n: Node[I]) => n.viewNode.toString)
+  val dbClassTable: HashMap[Any, Any] = ???
+
+
   // (defstruct (jtre (:PRINT-FUNCTION jtre-printer))
   //   title                   ; Pretty name
   //   jtms                    ; Pointer to its JTMS
@@ -33,19 +33,6 @@ class JTRE[I](
   //   (debugging nil)         ; If non-NIL, show basic operations
   //   (queue nil)             ; Rule queue
   //   (rules-run 0))          ; Statistic
-
-  // (defun jtre-printer (j st ignore)
-  //   (format st "<JTRE: ~A>" (jtre-title j)))
-
-  // (defvar *JTRE* nil)
-
-  // (defmacro With-Jtre (jtre &rest forms)
-  //   `(let ((*JTRE* ,jtre)) ,@ forms))
-
-  // (defun In-Jtre (jtre) (setq *JTRE* jtre))
-
-  // (defmacro debugging-jtre (msg &rest args)
-  //   `(when (jtre-debugging *JTRE*) (format t ,msg  ,@args)))
 
   // (defun create-jtre (title &key debugging)
   //  (let ((j (make-jtre
@@ -58,6 +45,11 @@ class JTRE[I](
   //            :ENQUEUE-PROCEDURE
   //            #'(lambda (rule) (enqueue rule j)))
   //    j))
+
+  override def toString: String = s"<JTRE: $title>"
+  def jtrePrinter: Unit = print(toString)
+  // (defun jtre-printer (j st ignore)
+  //   (format st "<JTRE: ~A>" (jtre-title j)))
 
   // (defun change-jtre (jtre &key (debugging :NADA))
   //   (unless (eq debugging :NADA)
@@ -293,4 +285,29 @@ class JTRE[I](
   //   (dolist (just (jtms-justs (jtre-jtms *JTRE*)))
   //     (when (= (just-index just) num)
   //      (return-from GET-just just))))
+
+  // (defun show-rules (&optional (*JTRE* *JTRE*) (stream *standard-output*))
+  //   (format t "~%There are ~D rules in ~A:"
+  //      (jtre-rule-counter *JTRE*) (jtre-title *JTRE*))
+  //   (format stream "~% ~A queued." (if (null (jtre-queue *JTRE*)) "None"
+  //                               (length (jtre-queue *JTRE*))))
+  //   (map-dbclass #'(lambda (dbclass)
+  //             (dolist (rule (dbclass-rules dbclass))
+  //                     (print-rule rule stream)))))
+
+  // (defun get-rule (num &optional (*JTRE* *JTRE*))
+  //   (map-dbclass #'(lambda (dbclass)
+  //             (dolist (rule (dbclass-rules dbclass))
+  //                     (when (= (rule-id rule) num)
+  //                           (return-from GET-RULE rule))))))
+
+  // (defvar *JTRE* nil)
+
+  // (defmacro With-Jtre (jtre &rest forms)
+  //   `(let ((*JTRE* ,jtre)) ,@ forms))
+
+  // (defun In-Jtre (jtre) (setq *JTRE* jtre))
+
+  // (defmacro debugging-jtre (msg &rest args)
+  //   `(when (jtre-debugging *JTRE*) (format t ,msg  ,@args)))
 }
