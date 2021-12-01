@@ -18,11 +18,13 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-class Datum[I](
+class Datum[I] private[jtms] (
   val id: Int,
-  val lispForm: Any,
+  val fact: Matchable,
   val dbClass: DbClass[I]
 ) {
+  var node: Node[I] = ???
+
   // (defstruct (datum (:PRINT-FUNCTION jtre-datum-printer))
   //   id                   ; Unique ID for easy lookup
   //   lisp-form            ; Expression for pattern-matching
@@ -31,6 +33,8 @@ class Datum[I](
   //   (assumption? nil)    ; if non-nil, indicates informant
   //   (plist nil))         ; local property list
 
+  override def toString: String = s"<Datum $id>"
+  def jtreDatumPrinter: Unit = println(this.toString)
   // (defun jtre-datum-printer (d st ignore)
   //   (declare (ignore ignore))
   //   (format st "<Datum ~D>" (datum-id d)))

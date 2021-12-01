@@ -30,6 +30,8 @@ class DbClass[I](
   //   facts   ; Associated facts
   //   rules)  ; Associated rules
 
+  override def toString(): String = s"<DbClass $name>"
+  def jtreDbClassPrinter: Unit = print(toString)
   //  (defun jtre-dbclass-printer (r st ignore)
   //    (declare (ignore ignore))
   //    (format st "<Dbclass ~A>" (dbclass-name r)))

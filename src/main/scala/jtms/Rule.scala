@@ -18,12 +18,13 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-class Rule[I](
-  val id: Int,
-  val dbClass: DbClass[I],
-  val matcher: Any,
-  val body: Any
-) {
+trait Rule[I] {
+  val id: Int
+  val dbClass: DbClass[I]
+  type V
+  def matcher(m: Matchable): Option[V]
+  def body(jtms: JTMS[I], jtre: JTRE[I], values: V): Unit
+
   // (defstruct (rule (:PRINT-FUNCTION jtre-rule-printer))
   //   id           ; Unique ID for easy lookup
   //   jtre         ; The JTRE it is part of

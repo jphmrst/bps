@@ -1,17 +1,32 @@
 
 * Types to figure out
 ** TODO Facts
-** TODO Constructor argument types in Rule
+   - Matchable?
+** Constructor argument types in Rule
+   - Using intermediate type bound locally to rule
+   - Should recheck arguments to =body=
+     - Need both JTMS and JTRE?  Need something more?
 
 * Add method stubs
-** TODO Just
 ** TODO Node
 ** TODO Rule
 ** TODO JTRE
-** TODO Datum
 ** TODO DbClass
+** DONE JTMS
+** DONE Just
+** DONE Datum
 
 * Fill method stubs
+** TODO JTMS
+** TODO Node
+** TODO Rule
+** TODO JTRE
+** TODO DbClass
+** DONE Just
+** DONE Datum
+   - /Probably/ DONE
+
+* Document
 ** TODO JTMS
 ** TODO Just
 ** TODO Node

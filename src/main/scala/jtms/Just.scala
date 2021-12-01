@@ -30,14 +30,19 @@ class Just[I](
   //   consequence
   //   antecedents)
 
+  override def toString: String = s"<Just $index>"
+  def printJust: Unit = println(this.toString)
   // (defun print-just (just stream ignore)
   //   (declare (ignore ignore))
   //   (format stream "#<Just ~D>" (just-index just)))
 
+  def checkJustification: Boolean =
+    consequence.isOutNode && isJustificationSatisfied
   // (defun check-justification (just)
   //   (and (out-node? (just-consequence just))
   //        (justification-satisfied? just)))
 
+  def isJustificationSatisfied: Boolean = antecedents.forall(_.isInNode)
   // (defun justification-satisfied? (just)
   //   (every #'in-node? (just-antecedents just)))
 

@@ -39,24 +39,31 @@ class Node[I](
   //   (out-rules nil)  ;; Rules that should be triggered when node goes out
   //   (jtms nil))           ;; The JTMS in which this node appears.
 
+  override def toString(): String = s"<Node: $nodeString>"
+  def printTmsNode: Unit = print(toString)
   // (defun print-tms-node (node stream ignore)
   //   (declare (ignore ignore))
   //   (format stream "#<Node: ~A>" (node-string node)))
 
+  def isPremise: Boolean = ???
   // (defun tms-node-premise? (node &aux support)
   //   (and (setq support (tms-node-support node))
   //        (not (eq support :ENABLED-ASSUMPTION))
   //        (null (just-antecedents support))))
 
+  def nodeString: String = ???
   // (defun node-string (node)
   //   (funcall (jtms-node-string (tms-node-jtms node)) node))
 
+  def tmsError(string: String): Unit = ???
   // (defun tms-error (string node) (error string (node-string node)))
 
   // (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
 
+  def isInNode: Boolean = ???
   // (defun in-node? (node) (eq (tms-node-label node) :IN))
-  //
+
+  def isOutNode: Boolean = ???
   // (defun out-node? (node) (eq (tms-node-label node) :OUT))
 
   // ;;; Converts a regular node to an assumption and enables it.
