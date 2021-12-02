@@ -38,6 +38,8 @@ class Node[I](
     */
   var believed: Boolean = false
 
+  val consequences: ListBuffer[Just[I]] = ListBuffer.empty
+
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
   //   (index 0)
   //   (datum nil)           ;; pointer to external problem solver
@@ -129,8 +131,9 @@ class Node[I](
       dbg(jtms, s"Propagating belief in $node.")
       for (justification <- node.consequences)
         do if justification.checkJustification then {
-
-          ??? // TODO resume here
+          val conseq = justification.consequence
+          conseq.makeNodeIn(justification)
+          q.enqueue(conseq)
         }
     }
   }
