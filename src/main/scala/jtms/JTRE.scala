@@ -32,6 +32,10 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   /** Unique ID generator for asserts. */
   var datumCounter: Int = 0
+  def incfDatumCounter: Int = {
+    datumCounter = 1 + datumCounter
+    datumCounter
+  }
 
   /** Unique ID generator for rules. */
   var ruleCounter: Int = 0
@@ -183,6 +187,14 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   // (defun referent (fact &optional (virtual? nil)
   //                  (*JTRE* *JTRE*))
   //   (if virtual? (insert fact) (referent1 fact)))
+
+  def isAlreadyAssumed(fact: Fact): Boolean = referent(fact) match {
+    case None => false
+    case Some(r) => r.isAssumption
+  }
+  // (defun already-assumed? (fact  &aux r)
+  //   (when (setq r (referent fact))
+  //     (datum-assumption? r)))
 
   def contradiction(fact: Fact): Node[I] = ???
   // ;; From jdata.lisp

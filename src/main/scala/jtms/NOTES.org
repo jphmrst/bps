@@ -10,7 +10,7 @@
 
 * Add method stubs
 ** WAIT DbClass
-   - Lots of macro stuff not completed
+   - Two macro-related methods not completed
 ** WAIT Rule
    - Lots of macro stuff not completed
 ** DONE JTRE
@@ -23,9 +23,10 @@
 ** TODO JTMS
 ** TODO Node
 ** TODO JTRE
-** TODO DbClass
 ** WAIT Rule
    - Lots of macro stuff not completed
+** WAIT DbClass
+   - Two macro-related methods not completed
 ** DONE Just
 ** DONE Datum
    - /Probably/ DONE

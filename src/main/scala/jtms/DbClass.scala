@@ -17,6 +17,7 @@
 
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
+import scala.util.control.NonLocalReturns.*
 
 type DbClassTable[I] = HashMap[Any, Any]
 
@@ -62,8 +63,16 @@ class DbClass[I](
   //     (dolist (candidate (dbclass-facts dbclass))
   //        (try-rule-on rule candidate))))
 
-  def insert(fact: Fact): Datum[I] = {
-    ???
+  def insert(fact: Fact): (Datum[I], Boolean) = referent1(fact) match {
+    case Some(datum) => (datum, true)
+    case None => {
+      val datum: Datum[I] =
+        new Datum[I](jtre.incfDatumCounter, fact, jtre.getDbClass(fact))
+      val node: Node[I] = jtre.jtms.createNode(datum)
+      datum.dbClass.facts += datum
+      tryRules(datum)
+      (datum, false)
+    }
   }
   // (defun insert (fact &aux datum)
   //   (setq datum (referent1 fact))
@@ -79,31 +88,37 @@ class DbClass[I](
   //       (try-rules datum)
   //       (values datum nil))))
 
-  def tryRules(datum: Datum[I]): Unit = ???
+  def tryRules(datum: Datum[I]): Unit = {
+    for (rule <- datum.dbClass.rules) do rule.tryRuleOn(datum)
+  }
   // (defun try-rules (datum)
   //   (dolist (rule (dbclass-rules (datum-dbclass datum)))
   //     (try-rule-on rule datum)))
+
+  def referent1(fact: Fact): Option[Datum[I]] = returning {
+    for(candidate <- facts)
+      do if candidate.fact == fact
+         then throwReturn[Option[Datum[I]]](Some(candidate))
+    None
+  }
+  // (defun referent1 (fact)
+  //   (dolist (candidate (dbclass-facts (get-dbclass fact)))
+  //      (when (equal (datum-lisp-form candidate) fact)
+  //            (return candidate))))
+
+  def getCandidates(pattern: Fact): ListBuffer[Datum[I]] =
+    jtre.getDbClass(pattern).facts
+  // (defun get-candidates (pattern)
+  //   (dbclass-facts (get-dbclass pattern)))
 }
 
   // (defmacro rassert! (fact just)
   //   `(assert! ,(quotize fact) ,(quotize just)))
-
-  // (defun already-assumed? (fact  &aux r)
-  //   (when (setq r (referent fact))
-  //     (datum-assumption? r)))
 
   // ;;;; Retraction
 
   // (defmacro rretract! (fact &optional (just 'USER))
   //   `(retract! ,(quotize fact) ,(quotize just)))
 
-
-  // (defun referent1 (fact)
-  //   (dolist (candidate (dbclass-facts (get-dbclass fact)))
-  //      (when (equal (datum-lisp-form candidate) fact)
-  //            (return candidate))))
-
-  // (defun get-candidates (pattern)
-  //   (dbclass-facts (get-dbclass pattern)))
 
   // ;;;; More query routines
