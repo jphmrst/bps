@@ -1,5 +1,8 @@
 
 * Types to figure out
+  :PROPERTIES:
+  :VISIBILITY: all
+  :END:
 ** Facts
    - Matchable?
    - Yes, for now at least
@@ -9,6 +12,9 @@
      - Need both JTMS and JTRE?  Need something more?
 
 * Add method stubs
+  :PROPERTIES:
+  :VISIBILITY: folded
+  :END:
 ** WAIT DbClass
    - Two macro-related methods not completed
 ** WAIT Rule
@@ -20,17 +26,19 @@
 ** DONE Datum
 
 * Fill method stubs
-** TODO JTMS
-** TODO Node
-** TODO JTRE
-** WAIT Rule
+  :PROPERTIES:
+  :VISIBILITY: all
+  :END:
+** TODO [[./JTMS.scala][JTMS]]
+** TODO [[./Node.scala][Node]]
+** TODO [[./JTRE.scala][JTRE]]
+** WAIT [[./Rule.scala][Rule]]
    - Lots of macro stuff not completed
 ** WAIT DbClass
    - Two macro-related methods not completed
 ** DONE Just
 ** DONE Datum
    - /Probably/ DONE
-
 
 * Translate examples
 
