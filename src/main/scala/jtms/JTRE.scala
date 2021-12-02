@@ -35,6 +35,10 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   /** Unique ID generator for rules. */
   var ruleCounter: Int = 0
+  def incfRuleCounter: Int = {
+    ruleCounter = 1 + ruleCounter
+    ruleCounter
+  }
 
   /** Statistic. */
   var rulesRun: Int = 0

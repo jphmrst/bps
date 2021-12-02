@@ -23,8 +23,8 @@ type DbClassTable[I] = HashMap[Any, Any]
 class DbClass[I](
   val name: Any,
   val jtre: JTRE[I],
-  val fact: List[Any],
-  val rules: List[Rule[I]]
+  val facts: ListBuffer[Datum[I]],
+  val rules: ListBuffer[Rule[I]]
 ) {
   // (defstruct (dbclass (:PRINT-FUNCTION jtre-dbclass-printer))
   //   name    ; Corresponding symbol
@@ -38,10 +38,20 @@ class DbClass[I](
   //    (declare (ignore ignore))
   //    (format st "<Dbclass ~A>" (dbclass-name r)))
 
-  def insertRule[V](
-    matcher: (Fact) => Option[V],
-    body: (JTMS[I], JTRE[I], V) => Unit):
-      Unit = ???
+  def insertRule[Intermed](
+    matcherFn: (Fact) => Option[Intermed],
+    bodyFn: (JTMS[I], JTRE[I], Intermed) => Unit):
+      Unit = {
+    val id = jtre.incfRuleCounter
+    val rule = new Rule[I](id, this) {
+      type V = Intermed
+      def matcher(m: Fact): Option[V] = matcherFn(m)
+      def body(jtms: JTMS[I], jtre: JTRE[I], values: V): Unit =
+        bodyFn(jtms, jtre, values)
+    }
+    rules += rule
+    for (candidate <- facts) do rule.tryRuleOn(candidate)
+  }
   // (defun insert-rule (dbclass matcher body &aux rule)
   //   (let ((*JTRE* (dbclass-jtre dbclass)))
   //     (setq rule (make-rule :MATCHER matcher
@@ -52,7 +62,9 @@ class DbClass[I](
   //     (dolist (candidate (dbclass-facts dbclass))
   //        (try-rule-on rule candidate))))
 
-  def insert(fact: Fact): Datum[I] = ???
+  def insert(fact: Fact): Datum[I] = {
+    ???
+  }
   // (defun insert (fact &aux datum)
   //   (setq datum (referent1 fact))
   //   (cond (datum (values datum t))
@@ -66,6 +78,11 @@ class DbClass[I](
   //       (push datum (dbclass-facts (datum-dbclass datum)))
   //       (try-rules datum)
   //       (values datum nil))))
+
+  def tryRules(datum: Datum[I]): Unit = ???
+  // (defun try-rules (datum)
+  //   (dolist (rule (dbclass-rules (datum-dbclass datum)))
+  //     (try-rule-on rule datum)))
 }
 
   // (defmacro rassert! (fact just)

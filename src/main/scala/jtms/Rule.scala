@@ -18,9 +18,7 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-trait Rule[I] {
-  val id: Int
-  val dbClass: DbClass[I]
+abstract class Rule[I](val id: Int, val dbClass: DbClass[I]) {
   type V
   def matcher(m: Fact): Option[V]
   def body(jtms: JTMS[I], jtre: JTRE[I], values: V): Unit
@@ -42,11 +40,27 @@ trait Rule[I] {
   // (defun print-rule (rule &optional (stream *standard-output*))
   //   (format stream "~% ~A: ~A, ~A" rule
   //      (rule-matcher rule) (rule-body rule)))
+
+  // ;;;; Running rules
+
+  def tryRuleOn(datum: Datum[I]): Unit = ???
+  // (defun try-rule-on (rule datum)
+  //   (let ((*JTRE* (dbclass-jtre (datum-dbclass datum))))
+  //     (multiple-value-bind (okay? bindings node?)
+  //      (funcall (rule-matcher rule)
+  //          (datum-lisp-form datum))
+  //      (when okay?
+  //       (when node?
+  //             (push (datum-tms-node datum) bindings))
+  //       (enqueue (cons (rule-body rule) bindings) *JTRE*)))))
 }
 
 object Rule {
 
-  def buildRule[I](trigger: Any, body: Any): Rule[I] = ???
+  // Waiting to translate this and other macro-heavy stuff
+  //
+  // def buildRule[I](trigger: Any, body: Any): Rule[I] = ???
+  //
   // (defun build-rule (trigger body &aux match-procedure body-procedure)
   //   (multiple-value-bind (pattern condition var test)
   //                   (parse-rule-trigger trigger)
@@ -204,22 +218,6 @@ object Rule {
   //                    (fully-expand-body (cdr body))))))
   //    (t (cons (fully-expand-body (car body))
   //             (fully-expand-body (cdr body))))))
-
-  // ;;;; Running rules
-
-  // (defun try-rules (datum)
-  //   (dolist (rule (dbclass-rules (datum-dbclass datum)))
-  //     (try-rule-on rule datum)))
-
-  // (defun try-rule-on (rule datum)
-  //   (let ((*JTRE* (dbclass-jtre (datum-dbclass datum))))
-  //     (multiple-value-bind (okay? bindings node?)
-  //      (funcall (rule-matcher rule)
-  //          (datum-lisp-form datum))
-  //      (when okay?
-  //       (when node?
-  //             (push (datum-tms-node datum) bindings))
-  //       (enqueue (cons (rule-body rule) bindings) *JTRE*)))))
 
   // ;;;; Display routines
 

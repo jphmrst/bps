@@ -22,9 +22,10 @@
 * Fill method stubs
 ** TODO JTMS
 ** TODO Node
-** TODO Rule
 ** TODO JTRE
 ** TODO DbClass
+** WAIT Rule
+   - Lots of macro stuff not completed
 ** DONE Just
 ** DONE Datum
    - /Probably/ DONE
