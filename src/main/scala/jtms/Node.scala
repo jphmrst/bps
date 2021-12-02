@@ -216,7 +216,7 @@ class Node[I](
   //                "~% Must be q or an integer from 0 to ~D."
   //                olen))))))
 
-  def viewNode: Matchable = ???
+  def viewNode: Fact = datum.fact
   // ;; From jdata.lisp
   // (defun view-node (node)
   //   (datum-lisp-form (tms-node-datum node)))

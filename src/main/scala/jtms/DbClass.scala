@@ -18,6 +18,8 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
+type DbClassTable[I] = HashMap[Any, Any]
+
 class DbClass[I](
   val name: Any,
   val jtre: JTRE[I],
@@ -37,7 +39,7 @@ class DbClass[I](
   //    (format st "<Dbclass ~A>" (dbclass-name r)))
 
   def insertRule[V](
-    matcher: (Matchable) => Option[V],
+    matcher: (Fact) => Option[V],
     body: (JTMS[I], JTRE[I], V) => Unit):
       Unit = ???
   // (defun insert-rule (dbclass matcher body &aux rule)
@@ -50,7 +52,7 @@ class DbClass[I](
   //     (dolist (candidate (dbclass-facts dbclass))
   //        (try-rule-on rule candidate))))
 
-  def insert(fact: Matchable): Datum[I] = ???
+  def insert(fact: Fact): Datum[I] = ???
   // (defun insert (fact &aux datum)
   //   (setq datum (referent1 fact))
   //   (cond (datum (values datum t))

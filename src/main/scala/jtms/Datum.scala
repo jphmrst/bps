@@ -20,7 +20,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
 class Datum[I] private[jtms] (
   val id: Int,
-  val fact: Matchable,
+  val fact: Fact,
   val dbClass: DbClass[I]
 ) {
   var node: Node[I] = ???

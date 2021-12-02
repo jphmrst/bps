@@ -18,6 +18,8 @@
 package org.maraist.tms.jtms
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
+type Justification[I] = Just[I] | Symbol
+
 class Just[I](
   val index: Int,
   val informant: I,

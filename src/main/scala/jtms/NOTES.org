@@ -1,7 +1,8 @@
 
 * Types to figure out
-** TODO Facts
+** Facts
    - Matchable?
+   - Yes, for now at least
 ** Constructor argument types in Rule
    - Using intermediate type bound locally to rule
    - Should recheck arguments to =body=

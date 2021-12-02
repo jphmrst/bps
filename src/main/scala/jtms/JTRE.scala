@@ -16,18 +16,36 @@
 // language governing permissions and limitations under the License.
 
 package org.maraist.tms.jtms
-import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
+import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
+
+type Fact = Matchable
 
 class JTRE[I](val title: String, val debugging: Boolean = false) {
 
-  val jtms: JTMS[I] = new JTMS[I](title, (n: Node[I]) => n.viewNode.toString)
-  val dbClassTable: HashMap[Any, Any] = ???
+  /** Pointer to its JTMS. */
+  val jtms: JTMS[I] = new JTMS[I](title,
+    nodeString = (n: Node[I]) => n.viewNode.toString,
+    enqueueProcedure = Some(this.enqueue))
 
+  /** Table of `DbClass`es. */
+  val dbClassTable: DbClassTable[I] = new HashMap[Any, Any]
+
+  /** Unique ID generator for asserts. */
+  var datumCounter: Int = 0
+
+  /** Unique ID generator for rules. */
+  var ruleCounter: Int = 0
+
+  /** Statistic. */
+  var rulesRun: Int = 0
+
+  /** Rule queue. */
+  val queue: Queue[Rule[I]] = Queue.empty
 
   // (defstruct (jtre (:PRINT-FUNCTION jtre-printer))
   //   title                   ; Pretty name
   //   jtms                    ; Pointer to its JTMS
-  //   (dbclass-table nil)       ; Table of dbclasses
+  //   (dbclass-table nil)     ; Table of dbclasses
   //   (datum-counter 0)       ; Unique ID for asserts
   //   (rule-counter 0)        ; Unique ID for rules
   //   (debugging nil)         ; If non-NIL, show basic operations
@@ -54,12 +72,11 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   // (defun change-jtre (jtre &key (debugging :NADA))
   //   (unless (eq debugging :NADA)
   //      (setf (jtre-debugging jtre) debugging)))
-  // 
-  // ;;;; Running JTRE
 
   //
   // ;;;; Making statements
 
+  def assert(fact: Fact, just: Just[I]): Datum[I] = ???
   // ;; From jdata.lisp
   // (defun assert! (fact just &optional (*JTRE* *JTRE*) &aux datum node)
   //   (setq datum (referent fact t)
@@ -71,10 +88,12 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //                    (cdr just)))
   //   datum)
 
+  def quietAssert(fact: Fact, just: Just[I]): Datum[I] = ???
   // ;; From jdata.lisp
   // (defun quiet-assert! (fact just &optional (*JTRE* *JTRE*))
   //   (without-contradiction-check (jtre-jtms *JTRE*) (assert! fact just)))
 
+  def assume(fact: Fact, reason: Node[I]): Datum[I] = ???
   // ;; From jdata.lisp
   // (defun assume! (fact reason &optional (*JTRE* *JTRE*) &aux datum node)
   //   (setq datum (referent fact t)
@@ -89,6 +108,11 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //        (show-datum datum) (datum-assumption? datum) reason)))
   //   datum)
 
+  def retract(
+    fact: Fact,
+    just: Justification[I] = Symbol("user"),
+    quiet: Boolean = false):
+      Node[I] = ???
   // ;; From jdata.lisp
   // (defun retract! (fact &optional (just 'user) (quiet? nil)
   //                  (*JTRE* *JTRE*) &aux datum node)
@@ -113,20 +137,27 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //             just fact)))
   //   node)
 
+  def uAssert(
+    fact: Fact,
+    just: Justification[I] = Symbol("user")):
+      Unit = ???
   // ;; From jdata.lisp
   // (defun uassert! (fact &optional (just 'user))
   //   (assert! fact just) ;; Do internal operation
   //   (run-rules *JTRE*))        ;; Run the rules
 
+  def uAssume(fact: Fact, reason: Node[I]): Unit = ???
   // ;; From jdata.lisp
   // (defun uassume! (fact reason) ;; Similar to UASSERT!
   //   (assume! fact reason *JTRE*)
   //   (run-rules *JTRE*))
 
+  // Does not seem to be used anywhere. [JM]
   // ;; From jdata.lisp
   // (defun run-forms (forms &optional (*JTRE* *JTRE*))
   //   (dolist (form forms) (eval form) (run-rules *JTRE*)))
 
+  def run: Unit = ???
   // ;; From jdata.lisp
   // (defun run (&optional (*JTRE* *JTRE*)) ;; Toplevel driver function
   //     (format T "~%>>")
@@ -136,6 +167,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //         (run-rules)
   //         (format t "~%>>")))
 
+  def show: Unit = ???
   // ;; From jdata.lisp
   // (defun show (&optional (*JTRE* *JTRE*) (stream *standard-output*))
   //   (show-data *JTRE* stream) (show-rules *JTRE* stream))
@@ -310,4 +342,20 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   // (defmacro debugging-jtre (msg &rest args)
   //   `(when (jtre-debugging *JTRE*) (format t ,msg  ,@args)))
+
+  // (defun run-rules (&optional (*JTRE* *JTRE*))
+  //   (do ((form (dequeue *JTRE*) (dequeue *JTRE*))
+  //        (counter 0 (1+ counter)))
+  //       ((null form)
+  //        (debugging-jtre "~%    ~A rules run."  counter)
+  //        (incf (jtre-rules-run *JTRE*) counter))
+  //     (apply (car form) (cdr form))))
+
+  // (defun rules-waiting? (jtre) (jtre-queue jtre))
+
+  def enqueue(rule: Rule[I]): Unit = queue.enqueue(rule)
+  // (defun enqueue (new j) (push new (jtre-queue j)))
+
+  def dequeue: Rule[I] = queue.dequeue
+  // (defun dequeue (jtre) (pop (jtre-queue jtre)))
 }

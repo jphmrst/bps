@@ -22,7 +22,7 @@ trait Rule[I] {
   val id: Int
   val dbClass: DbClass[I]
   type V
-  def matcher(m: Matchable): Option[V]
+  def matcher(m: Fact): Option[V]
   def body(jtms: JTMS[I], jtre: JTRE[I], values: V): Unit
 
   // (defstruct (rule (:PRINT-FUNCTION jtre-rule-printer))
@@ -220,20 +220,6 @@ object Rule {
   //       (when node?
   //             (push (datum-tms-node datum) bindings))
   //       (enqueue (cons (rule-body rule) bindings) *JTRE*)))))
-
-  // (defun run-rules (&optional (*JTRE* *JTRE*))
-  //   (do ((form (dequeue *JTRE*) (dequeue *JTRE*))
-  //        (counter 0 (1+ counter)))
-  //       ((null form)
-  //        (debugging-jtre "~%    ~A rules run."  counter)
-  //        (incf (jtre-rules-run *JTRE*) counter))
-  //     (apply (car form) (cdr form))))
-
-  // (defun rules-waiting? (jtre) (jtre-queue jtre))
-
-  // (defun enqueue (new j) (push new (jtre-queue j)))
-
-  // (defun dequeue (jtre) (pop (jtre-queue jtre)))
 
   // ;;;; Display routines
 
