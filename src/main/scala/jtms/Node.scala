@@ -40,6 +40,12 @@ class Node[I](
 
   val consequences: ListBuffer[Just[I]] = ListBuffer.empty
 
+  /** Rules that should be triggered when node goes in. */
+  val inRules: ListBuffer[Rule[I]] = ListBuffer.empty
+
+  /** Rules that should be triggered when node goes out. */
+  val outRules: ListBuffer[Rule[I]] = ListBuffer.empty
+
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
   //   (index 0)
   //   (datum nil)           ;; pointer to external problem solver
@@ -146,8 +152,25 @@ class Node[I](
   //         (make-node-in (just-consequence justification) justification)
   //         (push (just-consequence justification) q)))))
 
-  def makeNodeIn(reason: Just[I]) = {
-    ???
+  def makeNodeIn(reason: Justification[I]) = {
+    val enqueuef: Option[(Rule[I]) => Unit] = jtms.enqueueProcedure
+    dbg(jtms, reason match {
+      case s: Symbol  => s"     Making $this in via symbolic $s."
+      case j: Just[I] => {
+        val mapped = j.antecedents.map(jtms.nodeString)
+        s"     Making $this in via ${j.informant} :: $mapped."
+      }
+    })
+
+    believed = true
+    support = Some(reason)
+    enqueuef match {
+      case None => { }
+      case Some(fn) => {
+        for inRule <- inRules do fn(inRule)
+        inRules.clear
+      }
+    }
   }
   // (defun make-node-in (conseq reason &aux jtms enqueuef)
   //   (setq jtms (tms-node-jtms conseq)
