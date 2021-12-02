@@ -152,7 +152,8 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //   (assume! fact reason *JTRE*)
   //   (run-rules *JTRE*))
 
-  // Does not seem to be used anywhere. [JM]
+  // Does not seem to be used anywhere — leaving untranslated. [JM]
+  //
   // ;; From jdata.lisp
   // (defun run-forms (forms &optional (*JTRE* *JTRE*))
   //   (dolist (form forms) (eval form) (run-rules *JTRE*)))
@@ -172,38 +173,47 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   // (defun show (&optional (*JTRE* *JTRE*) (stream *standard-output*))
   //   (show-data *JTRE* stream) (show-rules *JTRE* stream))
 
+  def referent(fact: Fact): Option[Node[I]] = referent(fact, false)
+  def referent(fact: Fact, isVirtual: Boolean): Option[Node[I]] = ???
   // ;; From jdata.lisp
   // (defun referent (fact &optional (virtual? nil)
   //                  (*JTRE* *JTRE*))
   //   (if virtual? (insert fact) (referent1 fact)))
 
+  def contradiction(fact: Fact): Node[I] = ???
   // ;; From jdata.lisp
   // (defun contradiction (fact &optional (*JTRE* *JTRE*))
   //   (make-contradiction (datum-tms-node (referent fact t))))
   // 
   // ;;;; Interface and display of data
 
+  def isIn(fact: Fact): Boolean = ???
   // ;; From jdata.lisp
   // (defun in? (fact &optional (*JTRE* *JTRE*) &aux r)
   //   (when (setq r (referent fact))
   //    (in-node? (datum-tms-node r))))
 
+  def isOut(fact: Fact): Boolean = ???
   // ;; From jdata.lisp
   // (defun out? (fact &optional (*JTRE* *JTRE*) &aux r)
   //   (or (not (setq r (referent fact))) ; a non-existent fact is out
   //       (out-node? (datum-tms-node r))))
-  //
+
+  def why(fact: Fact): Node[I] = ???
   // ;; From jdata.lisp
   // (defun why? (fact &optional (*JTRE* *JTRE*) &aux r)
   //   (when (setq r (referent fact))
   //    (why-node (datum-tms-node r))))
 
+  def assumptionsOf(fact: Fact): Node[I] = ???
   // ;; From jdata.lisp
   // (defun assumptions-of (fact &optional (*JTRE* *JTRE*))
   //   (mapcar #'view-node
   //      (assumptions-of-node
   //       (datum-tms-node (referent fact *jtre* t)))))
 
+  // Only called from some examples — leaving untranslated for now. [JM]
+  //
   // ;; From jdata.lisp
   // (defun fetch (pattern &optional (*JTRE* *JTRE*) &aux bindings unifiers)
   //   (dolist (candidate (get-candidates pattern) unifiers)
@@ -213,6 +223,8 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   // ;;;; More display-intensive procedures
 
+  // Does not seem to be used anywhere — leaving untranslated. [JM]
+  //
   // ;; From jdata.lisp
   // (defun wfs (fact &optional (*JTRE* *JTRE*))
   //   ;; Displays well-founded support for a fact
@@ -232,6 +244,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //               (push ante so-far)
   //               (push ante new-antes))))))))
 
+  def sayDatumBelief(pr: Datum[I]): Unit = ???
   // ;; From jdata.lisp
   // (defun say-datum-belief (pr &optional (*jtre* *jtre*)
   //                        (indent ""))
@@ -239,6 +252,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //      (if (in-node? (get-tms-node pr *jtre*))
   //          "IN" "OUT")))
 
+  def showJustifications(fact: Fact): Unit = ???
   // ;; From jdata.lisp
   // (defun show-justifications (fact &optional (*jtre* *jtre*))
   //   (format t "~% ~A::" fact)
@@ -257,6 +271,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //               (format t "."))
   //              (t (format t "."))))))
 
+  def showData: Unit = ???
   // ;; From jdata.lisp
   // (defun show-data (&optional (*JTRE* *JTRE*)
   //                        (stream *standard-output*))
@@ -271,6 +286,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   // ;;;; Database system
 
+  def getDbClass(fact: Fact): DbClass[I] = ???
   // ;; From jdata.lisp
   // (defun get-dbclass (fact &optional (*JTRE* *JTRE*)
   //                     &aux dbclass)
@@ -294,16 +310,19 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //              dbclass)))
   //    (t (error "Bad dbclass type: ~A" fact))))
 
+  def mapDbClass(proc: (DbClass[I]) => Unit): Unit = ???
   // ;; From jdata.lisp
   // (defun map-dbclass (proc &optional (*JTRE* *JTRE*))
   //   (maphash #'(lambda (name dbclass) (declare (ignore name))
   //           (funcall proc dbclass))
   //       (jtre-dbclass-table *JTRE*)))
 
+  def getTmsNode(fact: Fact): Node[I] = ???
   // ;; From jdata.lisp
   // (defun get-tms-node (fact &optional (*JTRE* *JTRE*))
   //   (datum-tms-node (referent fact t)))
 
+  def getDatum(num: Int): Datum[I] = ???
   // ;; From jdata.lisp
   // (defun get-datum (num &optional (*JTRE* *JTRE*))
   //   (map-dbclass
@@ -312,12 +331,14 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //           (when (= (datum-id datum) num)
   //                 (return-from GET-DATUM datum))))))
 
+  def getJust(num: Int): Just[I] = ???
   // ;; From jdata.lisp
   // (defun get-just (num &optional (*JTRE* *JTRE*))
   //   (dolist (just (jtms-justs (jtre-jtms *JTRE*)))
   //     (when (= (just-index just) num)
   //      (return-from GET-just just))))
 
+  def showRules: Unit = ???
   // (defun show-rules (&optional (*JTRE* *JTRE*) (stream *standard-output*))
   //   (format t "~%There are ~D rules in ~A:"
   //      (jtre-rule-counter *JTRE*) (jtre-title *JTRE*))
@@ -327,22 +348,15 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //             (dolist (rule (dbclass-rules dbclass))
   //                     (print-rule rule stream)))))
 
+  def getRule(num: Int): Rule[I] = ???
   // (defun get-rule (num &optional (*JTRE* *JTRE*))
   //   (map-dbclass #'(lambda (dbclass)
   //             (dolist (rule (dbclass-rules dbclass))
   //                     (when (= (rule-id rule) num)
   //                           (return-from GET-RULE rule))))))
 
-  // (defvar *JTRE* nil)
-
-  // (defmacro With-Jtre (jtre &rest forms)
-  //   `(let ((*JTRE* ,jtre)) ,@ forms))
-
-  // (defun In-Jtre (jtre) (setq *JTRE* jtre))
-
-  // (defmacro debugging-jtre (msg &rest args)
-  //   `(when (jtre-debugging *JTRE*) (format t ,msg  ,@args)))
-
+  // Called from some examples only — leaving untranslated for now. [JM]
+  //
   // (defun run-rules (&optional (*JTRE* *JTRE*))
   //   (do ((form (dequeue *JTRE*) (dequeue *JTRE*))
   //        (counter 0 (1+ counter)))
@@ -351,6 +365,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //        (incf (jtre-rules-run *JTRE*) counter))
   //     (apply (car form) (cdr form))))
 
+  def rulesWaiting: Boolean = !queue.isEmpty
   // (defun rules-waiting? (jtre) (jtre-queue jtre))
 
   def enqueue(rule: Rule[I]): Unit = queue.enqueue(rule)
@@ -358,4 +373,17 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   def dequeue: Rule[I] = queue.dequeue
   // (defun dequeue (jtre) (pop (jtre-queue jtre)))
+
+  // Not relevant in Scala translation: methods now called against a
+  // particular object, not a special global variable.
+  //
+  // (defvar *JTRE* nil)
+  // (defmacro With-Jtre (jtre &rest forms)
+  //   `(let ((*JTRE* ,jtre)) ,@ forms))
+  // (defun In-Jtre (jtre) (setq *JTRE* jtre))
 }
+
+inline def dbgJtre[I](jtre: JTRE[I], msg: String) =
+  if jtre.debugging then println(msg)
+// (defmacro debugging-jtre (msg &rest args)
+//   `(when (jtre-debugging *JTRE*) (format t ,msg  ,@args)))

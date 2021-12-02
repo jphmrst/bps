@@ -9,11 +9,11 @@
      - Need both JTMS and JTRE?  Need something more?
 
 * Add method stubs
-** TODO JTRE
 ** WAIT DbClass
    - Lots of macro stuff not completed
 ** WAIT Rule
    - Lots of macro stuff not completed
+** DONE JTRE
 ** DONE Node
 ** DONE JTMS
 ** DONE Just
@@ -28,6 +28,9 @@
 ** DONE Just
 ** DONE Datum
    - /Probably/ DONE
+
+
+* Translate examples
 
 * Document
 ** TODO JTMS
