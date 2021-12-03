@@ -30,8 +30,8 @@
   :VISIBILITY: all
   :END:
 ** TODO [[./JTMS.scala][JTMS]]
-** TODO [[./Node.scala][Node]]
 ** TODO [[./JTRE.scala][JTRE]]
+** TODO [[./Node.scala][Node]] — current
 ** WAIT [[./Rule.scala][Rule]]
    - Lots of macro stuff not completed
 ** WAIT DbClass

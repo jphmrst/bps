@@ -20,7 +20,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 val enabledAssumption = Symbol("Enabled-assumption")
 
-type Support[I] = Justification[I] | Node[I]
+type Support[I] = Justification[I] // | Node[I]
 
 class Node[I](
   val index: Int,
@@ -71,7 +71,7 @@ class Node[I](
     case Some(sup) => sup match {
       case s: Symbol => sup != enabledAssumption
       case just: Just[I] => just.antecedents.isEmpty
-      case _ => false // TODO Come back to this --- what if it's a Node here?
+      // case n: Node[I] => false // TODO Come back to this --- what if it's a Node here?
     }
   }
   // (defun tms-node-premise? (node &aux support)
@@ -190,7 +190,12 @@ class Node[I](
   //     (setf (tms-node-in-rules conseq) nil)))
 
   def retractAssumption: Unit = {
-    ???
+    if support == enabledAssumption
+    then {
+      dbg(jtms, "  Retracting assumption $this")
+      makeNodeOut
+      jtms.findAlternativeSupport(this :: jtms.propagateOutness(this))
+    }
   }
   // ;;; Assumption Manipulation
   // (defun retract-assumption (node &aux jtms)
@@ -203,21 +208,43 @@ class Node[I](
   //                                     (propagate-outness node jtms)))))
 
   def enableAssumption: Unit = {
-    ???
+    if !isAssumption then tmsError(s"Can't enable the non-assumption $this")
+    dbg(jtms, s"  Enabling assumption $this.")
+    if isOutNode then {
+      makeNodeIn(enabledAssumption)
+      propagateInness
+    } else {
+      if support != enabledAssumption && !support.map(_ match {
+        case j: Just[I] => j.antecedents.isEmpty
+        case _: Symbol => true // TODO Really?
+      }).getOrElse(false) then {
+        support = Some(enabledAssumption)
+      }
+    }
+    jtms.checkForContradictions
   }
   // (defun enable-assumption (node &aux (jtms (tms-node-jtms node)))
   //   (unless (tms-node-assumption? node)
   //     (tms-error "Can't enable the non-assumption ~A" node))
   //   (debugging-jtms jtms "~%  Enabling assumption ~A." node)
-  //   (cond ((out-node? node) (make-node-in node :ENABLED-ASSUMPTION)
-  //                      (propagate-inness node))
+  //   (cond ((out-node? node)
+  //          (make-node-in node :ENABLED-ASSUMPTION)
+  //          (propagate-inness node))
   //    ((or (eq (tms-node-support node) :ENABLED-ASSUMPTION)
   //         (null (just-antecedents (tms-node-support node)))))
   //    (t (setf (tms-node-support node) :ENABLED-ASSUMPTION)))
   //   (check-for-contradictions jtms))
 
   def makeNodeOut: Unit = {
-    ???
+    val enqueuef = jtms.enqueueProcedure
+    dbg(jtms, "     retracting belief in $this.")
+    support = None
+    believed = false
+    jtms.enqueueProcedure match {
+      case None => { }
+      case Some(fn) => for outRule <- outRules do fn(outRule)
+    }
+    outRules.clear
   }
   // (defun make-node-out (node &aux jtms enqueuef)
   //   (setq jtms (tms-node-jtms node)
@@ -229,13 +256,18 @@ class Node[I](
   //             (funcall enqueuef out-rule)))
   //   (setf (tms-node-out-rules node) nil))
 
-  def supportingJustificationForNode: Just[I] = {
-    ???
-  }
+  inline def supportingJustificationForNode: Option[Justification[I]] = support
   // ;;; Well-founded support inqueries
   // (defun supporting-justification-for-node (node) (tms-node-support node))
 
   def assumptionsOfNode: ContraAssumptions[I] = {
+    val marker = Symbol("mark")
+    val queue = Queue[Node[I]](this)
+    while (!queue.isEmpty) {
+      val node = queue.dequeue()
+      if !mark.map(_ == marker).getOrElse(false) then
+
+    }
     ???
   }
   // (defun assumptions-of-node (node &aux assumptions (marker (list :MARK)))

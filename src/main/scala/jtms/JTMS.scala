@@ -136,15 +136,14 @@ class JTMS[I](
   //       (setf (tms-node-support consequence) just))
   //   (check-for-contradictions jtms))
 
-  def findAlternativeSupport(outQueue: ListBuffer[Node[I]]): Just[I] = ???
+  def findAlternativeSupport(outQueue: Iterable[Node[I]]): Just[I] = ???
   // (defun find-alternative-support (jtms out-queue)
   //   (debugging-jtms jtms "~%   Looking for alternative supports.")
   //   (dolist (node out-queue)
   //     (unless (in-node? node)
   //       (dolist (just (tms-node-justs node))
   //    (when (check-justification just)
-  //      (install-support (just-consequence just)
-  //                             just)
+  //      (install-support (just-consequence just) just)
   //      (return just))))))
 
   def checkForContradictions: Unit = ???
@@ -156,7 +155,7 @@ class JTMS[I](
   //     (if contradictions
   //    (funcall (jtms-contradiction-handler jtms) jtms contradictions))))
 
-  def propagateOutness(node: Node[I]): Unit = ???
+  def propagateOutness(node: Node[I]): List[Node[I]] = ???
   // (defun propagate-outness (node jtms &aux out-queue)
   //   (debugging-jtms jtms "~%   Propagating disbelief in ~A." node)
   //   (do ((js (tms-node-consequences node) (append (cdr js) new))
