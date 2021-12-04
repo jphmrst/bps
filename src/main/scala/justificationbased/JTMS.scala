@@ -17,7 +17,7 @@
 
 package org.maraist.truthmaintenancesystems.justificationbased
 import scala.util.control.NonLocalReturns.*
-import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
+import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 /** Temporary type placeholder, until we work out a final form. */
 type ContraAssumptions[I] = Option[Node[I]]
@@ -225,7 +225,20 @@ class JTMS[I](
   //                  jtms contradictions))))
 
   def propagateOutness(node: Node[I]): List[Node[I]] = {
-    ???
+    dbg(s"   Propagating disbelief in $node.")
+    var outQueue = new ListBuffer[Node[I]]
+    val queue = Queue.empty[Just[I]]
+    queue ++= node.consequences
+    while (!queue.isEmpty) {
+      val j = queue.dequeue
+      val conseq = j.consequence
+      if conseq.support == j then {
+        conseq.makeNodeOut
+        outQueue += conseq
+        for (c <- conseq.consequences) do queue.enqueue(c)
+      }
+    }
+    outQueue.toList
   }
   // (defun propagate-outness (node jtms &aux out-queue)
   //   (debugging-jtms jtms "~%   Propagating disbelief in ~A." node)
