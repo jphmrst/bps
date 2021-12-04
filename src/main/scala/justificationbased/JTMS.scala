@@ -300,7 +300,10 @@ class JTMS[I](
   //           (retract-assumption assumption)))))))
 
   def enabledAssumptions: List[Node[I]] = {
-    ???
+    val result = ListBuffer.empty[Node[I]]
+    for (assumption <- assumptions)
+      do if assumption.support == enabledAssumption then result += assumption
+    result.toList
   }
   // (defun enabled-assumptions (jtms &aux result)
   //   (dolist (assumption (jtms-assumptions jtms) result)
