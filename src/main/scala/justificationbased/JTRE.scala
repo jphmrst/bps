@@ -23,7 +23,7 @@ type Fact = Matchable
 class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   /** Pointer to its JTMS. */
-  val theJtms: JTMS[I] = new JTMS[I](title,
+  val jtms: JTMS[I] = new JTMS[I](title,
     nodeString = (n: Node[I]) => n.viewNode.toString,
     enqueueProcedure = Some(this.enqueue))
 
@@ -88,7 +88,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
     val datum = referent(fact, true).get
     val node = datum.node
     dbgJtre(this, s"    Asserting ${fact} via ${just}.")
-    // theJtms.justifyNode(just, node,
+    // jtms.justifyNode(just, node,
     ??? // TODO Come back to this.
   }
   // ;; From jdata.lisp

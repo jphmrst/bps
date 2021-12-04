@@ -18,7 +18,7 @@
 package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-class Datum[I] private[jtms] (
+class Datum[I] private[justificationbased] (
   val id: Int,
   val fact: Fact,
   val dbClass: DbClass[I]

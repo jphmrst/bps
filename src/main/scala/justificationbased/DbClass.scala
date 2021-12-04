@@ -68,7 +68,7 @@ class DbClass[I](
     case None => {
       val datum: Datum[I] =
         new Datum[I](jtre.incfDatumCounter, fact, jtre.getDbClass(fact))
-      val node: Node[I] = jtre.theJtms.createNode(datum)
+      val node: Node[I] = jtre.jtms.createNode(datum)
       datum.dbClass.facts += datum
       tryRules(datum)
       (datum, false)
