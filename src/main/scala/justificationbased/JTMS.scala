@@ -278,9 +278,11 @@ class JTMS[I](
   // (defmacro with-contradiction-handler (jtms handler &body body)
   //   (let ((jtmsv (gensym)) (old-handler (gensym)))
   //     `(let* ((,jtmsv ,jtms)
-  //        (,old-handler (jtms-contradiction-handler ,jtmsv)))
-  //      (unwind-protect
-  //     (progn (setf (jtms-contradiction-handler ,jtmsv) ,handler) ,@body)
+  //             (,old-handler (jtms-contradiction-handler ,jtmsv)))
+  //        (unwind-protect
+  //          (progn
+  //            (setf (jtms-contradiction-handler ,jtmsv) ,handler)
+  //            ,@body)
   //        (setf (jtms-contradiction-handler ,jtmsv) ,old-handler)))))
 
   def defaultAssumptions: Unit = {
