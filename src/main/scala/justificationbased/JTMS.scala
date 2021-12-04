@@ -39,7 +39,8 @@ class JTMS[I](
   val debugging: Boolean = false,
   val checkingContradictions: Boolean = true,
   var enqueueProcedure: Option[(Rule[I]) => Unit] = None,
-  var contradictionHandler: Option[(JTMS[I], List[Node[I]]) => Unit] = None
+  var contradictionHandler: Option[(JTMS[I], ListBuffer[Node[I]]) => Unit] =
+    None
 ) {
 
   /** Unique namer for nodes. */
@@ -204,10 +205,14 @@ class JTMS[I](
   //           (return just))))))
 
   def checkForContradictions: Unit = {
+    val localContras: ListBuffer[Node[I]] = ListBuffer.empty
     if checkingContradictions then {
-      ???
-    } else {
-      ???
+      for (cNode <- contradictions) {
+        if cNode.isInNode then localContras += cNode
+      }
+      if !localContras.isEmpty then {
+        contradictionHandler.map((fn) => fn(this, localContras))
+      }
     }
   }
   // ;;; Contradiction handling interface
@@ -216,7 +221,8 @@ class JTMS[I](
   //     (dolist (cnode (jtms-contradictions jtms))
   //       (if (in-node? cnode) (push cnode contradictions)))
   //     (if contradictions
-  //    (funcall (jtms-contradiction-handler jtms) jtms contradictions))))
+  //         (funcall (jtms-contradiction-handler jtms)
+  //                  jtms contradictions))))
 
   def propagateOutness(node: Node[I]): List[Node[I]] = {
     ???

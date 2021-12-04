@@ -29,8 +29,10 @@
   :PROPERTIES:
   :VISIBILITY: all
   :END:
-** TODO [[./JTMS.scala][JTMS]]
-** TODO [[./JTRE.scala][JTRE]] — current
+** TODO [[./JTMS.scala][JTMS]] — current
+** WAIT [[./JTRE.scala][JTRE]]
+   - Come back to terms/unification.  Will need to change Fact from
+     Matchable to a Term typeclass.
 ** WAIT [[./Rule.scala][Rule]]
    - Lots of macro stuff not completed
 ** WAIT DbClass
