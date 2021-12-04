@@ -30,12 +30,13 @@
   :VISIBILITY: all
   :END:
 ** TODO [[./JTMS.scala][JTMS]]
-** TODO [[./JTRE.scala][JTRE]]
-** TODO [[./Node.scala][Node]] — current
+** TODO [[./JTRE.scala][JTRE]] — current
 ** WAIT [[./Rule.scala][Rule]]
    - Lots of macro stuff not completed
 ** WAIT DbClass
    - Two macro-related methods not completed
+** DONE [[./Node.scala][Node]]
+   - Interactive method left untranslated for now
 ** DONE Just
 ** DONE Datum
    - /Probably/ DONE

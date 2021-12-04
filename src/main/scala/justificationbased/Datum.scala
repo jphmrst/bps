@@ -15,7 +15,7 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.tms.jtms
+package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
 class Datum[I] private[jtms] (
@@ -24,6 +24,8 @@ class Datum[I] private[jtms] (
   val dbClass: DbClass[I]
 ) {
   var node: Node[I] = ???
+
+  var isAssumption: Boolean = ???
 
   // (defstruct (datum (:PRINT-FUNCTION jtre-datum-printer))
   //   id                   ; Unique ID for easy lookup

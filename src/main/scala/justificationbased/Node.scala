@@ -15,7 +15,7 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.tms.jtms
+package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 val enabledAssumption = Symbol("Enabled-assumption")
@@ -23,12 +23,13 @@ val enabledAssumption = Symbol("Enabled-assumption")
 type Support[I] = Justification[I] // | Node[I]
 
 class Node[I](
-  val index: Int,
   val datum: Datum[I],
   val jtms: JTMS[I],
   var isAssumption: Boolean = false,
   var isContradictory: Boolean = false
 ) {
+
+  val index: Int = jtms.incrNodeCounter
 
   var support: Option[Support[I]] = None
 
@@ -45,6 +46,9 @@ class Node[I](
 
   /** Rules that should be triggered when node goes out. */
   val outRules: ListBuffer[Rule[I]] = ListBuffer.empty
+
+  /** Marker for sweep algorithms. */
+  var mark: Option[Symbol] = None
 
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
   //   (index 0)
@@ -260,15 +264,25 @@ class Node[I](
   // ;;; Well-founded support inqueries
   // (defun supporting-justification-for-node (node) (tms-node-support node))
 
-  def assumptionsOfNode: ContraAssumptions[I] = {
+  def assumptionsOfNode: ListBuffer[Node[I]] = {
     val marker = Symbol("mark")
-    val queue = Queue[Node[I]](this)
+    val queue = Queue[Node[I]](this) // Replaces `new`
+    val assumptions = ListBuffer.empty[Node[I]]
     while (!queue.isEmpty) {
       val node = queue.dequeue()
-      if !mark.map(_ == marker).getOrElse(false) then
-
+      if node.mark.map(_ == marker).getOrElse(false) then {
+        // Intentionally empty block
+      } else if node.support.map(_ == enabledAssumption).getOrElse(false) then {
+        assumptions += node
+      } else if node.isInNode then {
+        node.support.map(_ match {
+          case _: Symbol  => { }
+          case j: Just[I] => { queue ++= j.antecedents }
+        })
+      }
+      node.mark = Some(marker)
     }
-    ???
+    assumptions
   }
   // (defun assumptions-of-node (node &aux assumptions (marker (list :MARK)))
   //   (do ((nodes (list node) (append (cdr nodes) new))
@@ -283,7 +297,20 @@ class Node[I](
   //       (setf (tms-node-mark node) marker))))
 
   def whyNode: Node[I] = {
-    ???
+    support match {
+      case Some(s: Symbol)  =>
+        if s == enabledAssumption then
+          println("${nodeString} is an enabled assumption")
+        else
+          println("${nodeString} is OUT")
+      case Some(j: Just[I]) => {
+        println(s"${nodeString} is IN via ${j.informant} on")
+        j.antecedents.map((a) => println(s"  ${a.nodeString}"))
+        println
+      }
+      case None => println("${nodeString} is OUT")
+    }
+    this
   }
   // ;;; Inference engine stub to allow this JTMS to be used stand alone
   // (defun why-node (node &aux justification)
@@ -300,9 +327,34 @@ class Node[I](
   //    (T (format t "~%~A is OUT." (node-string node))))
   //   node)
 
-  def exploreNetwork: Unit = {
-    ???
-  }
+  // Method exploreNetwork is interactive; omitting for now [JM Dec 2 '21]
+  // -----------------------------------------------------------------
+  // def exploreNetwork: Node[I] = if isInNode then {
+  //
+  //   // Outer do macro
+  //   val stack: ListBuffer[Node[I]] = ListBuffer.empty
+  //   var current: Node[I] = this
+  //   var notYetDone: Boolean = true
+  //   while (notYetDone) {
+  //     current.whyNode
+  //     val options: ListBuffer[Node[I]] = current.support match {
+  //       case Some(j: Just[I]) => j.antecedents
+  //       case _ => ListBuffer.empty
+  //     }
+  //     val oLen: Int = options.length
+  //
+  //     // Inner do macro
+  //     var notGoodYet: Boolean = false
+  //     var choice: Int = 0
+  //
+  //     ???
+  //   }
+  //   current
+  // } else {
+  //   println(s" Sorry, ${nodeString} not believed.")
+  //   this
+  // }
+  // -----------------------------------------------------------------
   // (defun explore-network (node)
   //   (unless (in-node? node)
   //      (format t "~% Sorry, ~A not believed." (node-string node))
@@ -312,30 +364,28 @@ class Node[I](
   //        (options nil)
   //        (olen 0)
   //        (done? nil))
-  //       (done? current)
-  //       (why-node current)
-  //       (setq options (if (typep (tms-node-support current) 'just)
-  //                    (just-antecedents (tms-node-support current))))
-  //       (setq olen (length options))
-  //       (do ((good? nil)
-  //       (choice 0))
-  //      (good? (case good?
+  //      (done? current)
+  //      (why-node current)
+  //      (setq options (if (typep (tms-node-support current) 'just)
+  //                        (just-antecedents (tms-node-support current))))
+  //      (setq olen (length options))
+  //      (do ((good? nil) (choice 0))
+  //         (good? (case good?
   //                   (q (return-from explore-network current))
   //                   (0 (if stack
   //                          (setq current (pop stack))
   //                          (return-from explore-network current)))
   //                   (t (push current stack)
   //                      (setq current (nth (1- good?) options)))))
-  //      (format t "~%>>>")
-  //      (setq choice (read))
-  //      (cond ((or (eq choice 'q)
-  //                 (and (integerp choice)
-  //                      (not (> choice olen))
-  //                      (not (< choice 0))))
-  //             (setq good? choice))
-  //            (t (format t
-  //                "~% Must be q or an integer from 0 to ~D."
-  //                olen))))))
+  //        (format t "~%>>>")
+  //        (setq choice (read))
+  //        (cond ((or (eq choice 'q)
+  //                   (and (integerp choice)
+  //                        (not (> choice olen))
+  //                        (not (< choice 0))))
+  //               (setq good? choice))
+  //              (t (format t "~% Must be q or an integer from 0 to ~D."
+  //                   olen))))))
 
   def viewNode: Fact = datum.fact
   // ;; From jdata.lisp

@@ -15,7 +15,7 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.tms.jtms
+package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 import scala.util.control.NonLocalReturns.*
 
@@ -68,7 +68,7 @@ class DbClass[I](
     case None => {
       val datum: Datum[I] =
         new Datum[I](jtre.incfDatumCounter, fact, jtre.getDbClass(fact))
-      val node: Node[I] = jtre.jtms.createNode(datum)
+      val node: Node[I] = jtre.theJtms.createNode(datum)
       datum.dbClass.facts += datum
       tryRules(datum)
       (datum, false)

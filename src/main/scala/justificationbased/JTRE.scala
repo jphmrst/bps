@@ -15,7 +15,7 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.tms.jtms
+package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 type Fact = Matchable
@@ -23,7 +23,7 @@ type Fact = Matchable
 class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   /** Pointer to its JTMS. */
-  val jtms: JTMS[I] = new JTMS[I](title,
+  val theJtms: JTMS[I] = new JTMS[I](title,
     nodeString = (n: Node[I]) => n.viewNode.toString,
     enqueueProcedure = Some(this.enqueue))
 
@@ -84,7 +84,13 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //
   // ;;;; Making statements
 
-  def assert(fact: Fact, just: Just[I]): Datum[I] = ???
+  def assert(fact: Fact, just: Justification[I]): Datum[I] = {
+    val datum = referent(fact, true).get
+    val node = datum.node
+    dbgJtre(this, s"    Asserting ${fact} via ${just}.")
+    // theJtms.justifyNode(just, node,
+    ??? // TODO Come back to this.
+  }
   // ;; From jdata.lisp
   // (defun assert! (fact just &optional (*JTRE* *JTRE*) &aux datum node)
   //   (setq datum (referent fact t)
@@ -96,12 +102,16 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //                    (cdr just)))
   //   datum)
 
-  def quietAssert(fact: Fact, just: Just[I]): Datum[I] = ???
+  def quietAssert(fact: Fact, just: Just[I]): Datum[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun quiet-assert! (fact just &optional (*JTRE* *JTRE*))
   //   (without-contradiction-check (jtre-jtms *JTRE*) (assert! fact just)))
 
-  def assume(fact: Fact, reason: Node[I]): Datum[I] = ???
+  def assume(fact: Fact, reason: Node[I]): Datum[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun assume! (fact reason &optional (*JTRE* *JTRE*) &aux datum node)
   //   (setq datum (referent fact t)
@@ -120,7 +130,9 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
     fact: Fact,
     just: Justification[I] = Symbol("user"),
     quiet: Boolean = false):
-      Node[I] = ???
+      Node[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun retract! (fact &optional (just 'user) (quiet? nil)
   //                  (*JTRE* *JTRE*) &aux datum node)
@@ -148,13 +160,17 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   def uAssert(
     fact: Fact,
     just: Justification[I] = Symbol("user")):
-      Unit = ???
+      Unit = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun uassert! (fact &optional (just 'user))
   //   (assert! fact just) ;; Do internal operation
   //   (run-rules *JTRE*))        ;; Run the rules
 
-  def uAssume(fact: Fact, reason: Node[I]): Unit = ???
+  def uAssume(fact: Fact, reason: Node[I]): Unit = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun uassume! (fact reason) ;; Similar to UASSERT!
   //   (assume! fact reason *JTRE*)
@@ -166,7 +182,9 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   // (defun run-forms (forms &optional (*JTRE* *JTRE*))
   //   (dolist (form forms) (eval form) (run-rules *JTRE*)))
 
-  def run: Unit = ???
+  def run: Unit = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun run (&optional (*JTRE* *JTRE*)) ;; Toplevel driver function
   //     (format T "~%>>")
@@ -176,13 +194,17 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //         (run-rules)
   //         (format t "~%>>")))
 
-  def show: Unit = ???
+  def show: Unit = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun show (&optional (*JTRE* *JTRE*) (stream *standard-output*))
   //   (show-data *JTRE* stream) (show-rules *JTRE* stream))
 
-  def referent(fact: Fact): Option[Node[I]] = referent(fact, false)
-  def referent(fact: Fact, isVirtual: Boolean): Option[Node[I]] = ???
+  def referent(fact: Fact): Option[Datum[I]] = referent(fact, false)
+  def referent(fact: Fact, isVirtual: Boolean): Option[Datum[I]] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun referent (fact &optional (virtual? nil)
   //                  (*JTRE* *JTRE*))
@@ -196,32 +218,42 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //   (when (setq r (referent fact))
   //     (datum-assumption? r)))
 
-  def contradiction(fact: Fact): Node[I] = ???
+  def contradiction(fact: Fact): Node[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun contradiction (fact &optional (*JTRE* *JTRE*))
   //   (make-contradiction (datum-tms-node (referent fact t))))
   // 
   // ;;;; Interface and display of data
 
-  def isIn(fact: Fact): Boolean = ???
+  def isIn(fact: Fact): Boolean = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun in? (fact &optional (*JTRE* *JTRE*) &aux r)
   //   (when (setq r (referent fact))
   //    (in-node? (datum-tms-node r))))
 
-  def isOut(fact: Fact): Boolean = ???
+  def isOut(fact: Fact): Boolean = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun out? (fact &optional (*JTRE* *JTRE*) &aux r)
   //   (or (not (setq r (referent fact))) ; a non-existent fact is out
   //       (out-node? (datum-tms-node r))))
 
-  def why(fact: Fact): Node[I] = ???
+  def why(fact: Fact): Node[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun why? (fact &optional (*JTRE* *JTRE*) &aux r)
   //   (when (setq r (referent fact))
   //    (why-node (datum-tms-node r))))
 
-  def assumptionsOf(fact: Fact): Node[I] = ???
+  def assumptionsOf(fact: Fact): Node[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun assumptions-of (fact &optional (*JTRE* *JTRE*))
   //   (mapcar #'view-node
@@ -260,7 +292,9 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //               (push ante so-far)
   //               (push ante new-antes))))))))
 
-  def sayDatumBelief(pr: Datum[I]): Unit = ???
+  def sayDatumBelief(pr: Datum[I]): Unit = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun say-datum-belief (pr &optional (*jtre* *jtre*)
   //                        (indent ""))
@@ -268,7 +302,9 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //      (if (in-node? (get-tms-node pr *jtre*))
   //          "IN" "OUT")))
 
-  def showJustifications(fact: Fact): Unit = ???
+  def showJustifications(fact: Fact): Unit = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun show-justifications (fact &optional (*jtre* *jtre*))
   //   (format t "~% ~A::" fact)
@@ -287,7 +323,9 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //               (format t "."))
   //              (t (format t "."))))))
 
-  def showData: Unit = ???
+  def showData: Unit = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun show-data (&optional (*JTRE* *JTRE*)
   //                        (stream *standard-output*))
@@ -302,7 +340,9 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   // ;;;; Database system
 
-  def getDbClass(fact: Fact): DbClass[I] = ???
+  def getDbClass(fact: Fact): DbClass[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun get-dbclass (fact &optional (*JTRE* *JTRE*)
   //                     &aux dbclass)
@@ -326,19 +366,25 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //              dbclass)))
   //    (t (error "Bad dbclass type: ~A" fact))))
 
-  def mapDbClass(proc: (DbClass[I]) => Unit): Unit = ???
+  def mapDbClass(proc: (DbClass[I]) => Unit): Unit = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun map-dbclass (proc &optional (*JTRE* *JTRE*))
   //   (maphash #'(lambda (name dbclass) (declare (ignore name))
   //           (funcall proc dbclass))
   //       (jtre-dbclass-table *JTRE*)))
 
-  def getTmsNode(fact: Fact): Node[I] = ???
+  def getTmsNode(fact: Fact): Node[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun get-tms-node (fact &optional (*JTRE* *JTRE*))
   //   (datum-tms-node (referent fact t)))
 
-  def getDatum(num: Int): Datum[I] = ???
+  def getDatum(num: Int): Datum[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun get-datum (num &optional (*JTRE* *JTRE*))
   //   (map-dbclass
@@ -347,14 +393,18 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //           (when (= (datum-id datum) num)
   //                 (return-from GET-DATUM datum))))))
 
-  def getJust(num: Int): Just[I] = ???
+  def getJust(num: Int): Just[I] = {
+    ???
+  }
   // ;; From jdata.lisp
   // (defun get-just (num &optional (*JTRE* *JTRE*))
   //   (dolist (just (jtms-justs (jtre-jtms *JTRE*)))
   //     (when (= (just-index just) num)
   //      (return-from GET-just just))))
 
-  def showRules: Unit = ???
+  def showRules: Unit = {
+    ???
+  }
   // (defun show-rules (&optional (*JTRE* *JTRE*) (stream *standard-output*))
   //   (format t "~%There are ~D rules in ~A:"
   //      (jtre-rule-counter *JTRE*) (jtre-title *JTRE*))
@@ -364,7 +414,9 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   //             (dolist (rule (dbclass-rules dbclass))
   //                     (print-rule rule stream)))))
 
-  def getRule(num: Int): Rule[I] = ???
+  def getRule(num: Int): Rule[I] = {
+    ???
+  }
   // (defun get-rule (num &optional (*JTRE* *JTRE*))
   //   (map-dbclass #'(lambda (dbclass)
   //             (dolist (rule (dbclass-rules dbclass))
