@@ -310,14 +310,13 @@ class JTMS[I](
   //     (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
   //       (push assumption result))))
 
-  def whyNodes: Unit = {
-    ???
-  }
+  def whyNodes: Unit = nodes.map(_.whyNode)
   // (defun why-nodes (jtms)
   //   (dolist (node (jtms-nodes jtms)) (why-node node)))
 
   def askUserHandler(contradictions: List[Node[I]]): Unit = {
-    ???
+    handleOneContradiction(contradictions.head)
+    checkForContradictions
   }
   // (defun ask-user-handler (jtms contradictions)
   //   (handle-one-contradiction (car contradictions))
