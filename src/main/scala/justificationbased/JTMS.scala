@@ -149,8 +149,16 @@ class JTMS[I](
   def justifyNode(
     informant: I, consequence: Node[I], antecedents: ListBuffer[Node[I]]):
       Unit = {
-
-    ???
+    val just = new Just[I](incrJustCounter, informant, consequence, antecedents)
+    for (node <- antecedents) do node.consequences += just
+    justs += just
+    dbg(this, s"Justifying $consequence by $informant using ${antecedents.map(nodeString)}.")
+    if !antecedents.isEmpty || consequence.isOutNode then {
+      if just.checkJustification then consequence.installSupport(just)
+    } else {
+      consequence.support = Some(just)
+    }
+    checkForContradictions
   }
   // (defun justify-node (informant consequence antecedents &aux just jtms)
   //   (setq jtms (tms-node-jtms consequence)
