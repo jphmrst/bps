@@ -50,6 +50,9 @@ class Node[I](
   /** Marker for sweep algorithms. */
   var mark: Option[Symbol] = None
 
+  /** Possible justifications. */
+  val justs: ListBuffer[Just[I]] = ListBuffer.empty
+
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
   //   (index 0)
   //   (datum nil)           ;; pointer to external problem solver
@@ -101,7 +104,7 @@ class Node[I](
 
   def assumeNode: Unit = {
     if !isAssumption && !isPremise then {
-      dbg(jtms, s"Converting $this into an assumption")
+      jtms.dbg(s"Converting $this into an assumption")
       isAssumption = true
       jtms.assumptions += this
     }
@@ -138,7 +141,7 @@ class Node[I](
     val q = Queue[Node[I]](this)
     while (!q.isEmpty) {
       val node = q.dequeue
-      dbg(jtms, s"Propagating belief in $node.")
+      jtms.dbg(s"Propagating belief in $node.")
       for (justification <- node.consequences)
         do if justification.checkJustification then {
           val conseq = justification.consequence
@@ -158,7 +161,7 @@ class Node[I](
 
   def makeNodeIn(reason: Justification[I]) = {
     val enqueuef: Option[(Rule[I]) => Unit] = jtms.enqueueProcedure
-    dbg(jtms, reason match {
+    jtms.dbg(reason match {
       case s: Symbol  => s"     Making $this in via symbolic $s."
       case j: Just[I] => {
         val mapped = j.antecedents.map(jtms.nodeString)
@@ -196,7 +199,7 @@ class Node[I](
   def retractAssumption: Unit = {
     if support == enabledAssumption
     then {
-      dbg(jtms, "  Retracting assumption $this")
+      jtms.dbg("  Retracting assumption $this")
       makeNodeOut
       jtms.findAlternativeSupport(this :: jtms.propagateOutness(this))
     }
@@ -213,7 +216,7 @@ class Node[I](
 
   def enableAssumption: Unit = {
     if !isAssumption then tmsError(s"Can't enable the non-assumption $this")
-    dbg(jtms, s"  Enabling assumption $this.")
+    jtms.dbg(s"  Enabling assumption $this.")
     if isOutNode then {
       makeNodeIn(enabledAssumption)
       propagateInness
@@ -241,7 +244,7 @@ class Node[I](
 
   def makeNodeOut: Unit = {
     val enqueuef = jtms.enqueueProcedure
-    dbg(jtms, "     retracting belief in $this.")
+    jtms.dbg("     retracting belief in $this.")
     support = None
     believed = false
     jtms.enqueueProcedure match {

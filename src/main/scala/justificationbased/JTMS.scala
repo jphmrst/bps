@@ -16,13 +16,8 @@
 // language governing permissions and limitations under the License.
 
 package org.maraist.truthmaintenancesystems.justificationbased
+import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
-
-inline def dbg[I](jtms: JTMS[I], msg: String) =
-  if jtms.debugging then println(msg)
-// (defmacro debugging-jtms (jtms msg &optional node &rest args)
-//   `(when (jtms-debugging ,jtms)
-//      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
 
 /** Temporary type placeholder, until we work out a final form. */
 type ContraAssumptions[I] = Option[Node[I]]
@@ -104,6 +99,11 @@ class JTMS[I](
   //         :ENQUEUE-PROCEDURE enqueue-procedure
   //         ))
 
+  inline def dbg(msg: String) = if debugging then println(msg)
+  // (defmacro debugging-jtms (jtms msg &optional node &rest args)
+  //   `(when (jtms-debugging ,jtms)
+  //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
+
   /** Print the JTMS by name. */
   def printJtms(): Unit = println(s"<JTMS: $title>")
   // (defun print-jtms (jtms stream ignore)
@@ -152,7 +152,7 @@ class JTMS[I](
     val just = new Just[I](incrJustCounter, informant, consequence, antecedents)
     for (node <- antecedents) do node.consequences += just
     justs += just
-    dbg(this, s"Justifying $consequence by $informant using ${antecedents.map(nodeString)}.")
+    dbg(s"Justifying $consequence by $informant using ${antecedents.map(nodeString)}.")
     if !antecedents.isEmpty || consequence.isOutNode then {
       if just.checkJustification then consequence.installSupport(just)
     } else {
@@ -179,20 +179,36 @@ class JTMS[I](
   //       (setf (tms-node-support consequence) just))
   //   (check-for-contradictions jtms))
 
-  def findAlternativeSupport(outQueue: Iterable[Node[I]]): Just[I] = {
-    ???
-  }
+  def findAlternativeSupport(outQueue: Iterable[Node[I]]): Option[Just[I]] =
+    returning {
+      dbg(s"   Looking for alternative supports.")
+      for (node <- outQueue) do {
+        if node.isInNode then {
+          for (just <- node.justs) do {
+            if just.checkJustification then {
+              just.consequence.installSupport(just)
+              throwReturn[Option[Just[I]]](Some(just))
+            }
+          }
+        }
+      }
+      None
+    }
   // (defun find-alternative-support (jtms out-queue)
   //   (debugging-jtms jtms "~%   Looking for alternative supports.")
   //   (dolist (node out-queue)
   //     (unless (in-node? node)
   //       (dolist (just (tms-node-justs node))
-  //    (when (check-justification just)
-  //      (install-support (just-consequence just) just)
-  //      (return just))))))
+  //         (when (check-justification just)
+  //           (install-support (just-consequence just) just)
+  //           (return just))))))
 
   def checkForContradictions: Unit = {
-    ???
+    if checkingContradictions then {
+      ???
+    } else {
+      ???
+    }
   }
   // ;;; Contradiction handling interface
   // (defun check-for-contradictions (jtms &aux contradictions)
