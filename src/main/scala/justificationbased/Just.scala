@@ -18,13 +18,13 @@
 package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-type Justification[I] = Just[I] | Symbol
+type Justification[D, I] = Just[D, I] | Symbol
 
-class Just[I](
+class Just[D, I](
   val index: Int,
   val informant: I,
-  val consequence: Node[I],
-  val antecedents: ListBuffer[Node[I]]
+  val consequence: Node[D, I],
+  val antecedents: ListBuffer[Node[D, I]]
 ) {
   // (defstruct (just (:PRINT-FUNCTION print-just))
   //   (index 0)

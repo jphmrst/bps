@@ -20,18 +20,18 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 val enabledAssumption = Symbol("Enabled-assumption")
 
-type Support[I] = Justification[I] // | Node[I]
+type Support[D, I] = Justification[D, I] // | Node[D, I]
 
-class Node[I](
-  val datum: Datum[I],
-  val jtms: JTMS[I],
+class Node[D, I](
+  val datum: D,
+  val jtms: JTMS[D, I],
   var isAssumption: Boolean = false,
   var isContradictory: Boolean = false
 ) {
 
   val index: Int = jtms.incrNodeCounter
 
-  var support: Option[Support[I]] = None
+  var support: Option[Support[D, I]] = None
 
   /** Whether the current node is `:IN`.  A value of `true` corresponds
     * to a `label` of `:IN` in the old Lisp `struct`ure; `false`, to
@@ -39,7 +39,7 @@ class Node[I](
     */
   var believed: Boolean = false
 
-  val consequences: ListBuffer[Just[I]] = ListBuffer.empty
+  val consequences: ListBuffer[Just[D, I]] = ListBuffer.empty
 
   /** Rules that should be triggered when node goes in. */
   val inRules: ListBuffer[Rule[I]] = ListBuffer.empty
@@ -51,7 +51,7 @@ class Node[I](
   var mark: Option[Symbol] = None
 
   /** Possible justifications. */
-  val justs: ListBuffer[Just[I]] = ListBuffer.empty
+  val justs: ListBuffer[Just[D, I]] = ListBuffer.empty
 
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
   //   (index 0)
@@ -77,8 +77,8 @@ class Node[I](
     case None => false
     case Some(sup) => sup match {
       case s: Symbol => sup != enabledAssumption
-      case just: Just[I] => just.antecedents.isEmpty
-      // case n: Node[I] => false // TODO Come back to this --- what if it's a Node here?
+      case just: Just[D, I] => just.antecedents.isEmpty
+      // case n: Node[D, I] => false // TODO Come back to this --- what if it's a Node here?
     }
   }
   // (defun tms-node-premise? (node &aux support)
@@ -93,7 +93,7 @@ class Node[I](
   def tmsError(string: String): Unit = throw new TmsError(this, string)
   // (defun tms-error (string node) (error string (node-string node)))
 
-  def defaultNodeString(n: Node[I]): String = n.datum.toString
+  def defaultNodeString(n: Node[D, I]): String = n.datum.toString
   // (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
 
   def isInNode: Boolean = believed
@@ -129,7 +129,7 @@ class Node[I](
   //     (push node (jtms-contradictions jtms))
   //     (check-for-contradictions jtms)))
 
-  def installSupport(just: Just[I]): Unit = {
+  def installSupport(just: Just[D, I]): Unit = {
     makeNodeIn(just)
     propagateInness
   }
@@ -138,7 +138,7 @@ class Node[I](
   //   (propagate-inness conseq))
 
   def propagateInness: Unit = {
-    val q = Queue[Node[I]](this)
+    val q = Queue[Node[D, I]](this)
     while (!q.isEmpty) {
       val node = q.dequeue
       jtms.dbg(s"Propagating belief in $node.")
@@ -159,11 +159,11 @@ class Node[I](
   //         (make-node-in (just-consequence justification) justification)
   //         (push (just-consequence justification) q)))))
 
-  def makeNodeIn(reason: Justification[I]) = {
+  def makeNodeIn(reason: Justification[D, I]) = {
     val enqueuef: Option[(Rule[I]) => Unit] = jtms.enqueueProcedure
     jtms.dbg(reason match {
       case s: Symbol  => s"     Making $this in via symbolic $s."
-      case j: Just[I] => {
+      case j: Just[D, I] => {
         val mapped = j.antecedents.map(jtms.nodeString)
         s"     Making $this in via ${j.informant} :: $mapped."
       }
@@ -222,7 +222,7 @@ class Node[I](
       propagateInness
     } else {
       if support != enabledAssumption && !support.map(_ match {
-        case j: Just[I] => j.antecedents.isEmpty
+        case j: Just[D, I] => j.antecedents.isEmpty
         case _: Symbol => true // TODO Really?
       }).getOrElse(false) then {
         support = Some(enabledAssumption)
@@ -263,14 +263,15 @@ class Node[I](
   //             (funcall enqueuef out-rule)))
   //   (setf (tms-node-out-rules node) nil))
 
-  inline def supportingJustificationForNode: Option[Justification[I]] = support
+  inline def supportingJustificationForNode: Option[Justification[D, I]] =
+    support
   // ;;; Well-founded support inqueries
   // (defun supporting-justification-for-node (node) (tms-node-support node))
 
-  def assumptionsOfNode: ListBuffer[Node[I]] = {
+  def assumptionsOfNode: ListBuffer[Node[D, I]] = {
     val marker = Symbol("mark")
-    val queue = Queue[Node[I]](this) // Replaces `new`
-    val assumptions = ListBuffer.empty[Node[I]]
+    val queue = Queue[Node[D, I]](this) // Replaces `new`
+    val assumptions = ListBuffer.empty[Node[D, I]]
     while (!queue.isEmpty) {
       val node = queue.dequeue()
       if node.mark.map(_ == marker).getOrElse(false) then {
@@ -280,7 +281,7 @@ class Node[I](
       } else if node.isInNode then {
         node.support.map(_ match {
           case _: Symbol  => { }
-          case j: Just[I] => { queue ++= j.antecedents }
+          case j: Just[D, I] => { queue ++= j.antecedents }
         })
       }
       node.mark = Some(marker)
@@ -299,14 +300,14 @@ class Node[I](
   //         (setq new (just-antecedents (tms-node-support node)))))
   //       (setf (tms-node-mark node) marker))))
 
-  def whyNode: Node[I] = {
+  def whyNode: Node[D, I] = {
     support match {
       case Some(s: Symbol)  =>
         if s == enabledAssumption then
           println("${nodeString} is an enabled assumption")
         else
           println("${nodeString} is OUT")
-      case Some(j: Just[I]) => {
+      case Some(j: Just[D, I]) => {
         println(s"${nodeString} is IN via ${j.informant} on")
         j.antecedents.map((a) => println(s"  ${a.nodeString}"))
         println
@@ -332,16 +333,16 @@ class Node[I](
 
   // Method exploreNetwork is interactive; omitting for now [JM Dec 2 '21]
   // -----------------------------------------------------------------
-  // def exploreNetwork: Node[I] = if isInNode then {
+  // def exploreNetwork: Node[D, I] = if isInNode then {
   //
   //   // Outer do macro
-  //   val stack: ListBuffer[Node[I]] = ListBuffer.empty
-  //   var current: Node[I] = this
+  //   val stack: ListBuffer[Node[D, I]] = ListBuffer.empty
+  //   var current: Node[D, I] = this
   //   var notYetDone: Boolean = true
   //   while (notYetDone) {
   //     current.whyNode
-  //     val options: ListBuffer[Node[I]] = current.support match {
-  //       case Some(j: Just[I]) => j.antecedents
+  //     val options: ListBuffer[Node[D, I]] = current.support match {
+  //       case Some(j: Just[D, I]) => j.antecedents
   //       case _ => ListBuffer.empty
   //     }
   //     val oLen: Int = options.length
@@ -390,12 +391,13 @@ class Node[I](
   //              (t (format t "~% Must be q or an integer from 0 to ~D."
   //                   olen))))))
 
-  def viewNode: Fact = datum.fact
+  // Removed.  Used only once, in JTRE; now expanded there.
+  //
   // ;; From jdata.lisp
   // (defun view-node (node)
   //   (datum-lisp-form (tms-node-datum node)))
 
 } // class Node
 
-class TmsError[I](val node: Node[I], string: String)
+class TmsError[D, I](val node: Node[D, I], string: String)
 extends RuntimeException(string)

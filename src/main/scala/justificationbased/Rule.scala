@@ -21,7 +21,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 abstract class Rule[I](val id: Int, val dbClass: DbClass[I]) {
   type V
   def matcher(m: Fact): Option[V]
-  def body(jtms: JTMS[I], jtre: JTRE[I], values: V): Unit
+  def body(jtms: JTMS[Datum[I], I], jtre: JTRE[I], values: V): Unit
 
   // (defstruct (rule (:PRINT-FUNCTION jtre-rule-printer))
   //   id           ; Unique ID for easy lookup

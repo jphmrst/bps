@@ -41,13 +41,13 @@ class DbClass[I](
 
   def insertRule[Intermed](
     matcherFn: (Fact) => Option[Intermed],
-    bodyFn: (JTMS[I], JTRE[I], Intermed) => Unit):
+    bodyFn: (JTMS[Datum[I], I], JTRE[I], Intermed) => Unit):
       Unit = {
     val id = jtre.incfRuleCounter
     val rule = new Rule[I](id, this) {
       type V = Intermed
       def matcher(m: Fact): Option[V] = matcherFn(m)
-      def body(jtms: JTMS[I], jtre: JTRE[I], values: V): Unit =
+      def body(jtms: JTMS[Datum[I], I], jtre: JTRE[I], values: V): Unit =
         bodyFn(jtms, jtre, values)
     }
     rules += rule
