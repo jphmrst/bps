@@ -20,7 +20,7 @@ import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 /** Temporary type placeholder, until we work out a final form. */
-type ContraAssumptions[I] = Option[Node[I]]
+type ContraAssumptions[I] = ListBuffer[Node[I]]
 
 /** Implementation of justification-based truth maintenance systems.
   *
@@ -322,14 +322,20 @@ class JTMS[I](
   //   (handle-one-contradiction (car contradictions))
   //   (check-for-contradictions jtms))
 
-  var contraAssumptions: ContraAssumptions[I] = None
+  var contraAssumptions: ContraAssumptions[I] = ListBuffer.empty
   // (proclaim '(special *contra-assumptions*))
 
   def handleOneContradiction(contraNode: Node[I]): Unit = {
+    contraAssumptions = contraNode.assumptionsOfNode
+    if contraAssumptions.isEmpty then
+      contraNode.tmsError(s"There is a flaw in the universe...$contraNode")
+    println(s"Contradiction found: ${nodeString(contraNode)}")
+    printContraList(contraAssumptions.toList)
+    println(s"Call (TMS-ANSWER <number>) to retract assumption.")
     ???
   }
   // (defun handle-one-contradiction (contra-node
-  //                             &aux the-answer *contra-assumptions*)
+  //                                   &aux the-answer *contra-assumptions*)
   //   (setq *contra-assumptions* (assumptions-of-node contra-node))
   //   (unless *contra-assumptions*
   //     (tms-error "~%There is a flaw in the universe...~A" contra-node))
@@ -345,8 +351,12 @@ class JTMS[I](
   //       (retract-assumption (nth (1- the-answer)
   //                           *contra-assumptions*))))
 
-  def printContraList(contraNode: List[Node[I]]): Unit = {
-    ???
+  def printContraList(nodes: List[Node[I]]): Unit = {
+    var counter: Int = 1
+    for (n <- nodes) do {
+      println(s"${counter} ${nodeString(n)}")
+      counter = 1 + counter
+    }
   }
   // (defun print-contra-list (nodes)
   //   (do ((counter 1 (1+ counter))
@@ -355,16 +365,21 @@ class JTMS[I](
   //     (format t "~%~A ~A" counter
   //        (node-string (car nn)))))
 
-  def tmsAnswer(num: Int): Unit = {
-    ???
+  def tmsAnswer(num: Int): Unit = if num > 0 then {
+    if num <= contraAssumptions.length
+    then throw new TmsContradictionHandler(num)
+    else println("Ignoring answer, too big.")
   }
+  else println("Ignoring answer, too big.")
   // (defun tms-answer (num)
   //   (if (integerp num)
   //       (if (> num 0)
-  //      (if (not (> num (length *contra-assumptions*)))
-  //          (throw 'tms-contradiction-handler num)
-  //          (format t "~%Ignoring answer, too big."))
-  //      (format t "~%Ignoring answer, too small"))
+  //           (if (not (> num (length *contra-assumptions*)))
+  //             (throw 'tms-contradiction-handler num)
+  //             (format t "~%Ignoring answer, too big."))
+  //           (format t "~%Ignoring answer, too small"))
   //       (format t "~%Ignoring answer, must be an integer.")))
 
 } // class JTMS
+
+class TmsContradictionHandler(num: Int) extends RuntimeException
