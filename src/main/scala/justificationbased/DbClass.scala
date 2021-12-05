@@ -76,8 +76,7 @@ class DbClass[I](
   def insert(fact: Fact): (Datum[I], Boolean) = referent1(fact) match {
     case Some(datum) => (datum, true)
     case None => {
-      val datum = new Datum[I](
-        jtre.incfDatumCounter, fact, jtre.getDbClass(fact), jtre.jtms)
+      val datum = new Datum[I](jtre, fact)
       tryRules(datum)
       (datum, false)
     }

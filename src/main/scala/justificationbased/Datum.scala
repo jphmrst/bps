@@ -31,13 +31,13 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
   * @param dbClass
   * @param jtms
   */
-class Datum[I] private[justificationbased] (
-  val id: Int,
-  val fact: Fact,
-  val dbClass: DbClass[I],
-  jtms: JTMS[I]
-) {
-  var node: Node[I] = jtms.createNode(this)
+class Datum[I] private[justificationbased] (jtre: JTRE[I], val fact: Fact) {
+
+  val id: Int = jtre.incfDatumCounter
+
+  val dbClass: DbClass[I] = jtre.getDbClass(fact)
+
+  var node: Node[I] = jtre.jtms.createNode(this)
 
   var isAssumption: Boolean = false
 
