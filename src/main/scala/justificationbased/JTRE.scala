@@ -23,7 +23,8 @@ type Fact = Matchable
 class JTRE[I](val title: String, val debugging: Boolean = false) {
 
   /** Pointer to its JTMS. */
-  val jtms: JTMS[I] = new JTMS[I](title,
+  val jtms: JTMS[I] = new JTMS[I](
+    title,
     nodeString = (n: Node[I]) => n.viewNode.toString,
     enqueueProcedure = Some(this.enqueue))
 

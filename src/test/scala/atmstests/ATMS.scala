@@ -18,7 +18,7 @@
 
 // Translated from KDF/JdK version 61 of 7/21/92.
 
-package org.maraist.tms.test
+package org.maraist.tms.assumptionbased.tests
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.tms.atms.{
