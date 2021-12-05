@@ -150,10 +150,14 @@ class JTMS[I](
   def justifyNode(
     informant: I, consequence: Node[I], antecedents: ListBuffer[Node[I]]):
       Unit = {
-    val just = new Just[I](incrJustCounter, informant, consequence, antecedents)
+    val just =
+      new Just[I](incrJustCounter, informant, consequence, antecedents)
     for (node <- antecedents) do node.consequences += just
     justs += just
-    dbg(s"Justifying $consequence by $informant using ${antecedents.map(nodeString)}.")
+    dbg({
+      val antes = antecedents.map(nodeString)
+      s"Justifying $consequence by $informant using ${antes}."
+    })
     if !antecedents.isEmpty || consequence.isOutNode then {
       if just.checkJustification then consequence.installSupport(just)
     } else {
