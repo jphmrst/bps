@@ -18,14 +18,30 @@
 package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
+/**
+  * FILL IN
+  *
+  * The initialization of `node`, and the storage to `dbClass.facts`,
+  * were originally in the Lisp `defun insert`.  The `plist` slot of
+  * the `defstruct` was not written or read from any point of the Lisp
+  * code, and has been dropped.
+  *
+  * @param id
+  * @param fact
+  * @param dbClass
+  * @param jtms
+  */
 class Datum[I] private[justificationbased] (
   val id: Int,
   val fact: Fact,
-  val dbClass: DbClass[I]
+  val dbClass: DbClass[I],
+  jtms: JTMS[I]
 ) {
-  var node: Node[I] = ???
+  var node: Node[I] = jtms.createNode(this)
 
-  var isAssumption: Boolean = ???
+  var isAssumption: Boolean = false
+
+  dbClass.facts += this
 
   // (defstruct (datum (:PRINT-FUNCTION jtre-datum-printer))
   //   id                   ; Unique ID for easy lookup

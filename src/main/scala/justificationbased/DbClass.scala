@@ -63,13 +63,21 @@ class DbClass[I](
   //     (dolist (candidate (dbclass-facts dbclass))
   //        (try-rule-on rule candidate))))
 
+  /**
+    * FILLIN
+    *
+    * Note that the post-initialization setup of the datum instance in
+    * the Lisp code is now done by the Datum object initialization
+    * itself.
+    *
+    * @param fact
+    * @return
+    */
   def insert(fact: Fact): (Datum[I], Boolean) = referent1(fact) match {
     case Some(datum) => (datum, true)
     case None => {
-      val datum: Datum[I] =
-        new Datum[I](jtre.incfDatumCounter, fact, jtre.getDbClass(fact))
-      val node: Node[I] = jtre.jtms.createNode(datum)
-      datum.dbClass.facts += datum
+      val datum = new Datum[I](
+        jtre.incfDatumCounter, fact, jtre.getDbClass(fact), jtre.jtms)
       tryRules(datum)
       (datum, false)
     }
