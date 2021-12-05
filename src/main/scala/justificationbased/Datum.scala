@@ -23,8 +23,8 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
   *
   * The initialization of `node`, and the storage to `dbClass.facts`,
   * were originally in the Lisp `defun insert`.  The `plist` slot of
-  * the `defstruct` was not written or read from any point of the Lisp
-  * code, and has been dropped.
+  * the `defstruct` is not written to or read from any point of the
+  * Lisp code, and has been dropped.
   *
   * @param id
   * @param fact
