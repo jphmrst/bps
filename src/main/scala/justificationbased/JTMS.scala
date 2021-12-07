@@ -184,7 +184,7 @@ class JTMS[D,I](
   //       (setf (tms-node-support consequence) just))
   //   (check-for-contradictions jtms))
 
-  def findAlternativeSupport(outQueue: Iterable[Node[D, I]]): Option[Just[D, I]] =
+  def findAlternativeSupport(outQueue: Iterable[Node[D, I]]): Option[Just[D, I]] = {
     returning {
       dbg(s"   Looking for alternative supports.")
       for (node <- outQueue) do {
@@ -199,6 +199,7 @@ class JTMS[D,I](
       }
       None
     }
+  }
   // (defun find-alternative-support (jtms out-queue)
   //   (debugging-jtms jtms "~%   Looking for alternative supports.")
   //   (dolist (node out-queue)
@@ -215,7 +216,7 @@ class JTMS[D,I](
         if cNode.isInNode then localContras += cNode
       }
       if !localContras.isEmpty then {
-        contradictionHandler.map((fn) => fn(this, localContras))
+        contradictionHandler.map(_(this, localContras))
       }
     }
   }
@@ -236,7 +237,7 @@ class JTMS[D,I](
     while (!queue.isEmpty) {
       val j = queue.dequeue
       val conseq = j.consequence
-      if conseq.support == j then {
+      if conseq.support.map(_ == j).getOrElse(false) then {
         conseq.makeNodeOut
         outQueue += conseq
         for (c <- conseq.consequences) do queue.enqueue(c)
@@ -306,7 +307,8 @@ class JTMS[D,I](
   def enabledAssumptions: List[Node[D, I]] = {
     val result = ListBuffer.empty[Node[D, I]]
     for (assumption <- assumptions)
-      do if assumption.support == enabledAssumption then result += assumption
+      do if assumption.support.map(_ == enabledAssumption).getOrElse(false)
+    then result += assumption
     result.toList
   }
   // (defun enabled-assumptions (jtms &aux result)
