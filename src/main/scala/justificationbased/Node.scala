@@ -197,9 +197,9 @@ class Node[D, I](
   //     (setf (tms-node-in-rules conseq) nil)))
 
   def retractAssumption: Unit = {
-    if support == enabledAssumption
+    if support.map(_ == enabledAssumption).getOrElse(false)
     then {
-      jtms.dbg("  Retracting assumption $this")
+      jtms.dbg(s"  Retracting assumption $this")
       makeNodeOut
       jtms.findAlternativeSupport(this :: jtms.propagateOutness(this))
     }
@@ -221,10 +221,11 @@ class Node[D, I](
       makeNodeIn(enabledAssumption)
       propagateInness
     } else {
-      if support != enabledAssumption && !support.map(_ match {
-        case j: Just[D, I] => j.antecedents.isEmpty
-        case _: Symbol => true // TODO Really?
-      }).getOrElse(false) then {
+      if support.map(_ != enabledAssumption).getOrElse(true)
+          && !support.map(_ match {
+            case j: Just[D, I] => j.antecedents.isEmpty
+            case _: Symbol => true // TODO Really?
+          }).getOrElse(false) then {
         support = Some(enabledAssumption)
       }
     }
@@ -244,7 +245,7 @@ class Node[D, I](
 
   def makeNodeOut: Unit = {
     val enqueuef = jtms.enqueueProcedure
-    jtms.dbg("     retracting belief in $this.")
+    jtms.dbg(s"     retracting belief in $this.")
     support = None
     believed = false
     jtms.enqueueProcedure match {
@@ -304,15 +305,14 @@ class Node[D, I](
     support match {
       case Some(s: Symbol)  =>
         if s == enabledAssumption then
-          println("${nodeString} is an enabled assumption")
+          println(s"${nodeString} is an enabled assumption")
         else
-          println("${nodeString} is OUT")
+          println(s"${nodeString} is OUT")
       case Some(j: Just[D, I]) => {
         println(s"${nodeString} is IN via ${j.informant} on")
         j.antecedents.map((a) => println(s"  ${a.nodeString}"))
-        println
       }
-      case None => println("${nodeString} is OUT")
+      case None => println(s"${nodeString} is OUT")
     }
     this
   }
