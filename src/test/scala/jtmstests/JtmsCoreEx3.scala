@@ -47,7 +47,7 @@ class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
     showAll("Initially")
 
     na.enableAssumption
-    showAll("A assumed")
+    // showAll("A assumed")
     na.believed `should` be (true)
     nc.believed `should` be (false)
     ne.believed `should` be (false)
@@ -56,7 +56,7 @@ class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
     contradiction.believed `should` be (false)
 
     nc.enableAssumption
-    showAll("C assumed")
+    // showAll("C assumed")
     na.believed `should` be (true)
     nc.believed `should` be (true)
     ne.believed `should` be (false)
@@ -65,7 +65,7 @@ class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
     contradiction.believed `should` be (true)
 
     ne.enableAssumption
-    showAll("E assumed")
+    // showAll("E assumed")
     na.believed `should` be (true)
     nc.believed `should` be (true)
     ne.believed `should` be (true)
