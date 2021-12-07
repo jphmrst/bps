@@ -184,15 +184,16 @@ class JTMS[D,I](
   //       (setf (tms-node-support consequence) just))
   //   (check-for-contradictions jtms))
 
-  def findAlternativeSupport(outQueue: Iterable[Node[D, I]]): Option[Just[D, I]] = {
-    returning {
-      dbg(s"   Looking for alternative supports.")
-      for (node <- outQueue) do {
-        if node.isInNode then {
+  def findAlternativeSupport(outQueue: Iterable[Node[D, I]]):
+      Unit = { // Option[Just[D, I]] = {
+    dbg(s"   Looking for alternative supports.")
+    for (node <- outQueue) do {
+      if node.isInNode then {
+        returning {
           for (just <- node.justs) do {
             if just.checkJustification then {
               just.consequence.installSupport(just)
-              throwReturn[Option[Just[D, I]]](Some(just))
+              throwReturn(()) // [Option[Just[D, I]]](Some(just))
             }
           }
         }
