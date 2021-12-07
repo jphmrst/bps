@@ -22,27 +22,43 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.*
 
-class JTMScore extends AnyFlatSpec with Matchers {
+trait JTMScoreEx1 {
+  val j = new JTMS[Symbol, String]("Simple Example", debugging = false)
+  val na = j.createNode(Symbol("a"), assumptionP = true)
+  val nb = j.createNode(Symbol("b"), assumptionP = true)
+  val nc = j.createNode(Symbol("c"), assumptionP = true)
+  val nd = j.createNode(Symbol("d"), assumptionP = true)
+  val ne = j.createNode(Symbol("e"), assumptionP = true)
+  val nf = j.createNode(Symbol("f"), assumptionP = true)
+  val ng = j.createNode(Symbol("g"), assumptionP = true)
 
+  j.justifyNode("j1", nf, ListBuffer(na, nb))
+  j.justifyNode("j2", ne, ListBuffer(nb, nc))
+  j.justifyNode("j3", ng, ListBuffer(na, ne))
+  j.justifyNode("j4", ng, ListBuffer(nd, ne))
+
+  def beliefsString: String = s"a:${na.believed} b:${nb.believed} c:${nc.believed} d:${nd.believed} e:${ne.believed} f:${nf.believed} g:${ng.believed}"
+
+  def contradictoryString: String = s"a:${na.isContradictory} b:${nb.isContradictory} c:${nc.isContradictory} d:${nd.isContradictory} e:${ne.isContradictory} f:${nf.isContradictory} g:${ng.isContradictory}"
+
+  def showAll(tag: String): Unit = {
+    println(tag)
+    showBeliefs("  Believed :: ")
+    showContradictory("  Contradictory :: ")
+  }
+
+  def showBeliefs(tag: String = ""): Unit = println(s"$tag$beliefsString")
+
+  def showContradictory(tag: String = ""): Unit =
+    println(s"$tag$contradictoryString")
+
+  // println(s"After contra")
+  // println(s"  Believed :: $beliefsString")
+  // println(s"  Contradictory :: $contradictoryString")
+}
+
+class JTMScoreEx1Test extends AnyFlatSpec with Matchers with JTMScoreEx1 {
   "JTMS ex1" `should` "all pass" in {
-    val j = new JTMS[Symbol, String]("Simple Example", debugging = false)
-    val na = j.createNode(Symbol("a"), assumptionP = true)
-    val nb = j.createNode(Symbol("b"), assumptionP = true)
-    val nc = j.createNode(Symbol("c"), assumptionP = true)
-    val nd = j.createNode(Symbol("d"), assumptionP = true)
-    val ne = j.createNode(Symbol("e"), assumptionP = true)
-    val nf = j.createNode(Symbol("f"), assumptionP = true)
-    val ng = j.createNode(Symbol("g"), assumptionP = true)
-
-    println(s"${na.believed} ${nb.believed} ${nc.believed} ${nd.believed} ${ne.believed} ${nf.believed} ${ng.believed}")
-    j.justifyNode("j1", nf, ListBuffer(na, nb))
-    println(s"J1 :: ${na.believed} ${nb.believed} ${nc.believed} ${nd.believed} ${ne.believed} ${nf.believed} ${ng.believed}")
-    j.justifyNode("j2", ne, ListBuffer(nb, nc))
-    println(s"J2 :: ${na.believed} ${nb.believed} ${nc.believed} ${nd.believed} ${ne.believed} ${nf.believed} ${ng.believed}")
-    j.justifyNode("j3", ng, ListBuffer(na, ne))
-    println(s"J3 :: ${na.believed} ${nb.believed} ${nc.believed} ${nd.believed} ${ne.believed} ${nf.believed} ${ng.believed}")
-    j.justifyNode("j4", ng, ListBuffer(nd, ne))
-    println(s"J4 :: ${na.believed} ${nb.believed} ${nc.believed} ${nd.believed} ${ne.believed} ${nf.believed} ${ng.believed}")
 
     na.enableAssumption
     na.believed `should` be (true)
@@ -52,16 +68,47 @@ class JTMScore extends AnyFlatSpec with Matchers {
     ne.believed `should` be (false)
     nf.believed `should` be (false)
     ng.believed `should` be (false)
-    println(s"A enabled :: ${na.believed} ${nb.believed} ${nc.believed} ${nd.believed} ${ne.believed} ${nf.believed} ${ng.believed}")
+    // showBeliefs(s"A enabled :: ")
 
     nb.enableAssumption
-    println(s"B enabled :: ${na.believed} ${nb.believed} ${nc.believed} ${nd.believed} ${ne.believed} ${nf.believed} ${ng.believed}")
+    na.believed `should` be (true)
+    nb.believed `should` be (true)
+    nc.believed `should` be (false)
+    nd.believed `should` be (false)
+    ne.believed `should` be (false)
+    nf.believed `should` be (true)
+    ng.believed `should` be (false)
+    // showBeliefs(s"B enabled :: ")
 
     nc.enableAssumption
-    println(s"C enabled :: ${na.believed} ${nb.believed} ${nc.believed} ${nd.believed} ${ne.believed} ${nf.believed} ${ng.believed}")
+    na.believed `should` be (true)
+    nb.believed `should` be (true)
+    nc.believed `should` be (true)
+    nd.believed `should` be (false)
+    ne.believed `should` be (true)
+    nf.believed `should` be (true)
+    ng.believed `should` be (true)
+    // showBeliefs(s"C enabled :: ")
 
     nd.enableAssumption
-    println(s"D enabled :: ${na.believed} ${nb.believed} ${nc.believed} ${nd.believed} ${ne.believed} ${nf.believed} ${ng.believed}")
+    na.believed `should` be (true)
+    nb.believed `should` be (true)
+    nc.believed `should` be (true)
+    nd.believed `should` be (true)
+    ne.believed `should` be (true)
+    nf.believed `should` be (true)
+    ng.believed `should` be (true)
+    // showBeliefs(s"D enabled :: ")
+
+    na.retractAssumption
+    na.believed `should` be (false)
+    nb.believed `should` be (true)
+    nc.believed `should` be (true)
+    nd.believed `should` be (true)
+    ne.believed `should` be (true)
+    nf.believed `should` be (false)
+    ng.believed `should` be (true)
+    // showBeliefs(s"A retracted :: ")
 
     // (defun ex1 ()
     //   (setq *jtms* (create-jtms "Simple Example" :debugging T)
@@ -81,32 +128,34 @@ class JTMScore extends AnyFlatSpec with Matchers {
     //   (enable-assumption nc)
     //   (enable-assumption nd))
   }
+}
+
+class JTMScoreEx2 extends AnyFlatSpec with Matchers with JTMScoreEx1 {
+  val contra = j.createNode(Symbol("Loser"), contradictionP = true)
+
+  override def beliefsString: String =
+    s"${super.beliefsString} contra:${contra.believed}"
+
+  override def contradictoryString: String =
+    s"${super.beliefsString} contra:${contra.isContradictory}"
 
   "JTMS ex2" `should` "all pass" in {
-    val j = new JTMS[Symbol, String]("Simple Example", debugging = false)
-    val na = j.createNode(Symbol("a"), assumptionP = true)
-    val nb = j.createNode(Symbol("b"), assumptionP = true)
-    val nc = j.createNode(Symbol("c"), assumptionP = true)
-    val nd = j.createNode(Symbol("d"), assumptionP = true)
-    val ne = j.createNode(Symbol("e"), assumptionP = true)
-    val nf = j.createNode(Symbol("f"), assumptionP = true)
-    val ng = j.createNode(Symbol("g"), assumptionP = true)
-    j.justifyNode("j1", nf, ListBuffer(na, nb))
-    j.justifyNode("j2", ne, ListBuffer(nb, nc))
-    j.justifyNode("j3", ng, ListBuffer(na, ne))
-    j.justifyNode("j4", ng, ListBuffer(nd, ne))
     na.enableAssumption
     nb.enableAssumption
     nc.enableAssumption
     nd.enableAssumption
 
-    val contra = j.createNode(Symbol("Loser"), contradictionP = true)
+    showAll(s"Before contra justify")
     j.justifyNode("j5", contra, ListBuffer(ne, nf))
+    showAll(s"After contra justify")
+
     // (Defun ex2 () ;; uses Ex1 to test the contradiction stuff.
     //   (setq contra (tms-create-node *jtms* 'Loser :contradictoryp T))
     //   (justify-node 'j5 contra (list ne nf)))
   }
+}
 
+class JTMScoreEx3 extends AnyFlatSpec with Matchers {
   "JTMS ex3" `should` "all pass" in {
     val j = new JTMS[Symbol, String](
       "Multiple support example", debugging = false)
