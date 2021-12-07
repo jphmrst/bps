@@ -36,9 +36,44 @@ trait JTMScoreEx3 extends JTMSexample[Symbol, String] {
   j.justifyNode("R2", ng, ListBuffer(na, nc))
   j.justifyNode("R3", contradiction, ListBuffer(ng))
 
-  def beliefsString: String = s"a:${na.believed} c:${nc.believed} e:${ne.believed} g:${ng.believed} h:${nh.believed}"
+  def beliefsString: String = s"a:${na.believed} c:${nc.believed} e:${ne.believed} g:${ng.believed} h:${nh.believed} X:${contradiction.believed}"
 
-  def contradictoryString: String = s"a:${na.isContradictory} c:${nc.isContradictory} e:${ne.isContradictory} g:${ng.isContradictory} h:${nh.isContradictory}"
+  def contradictoryString: String = s"a:${na.isContradictory} c:${nc.isContradictory} e:${ne.isContradictory} g:${ng.isContradictory} h:${nh.isContradictory} X:${contradiction.isContradictory}"
+}
+
+class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
+    with JTMSexample[Symbol, String]("Multiple support example") {
+  "JTMS ex3" `should` "all pass" in {
+    showAll("Initially")
+
+    na.enableAssumption
+    showAll("A assumed")
+    na.believed `should` be (true)
+    nc.believed `should` be (false)
+    ne.believed `should` be (false)
+    ng.believed `should` be (false)
+    nh.believed `should` be (false)
+    contradiction.believed `should` be (false)
+
+    nc.enableAssumption
+    showAll("C assumed")
+    na.believed `should` be (true)
+    nc.believed `should` be (true)
+    ne.believed `should` be (false)
+    ng.believed `should` be (true)
+    nh.believed `should` be (false)
+    contradiction.believed `should` be (true)
+
+    ne.enableAssumption
+    showAll("E assumed")
+    na.believed `should` be (true)
+    nc.believed `should` be (true)
+    ne.believed `should` be (true)
+    ng.believed `should` be (true)
+    nh.believed `should` be (true)
+    contradiction.believed `should` be (true)
+  }
+}
 
   // (defun ex3 ()
   //   (setq *jtms* (create-jtms "Multiple support example")
@@ -55,13 +90,3 @@ trait JTMScoreEx3 extends JTMSexample[Symbol, String] {
   //   (setq contradiction (tms-create-node *jtms*
   //                                     'CONTRADICTION :contradictoryp T))
   //   (justify-node 'R3 contradiction (list node-g)))
-}
-
-class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
-    with JTMSexample[Symbol, String]("Multiple support example") {
-  "JTMS ex3" `should` "all pass" in {
-    na.enableAssumption
-    nc.enableAssumption
-    ne.enableAssumption
-  }
-}

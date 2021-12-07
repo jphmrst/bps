@@ -38,9 +38,9 @@ class JTMScoreEx2 extends AnyFlatSpec with Matchers with JTMScoreEx1
     nc.enableAssumption
     nd.enableAssumption
 
-    showAll(s"Before contra justify")
+    // showAll(s"Before contra justify")
     j.justifyNode("j5", contra, ListBuffer(ne, nf))
-    showAll(s"After contra justify")
+    // showAll(s"After contra justify")
 
     // (Defun ex2 () ;; uses Ex1 to test the contradiction stuff.
     //   (setq contra (tms-create-node *jtms* 'Loser :contradictoryp T))
