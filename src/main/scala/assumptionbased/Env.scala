@@ -40,6 +40,16 @@ class Env[D, I](
   //   (declare (ignore ignore))
   //   (format stream "E-~D" (env-index env)))
 
+  def isWeave(nodes: Iterable[Node[D, I]]): Boolean = ???
+  // ; From atms.lisp
+  // (defun weave? (env nodes &aux new-env)
+  //   (cond ((null nodes) t)
+  //         (t (dolist (e (tms-node-label (car nodes)))
+  //              (setq new-env (union-env e env))
+  //              (unless (env-nogood? new-env)
+  //                (if (weave? new-env (cdr nodes))
+  //                    (return T)))))))
+
   // ; From ainter.lisp
   // (defun env-order (e1 e2)
   //   (< (env-index e1) (env-index e2)))

@@ -22,7 +22,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
-class Datum[F, I]() {
+class Datum[I]() {
 
   // ; From ainter.lisp
   // (defstruct (datum (:PRINT-FUNCTION print-atre-datum))

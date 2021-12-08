@@ -23,9 +23,13 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // version 61 of 7/21/92.
 
 class Node[D, I](
-  val title: String,
-  val datum: D
+  val atms: ATMS[D, I],
+  val datum: D | String,
+  var isAssumption: Boolean = false,
+  var isContradictory: Boolean = false
 ) {
+
+  val index: Int = atms.incrNodeCounter
 
   // ; From atms.lisp
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
@@ -45,22 +49,27 @@ class Node[D, I](
   //       (format stream "A-~D" (tms-node-index node))
   //       (format stream "#<NODE: ~A>" (node-string node))))
 
+  def nodeString: String = atms.nodeString(this)
   // ; From atms.lisp
   // (defun node-string (node)
   //   (funcall (atms-node-string (tms-node-atms node)) node))
 
+  def defaultNodeString: String = datum.toString
   // ; From atms.lisp
   // (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
 
+  def assumptionOrder(a2: Node[D, I]): Boolean = index < a2.index
   // ; From atms.lisp
   // (defun assumption-order (a1 a2)
   //   (< (tms-node-index a1) (tms-node-index a2)))
 
+  def isTrueNode: Boolean = ???
   // ; From atms.lisp
   // (defun true-node? (node)
   //   (eq (car (tms-node-label node))
   //       (atms-empty-env (tms-node-atms node))))
 
+  def isInNode: Boolean = ???
   // ; From atms.lisp
   // (defun in-node? (n &optional env)
   //   (if env
@@ -68,14 +77,17 @@ class Node[D, I](
   //             (tms-node-label n))
   //       (not (null (tms-node-label n)))))
 
+  def isOutNode: Boolean = ???
   // ; From atms.lisp
   // (defun out-node? (n env) (not (in-node? n env)))
 
+  def isNodeConsistentWith(env: Env[D, I]): Boolean = ???
   // ; From atms.lisp
   // (defun node-consistent-with? (n env)
   //   (some #'(lambda (le) (not (env-nogood? (union-env le env))))
   //         (tms-node-label n)))
 
+  def updateLabel(newEnvs: ListBuffer[Env[D, I]]): ListBuffer[Env[D, I]] = ???
   // ; From atms.lisp
   // (defun update-label (node new-envs &aux envs)
   //   (setq envs (tms-node-label node))
@@ -96,6 +108,7 @@ class Node[D, I](
   //   (setf (tms-node-label node) (delete nil envs :TEST #'eq))
   //   new-envs)
 
+  def findOrMakeEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] = ???
   // ; From atms.lisp
   // (defun find-or-make-env (assumptions atms)
   //   (unless assumptions
@@ -110,32 +123,43 @@ class Node[D, I](
   // ;;; derivation. This is quite complicated because this is really a
   // ;;; simple consequent JTMS.
 
+  def explainNode(env: Env[D, I]): Env[D, I] = ???
   // ; From atms.lisp
   // (defun explain-node (node env) (explain-node-1 env node nil nil))
 
+  def explainNode1(
+    env: Env[D, I],
+    node: Node[D, I],
+    queuedNodes: List[Node[D, I]],
+    explanation: Just[D, I]):
+      Env[D, I] = ???
   // ; From atms.lisp
   // (defun explain-node-1 (env node queued-nodes explanation)
-  //   (cond ((member node queued-nodes) nil)
-  //         ((and (tms-node-assumption? node)
-  //               (member node (env-assumptions env)))
-  //          (cons (cons 'ASSUME node) explanation))
-  //         ((dolist (just explanation)
-  //            (if (if (listp just)
-  //                    (eq (cdr just) node) (eq (just-consequence just) node))
-  //                (return explanation))))
-  //         (t (setq queued-nodes (cons node queued-nodes))
-  //            (dolist (just (tms-node-justs node))
-  //              (unless (dolist (a (just-antecedents just))
-  //                        (unless (in-node? a env) (return t)))
-  //               (let ((new-explanation explanation))
-  //                 (dolist (a (just-antecedents just)
-  //                            (return-from explain-node-1
-  //                              (cons just new-explanation)))
-  //                   (setq new-explanation
-  //                         (explain-node-1 env a queued-nodes new-explanation))
-  //                   (unless new-explanation (return nil)))))))))
+  //   (cond
+  //     ((member node queued-nodes) nil)
+  //     ((and (tms-node-assumption? node)
+  //           (member node (env-assumptions env)))
+  //      (cons (cons 'ASSUME node) explanation))
+  //     ((dolist (just explanation)
+  //        (if (if (listp just)
+  //                (eq (cdr just) node)
+  //                (eq (just-consequence just) node))
+  //            (return explanation))))
+  //     (t (setq queued-nodes (cons node queued-nodes))
+  //        (dolist (just (tms-node-justs node))
+  //          (unless (dolist (a (just-antecedents just))
+  //                    (unless (in-node? a env) (return t)))
+  //            (let ((new-explanation explanation))
+  //              (dolist (a (just-antecedents just)
+  //                         (return-from explain-node-1
+  //                           (cons just new-explanation)))
+  //                (setq new-explanation
+  //                      (explain-node-1 env a queued-nodes new-explanation))
+  //                (unless new-explanation (return nil)))))))))
 
   // ;;; Printing
+
+  def whyNode: Unit = ???
   // ; From atms.lisp
   // (defun why-node (node &optional (stream t) (prefix ""))
   //   (format stream "~%<~A~A,{" prefix (tms-node-datum node))
@@ -143,9 +167,17 @@ class Node[D, I](
   //     (env-string e stream))
   //   (format stream "}>"))
 
+  def nodeJustifications: Unit = ???
   // ; From atms.lisp
   // (defun node-justifications (node &optional (stream t))
   //   (format t "~% For ~A:" (node-string node))
   //   (dolist (j (tms-node-justs node))
   //     (print-justification j stream)))
+
+  // ; From adata.lisp --- not translating; expand in place
+  // (defun view-node (node)
+  //   (datum-lisp-form (tms-node-datum node)))
+  //
+  // (defun stringify-node (node)
+  //   (format nil "~A" (view-node node)))
 }

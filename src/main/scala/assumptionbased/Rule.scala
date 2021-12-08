@@ -22,7 +22,20 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
-class Rule[D] {
+type Fact = Unit
+
+abstract class Rule[I](
+  val ruleEngine: RuleEngine[I],
+  val dbClass: DbClass[I]
+) {
+  type V
+  def matcher(m: Fact): Option[V]
+  def body(jtre: RuleEngine[I], values: V): Unit
+
+  val counter: Int = ruleEngine.incrRuleCounter
+
+  // val inNodes = ListBuffer.empty[Node[
+
   // ; From ainter.lisp
   // (defstruct (rule (:PRINT-FUNCTION (lambda (r st ignore)
   //                                  (declare (ignore ignore))
@@ -37,7 +50,35 @@ class Rule[D] {
   //   imp-nodes)   ; Must be implied by the focus
 }
 
-class RuleEngine[F, I]() {
+class RuleEngine[I](
+  val title: String,
+  var debugging: Boolean = false
+) {
+  val atms: ATMS[Datum[I], I] =
+    new ATMS[Datum[I], I](
+      title, (n: Node[Datum[I], I]) => n.datum.toString, debugging)
+
+  // val dbClassTable: HashMap[] =
+
+  /** Unique namer for datum instances. */
+  var datumCounter: Int = 0
+  /** Increment the datum counter and return its value. */
+  def incrDatumCounter: Int = {
+    val result = datumCounter
+    datumCounter = datumCounter + 1
+    result
+  }
+
+  var rules = ListBuffer.empty[Rule[I]]
+
+  /** Unique namer for rules. */
+  var ruleCounter: Int = 0
+  /** Increment the rules counter and return its value. */
+  def incrRuleCounter: Int = {
+    val result = ruleCounter
+    ruleCounter = ruleCounter + 1
+    result
+  }
 
   // ; From ainter.lisp
   // (defstruct (atre (:PREDICATE atre?)
@@ -67,12 +108,11 @@ class RuleEngine[F, I]() {
   //        (false nil))
   //    (in-atre j)
   //    (change-atms (atre-atms j)
-  //              :ENQUEUE-PROCEDURE
-  //              #'(lambda (pair) (enqueue pair j)))
+  //                 :ENQUEUE-PROCEDURE #'(lambda (pair) (enqueue pair j)))
   //    ;; Create a default contradiction
   //    (setq false (make-datum :COUNTER (incf (atre-datum-counter j))
-  //                         :ATRE j :LISP-FORM 'FALSE
-  //                         :DBCLASS (get-dbclass 'FALSE)))
+  //                            :ATRE j :LISP-FORM 'FALSE
+  //                            :DBCLASS (get-dbclass 'FALSE)))
   //    (setf (datum-tms-node false) (atms-contra-node (atre-atms j)))
   //    (setf (tms-node-datum (datum-tms-node false)) false)
   //    (push false (dbclass-facts (datum-dbclass false)))
@@ -81,6 +121,8 @@ class RuleEngine[F, I]() {
   // (defun change-atre (atre &key (debugging nil debugging?))
   //   (if debugging? (setf (atre-debugging atre) debugging)))
 
+  override def toString: String = s"RuleEngine $title"
+  def printRuleEngine: Unit = println(toString)
   // (defun print-atre (j st ignore) (declare (ignore ignore))
   //   (format st "<ATRE: ~A>" (atre-title j)))
 
@@ -100,6 +142,7 @@ class RuleEngine[F, I]() {
   // (defun run-forms (forms &optional (atre *ATRE*))
   //   (dolist (form forms) (eval form) (run-rules atre)))
 
+  def show: Unit = ???
   // ; From ainter.lisp
   // (defun show (&optional (atre *ATRE*) (stream *standard-output*))
   //   (format stream "For ATRE ~A:~% Focus = ~A."
@@ -108,6 +151,9 @@ class RuleEngine[F, I]() {
   //          "empty"))
   //   (show-data atre stream) (show-rules atre stream))
 
+  def solutions(
+    choiceSets: ChoiceSets[Datum[I], I]):
+      ListBuffer[Node[Datum[I], I]] = ???
   // ; From ainter.lisp
   // (defun solutions (atre choice-sets)
   //   (interpretations
@@ -125,6 +171,7 @@ class RuleEngine[F, I]() {
   // ;; re-queue the implied-by rules which were not in the scope
   // ;; of the previous focus for re-examination.
 
+  def changeFocus(env: Env[Datum[I], I]): Env[Datum[I], I] = ???
   // ; From ainter.lisp
   // (defun change-focus (env &optional (atre *atre*))
   //   (unless (atre? atre) ;; Users do slip, sometimes
@@ -137,6 +184,7 @@ class RuleEngine[F, I]() {
   //     (setf (atre-imp-rules atre) nil)
   //     env)) ;; return new focus to indicate switch
 
+  def isFocusOkay: Boolean = ???
   // ; From ainter.lisp
   // (defun focus-okay? (atre)
   //   (and (atre-focus atre)
@@ -156,6 +204,102 @@ class RuleEngine[F, I]() {
   //   (cond ((env-nogood? env)
   //       (enqueue (list proc (list env) nil) atre))
   //      (t (push (list proc (list env) nil) (env-rules env)))))
+
+  // ; From adata.lisp
+  // (defun justifications (fact &optional (*atre* *atre*)
+  //                          (stream *standard-output*))
+  //   (node-justifications (get-tms-node fact *atre*) stream))
+
+  // ; From adata.lisp
+  // (defun the-e (num &optional (*atre* *atre*))
+  //   (e (atre-atms *atre*) num))
+
+  def getTmsNode(fact: Fact): Node[Datum[I], I] = ???
+  // ; From adata.lisp
+  // (defun get-tms-node (fact &optional (*atre* *atre*))
+  //   (datum-tms-node (referent fact t)))
+
+  def insert(fact: Fact): (Datum[I], Boolean) = ???
+  // ; From adata.lisp
+  // (defun insert (fact &aux datum)
+  //   (setq datum (referent1 fact))
+  //   (cond (datum (values datum t))
+  //      (t (setq datum (make-datum
+  //                      :COUNTER
+  //                      (incf (atre-datum-counter *atre*))
+  //                      :ATRE *atre*
+  //                      :LISP-FORM fact
+  //                      :DBCLASS (get-dbclass fact)))
+  //         (setf (datum-tms-node datum)
+  //               (tms-create-node (atre-atms *atre*) datum))
+  //         (push datum (dbclass-facts (datum-dbclass datum)))
+  //         (try-rules datum)
+  //         (values datum nil))))
+
+  // ; From adata.lisp
+  // (defun fetch (pattern &optional (*atre* *atre*)
+  //                    &aux bindings unifiers)
+  //   (dolist (candidate (get-candidates pattern) unifiers)
+  //     (setq bindings (unify pattern (datum-lisp-form candidate)))
+  //     (unless (eq bindings :FAIL)
+  //       (push (sublis bindings pattern) unifiers))))
+
+  // ; From adata.lisp
+  // (defun true? (fact &optional (*atre* *atre*) &aux r)
+  //   (when (setq r (referent fact nil))
+  //      (true-node? (datum-tms-node r))))
+
+  // ; From adata.lisp
+  // (defun in? (fact env &optional (*atre* *atre*) &aux r)
+  //   (when (setq r (referent fact nil))
+  //      (in-node? (datum-tms-node r) env)))
+
+  // ; From adata.lisp
+  // (defun out? (fact env &optional (*atre* *atre*) &aux r)
+  //   (when (setq r (referent fact nil))
+  //      (out-node? (datum-tms-node r) env)))
+
+  // ; From adata.lisp
+  // (defun consistent-with? (fact env &optional (*atre* *atre*)
+  //                            &aux r)
+  //   (when (setq r (referent fact nil))
+  //      (node-consistent-with? (datum-tms-node r) env)))
+
+  // ; From adata.lisp
+  // (defun why? (fact &optional (*atre* *atre*)
+  //                (stream *standard-output*)
+  //                &aux r)
+  //   (when (setq r (referent fact nil))
+  //      (why-node (datum-tms-node r) stream)))
+
+  // ; From adata.lisp
+  // (defun environment-of (facts &optional (*atre* *atre*)
+  //                           &aux node env)
+  //   (setq env (atms-empty-env (atre-atms *atre*)))
+  //   (dolist (fact facts)
+  //        (setq node (get-tms-node fact *atre*))
+  //        (unless (tms-node-assumption? node)
+  //   (error "Non-assumption in ENVIRONMENT-OF: ~A." fact))
+  //        (setq env (cons-env node env))
+  //        (when (env-nogood? env)
+  //              (return-from ENVIRONMENT-OF
+  //                           (values nil env))))
+  //   env)
+
+  // ; From adata.lisp
+  // (defun get-datum (num &optional (*atre* *atre*))
+  //   (maphash #'(lambda (key dbclass)
+  //             (declare (ignore key))
+  //             (dolist (datum (dbclass-facts dbclass))
+  //               (when (= (datum-counter datum) num)
+  //                 (return-from GET-DATUM datum))))
+  //         (atre-dbclass-table *atre*)))
+
+  // ; From adata.lisp
+  // (defun get-just (num &optional (*atre* *atre*))
+  //   (dolist (just (atms-justs (atre-atms *atre*)))
+  //     (when (= (just-index just) num)
+  //       (return-from GET-just just))))
 }
 
   // ; From ainter.lisp

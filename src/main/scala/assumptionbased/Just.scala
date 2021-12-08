@@ -23,7 +23,10 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // version 61 of 7/21/92.
 
 class Just[D, I](
-  val title: String
+  val index: Int,
+  val informant: I,
+  val consequence: Node[D, I],
+  val antecedents: ListBuffer[Node[D, I]]
 ) {
 
   // ; From atms.lisp
@@ -32,12 +35,18 @@ class Just[D, I](
   //            (informant nil)
   //            (consequence nil)
   //            (antecedents nil))
-  //
+
+  override def toString: String = s"<${informant.toString} $index>"
+  def printJust: Unit = println(toString)
   // (defun print-just (just stream ignore)
   //   (declare (ignore ignore))
   //   (format stream "<~A ~D>" (just-informant just)
   //           (just-index just)))
 
+  def printJustification: Unit = {
+    println(s"  $informant $index")
+    for (a <- antecedents) do a.whyNode
+  }
   // ; From atms.lisp
   // (defun print-justification (j &optional (stream t))
   //   (format stream "~%  ~A, " (just-informant j))

@@ -22,7 +22,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
-class DbClass[F, I]() {
+class DbClass[I]() {
 
   // ; From ainter.lisp
   // (defstruct (dbclass (:PRINT-FUNCTION print-atre-dbclass))
