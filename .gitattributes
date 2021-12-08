@@ -1,2 +1,3 @@
 *.lisp linguist-detectable=false
 *.rkt linguist-detectable=false
+*.py linguist-detectable=false
