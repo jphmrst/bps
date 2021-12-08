@@ -29,19 +29,19 @@
 		     &aux datum node)
   (setq datum (referent fact t)
 	node (datum-tms-node datum))
-  (cond ((not (datum-isAssumption datum))
-	 (setf (datum-isAssumption datum) reason)
+  (cond ((not (datum-assumption? datum))
+	 (setf (datum-assumption? datum) reason)
 	 (debugging-atre
 	  "~%    Assuming ~A via ~A." fact reason)
 	 (assume-node node))
-	((eq reason (datum-isAssumption datum)))
+	((eq reason (datum-assumption? datum)))
 	(t (error
   "Fact ~A assumed because of ~A assumed again because of ~A"
-  (show-datum datum) (datum-isAssumption datum) reason)))
+  (show-datum datum) (datum-assumption? datum) reason)))
   datum)
 
 (defun already-assumed? (fact)
-  (TMSnode.isAssumption (get-tms-node fact)))
+  (tms-node-assumption? (get-tms-node fact)))
 
 (defun assume-if-needed (fact reason &optional (*atre* *atre*))
   (unless (already-assumed? fact) (assume! fact reason)))
@@ -138,13 +138,13 @@
 
 (defun environment-of (facts &optional (*atre* *atre*)
 			     &aux node env)
-  (setq env (ATMS.emptyEnv (atre-atms *atre*)))
+  (setq env (atms-empty-env (atre-atms *atre*)))
   (dolist (fact facts)
 	  (setq node (get-tms-node fact *atre*))
-	  (unless (TMSnode.isAssumption node)
+	  (unless (tms-node-assumption? node)
   (error "Non-assumption in ENVIRONMENT-OF: ~A." fact))
 	  (setq env (cons-env node env))
-	  (when (Env.isNogood env)
+	  (when (env-nogood? env)
 		(return-from ENVIRONMENT-OF
 			     (values nil env))))
   env)
@@ -153,7 +153,7 @@
   (cons-env (get-tms-node fact) env))    
 
 (defun view-env (env)
-  (mapcar #'view-node (Env.assumptions env)))
+  (mapcar #'view-node (env-assumptions env)))
 
 (defun justifications (fact &optional (*atre* *atre*)
 			    (stream *standard-output*))
@@ -168,13 +168,13 @@
   (datum-tms-node (referent fact t)))
 
 (defun view-node (node)
-  (datum-lisp-form (TMSnode.datum node)))
+  (datum-lisp-form (tms-node-datum node)))
 
 (defun stringify-node (node)
   (format nil "~A" (view-node node)))
 
 (defun assumptions-of (fact)
-  (TMSnode.label (datum-tms-node (referent fact t))))
+  (tms-node-label (datum-tms-node (referent fact t))))
 
 (defun get-datum (num &optional (*atre* *atre*))
   (maphash #'(lambda (key dbclass)
@@ -185,8 +185,8 @@
 	   (atre-dbclass-table *atre*)))
 
 (defun get-just (num &optional (*atre* *atre*))
-  (dolist (just (ATMS.justs (atre-atms *atre*)))
-    (when (= (Just.index just) num)
+  (dolist (just (atms-justs (atre-atms *atre*)))
+    (when (= (just-index just) num)
       (return-from GET-just just))))
 
 ;;; Extra printing routines

@@ -1,4 +1,4 @@
- -*- Mode: Lisp; -*- 
+;; -*- Mode: Lisp; -*- 
 
 ;;;; ATMS-based Envisioner for planning problems
 ;; Last edited: 1/29/93, KDF

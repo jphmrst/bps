@@ -164,13 +164,13 @@
 	      (t ;; Must check and see if the node's belief state
 	         ;; matches the rule's requirements
 	       `((cond ((,(case condition
-			   (:IN 'TMSnode.label)
-			   (:IMPLIED-BY 'TMSnode.label)
+			   (:IN 'tms-node-label)
+			   (:IMPLIED-BY 'tms-node-label)
 			   (t (error "~A bad condition -- GBF"
 				     condition)))
 			 TRIGGER-NODE) ,@ body)
 	           (t (push (list ',fname ,@ env)
-			    (TMSnode.rules TRIGGER-NODE)))))))))
+			    (tms-node-rules TRIGGER-NODE)))))))))
 
 (defun generate-match-procedure (pattern var test condition)
   (multiple-value-bind (tests binding-specs)
@@ -292,11 +292,11 @@
     (apply (car queued-rule) (cadr queued-rule))))
 
 (defun in-triggers-ready?
-  (nodes atre &optional (env (ATMS.emptyEnv
+  (nodes atre &optional (env (atms-empty-env
 			      (atre-atms atre))))
-  (cond ((Env.isNogood env) nil) ;; Combination was nogood
+  (cond ((env-nogood? env) nil) ;; Combination was nogood
 	((null nodes) t) ;; Nothing else to combine
-	(t (dolist (new (TMSnode.label (car nodes)))
+	(t (dolist (new (tms-node-label (car nodes)))
 	     (let ((u (union-env new env)))
 	       (if (in-triggers-ready? (cdr nodes) atre u)
 		   (return-from IN-TRIGGERS-READY? t)))))))
