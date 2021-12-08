@@ -1,1 +1,2 @@
 *.lisp linguist-detectable=false
+*.rkt linguist-detectable=false
