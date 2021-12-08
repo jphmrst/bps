@@ -160,7 +160,6 @@ class Node[D, I](
   //         (push (just-consequence justification) q)))))
 
   def makeNodeIn(reason: Justification[D, I]) = {
-    val enqueuef: Option[(Rule[I]) => Unit] = jtms.enqueueProcedure
     jtms.dbg(reason match {
       case s: Symbol  => s"     Making $this in via symbolic $s."
       case j: Just[D, I] => {
@@ -171,7 +170,7 @@ class Node[D, I](
 
     believed = true
     support = Some(reason)
-    enqueuef match {
+    jtms.enqueueProcedure match {
       case None => { }
       case Some(fn) => {
         for inRule <- inRules do fn(inRule)
@@ -244,7 +243,6 @@ class Node[D, I](
   //   (check-for-contradictions jtms))
 
   def makeNodeOut: Unit = {
-    val enqueuef = jtms.enqueueProcedure
     jtms.dbg(s"     retracting belief in $this.")
     support = None
     believed = false

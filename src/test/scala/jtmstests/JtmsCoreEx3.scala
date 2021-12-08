@@ -17,7 +17,7 @@
 
 package org.maraist.truthmaintenancesystems.justificationbased.tests
 import scala.language.adhocExtensions
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ListBuffer,HashSet}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.*
@@ -44,34 +44,49 @@ trait JTMScoreEx3 extends JTMSexample[Symbol, String] {
 class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
     with JTMSexample[Symbol, String]("Multiple support example") {
   "JTMS ex3" `should` "all pass" in {
+    val changed = new HashSet[Rule[String]]
+    val enqueuef: (Rule[String] => Unit) =
+      (node) => { changed += node }
+    j.enqueueProcedure = Some(enqueuef)
     // showAll("Initially")
 
     na.enableAssumption
     // showAll("A assumed")
+    // println(changed.map(_.toString).mkString(", "))
+    changed.isEmpty `should` be (true)
     na.believed `should` be (true)
     nc.believed `should` be (false)
     ne.believed `should` be (false)
     ng.believed `should` be (false)
     nh.believed `should` be (false)
     contradiction.believed `should` be (false)
+    changed.clear
 
     nc.enableAssumption
     // showAll("C assumed")
+    // println(changed.map(_.toString).mkString(", "))
+    changed.isEmpty `should` be (true)
     na.believed `should` be (true)
     nc.believed `should` be (true)
     ne.believed `should` be (false)
     ng.believed `should` be (true)
     nh.believed `should` be (false)
     contradiction.believed `should` be (true)
+    changed.clear
 
     ne.enableAssumption
     // showAll("E assumed")
+    // println(changed.map(_.toString).mkString(", "))
+    changed.isEmpty `should` be (true)
     na.believed `should` be (true)
     nc.believed `should` be (true)
     ne.believed `should` be (true)
     ng.believed `should` be (true)
     nh.believed `should` be (true)
     contradiction.believed `should` be (true)
+    changed.clear
+
+    // j.debugJTMS
   }
 }
 

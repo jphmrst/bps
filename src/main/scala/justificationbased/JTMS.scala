@@ -24,11 +24,11 @@ type ContraAssumptions[D, I] = ListBuffer[Node[D, I]]
 
 /** Implementation of justification-based truth maintenance systems.
   *
-  * @param title
-  * @param nodeString
-  * @param debugging Debugging flag
+  * @param title Name of this TMS, for output.
+  * @param nodeString Default formatter for TMS nodes.
+  * @param debugging Debugging flag.
   * @param enqueueProcedure
-  * @param contradictionHandler
+  * @param contradictionHandler External handler for detecting contradictions.
   * @param checkingContradictions For external systems.
   * @tparam I Type of (external) informants in justifications.
   */
