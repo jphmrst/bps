@@ -2,7 +2,7 @@
 val scala3Version = "3.1.0"
 
 // library name
-name := "scala-tms"
+name := "bps-scala"
 
 // library version
 version := "0.0.1"
@@ -12,16 +12,16 @@ version := "0.0.1"
 
 // groupId, SCM, license information
 organization := "org.maraist"
-homepage := Some(url("https://github.com/jphmrst/scala-tms"))
+homepage := Some(url("https://github.com/jphmrst/bps-scala"))
 scmInfo := Some(ScmInfo(
-  url("https://github.com/jphmrst/scala-tms"),
-  "git@github.com:jphmrst/scala-tms.git"))
+  url("https://github.com/jphmrst/bps-scala"),
+  "git@github.com:jphmrst/bps-scala.git"))
 developers := List(Developer(
   "jphmrst", "jphmrst", "via-github@maraist.org",
   url("https://maraist.org/work/")))
 licenses += (
   "Educational",
-  url("https://github.com/jphmrst/scala-tms/blob/master/LICENSE.txt"))
+  url("https://github.com/jphmrst/bps-scala/blob/master/LICENSE.txt"))
 
 // add sonatype repository settings
 // snapshot versions publish to sonatype snapshot repository
@@ -52,14 +52,11 @@ lazy val main = project
   .settings(
     scalaVersion := scala3Version,
     libraryDependencies ++= Seq(
-      // "org.scala-lang.modules" %% "scala-xml" % "2.0.1",
-      // "org.typelevel" %% "paiges-core" % "0.4.2",
       "org.scalactic" %% "scalactic" % "3.2.9",
       "org.scalatest" %% "scalatest" % "3.2.9" % "test"
-      // , "org.maraist" %% "scala-latex" % "1.1.1"
     ),
     compile / watchTriggers += baseDirectory.value.toGlob / "build.sbt",
     unmanagedSources / excludeFilter := ".#*",
     scalacOptions ++= Seq( "-source:future-migration" ),
-  ) // .dependsOn(RootProject(file("/home/jm/Lib/Scala/LaTeX/")))
+  )
 
