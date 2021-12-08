@@ -62,7 +62,7 @@
   lisp-form            ; Expression for pattern-matching
   (tms-node nil)       ; Pointer into TMS
   dbclass                ; Dbclass of the corresponding pattern
-  (isAssumption nil)    ; if non-nil, indicates informant
+  (assumption? nil)    ; if non-nil, indicates informant
   (plist nil))         ; local property list
 
 (defun print-atre-datum (d st ignore) (declare (ignore ignore))
@@ -86,20 +86,20 @@
  (let ((j (make-atre
 	   :TITLE title 
 	   :ATMS (create-atms (list :ATMS-OF title) 
-			      :NODESTRING 'stringify-node)
+			      :NODE-STRING 'stringify-node)
 	   :DBCLASS-TABLE (make-hash-table :TEST #'eq)
 	   :DEBUGGING debugging))
        (false nil))
    (in-atre j)
    (change-atms (atre-atms j)
-		:ENQUEUEPROCEDURE
+		:ENQUEUE-PROCEDURE
 		#'(lambda (pair) (enqueue pair j)))
    ;; Create a default contradiction
    (setq false (make-datum :COUNTER (incf (atre-datum-counter j))
 			   :ATRE j :LISP-FORM 'FALSE
 			   :DBCLASS (get-dbclass 'FALSE)))
-   (setf (datum-tms-node false) (ATMS.contraNode (atre-atms j)))
-   (setf (TMSnode.datum (datum-tms-node false)) false)
+   (setf (datum-tms-node false) (atms-contra-node (atre-atms j)))
+   (setf (tms-node-datum (datum-tms-node false)) false)
    (push false (dbclass-facts (datum-dbclass false)))
    j))
 
@@ -148,7 +148,7 @@
   (unless (atre? atre) ;; Users do slip, sometimes
     (error "Must change the focus of some ATRE, not ~A." atre))
   (when (and (env? env)
-	     (not (Env.isNogood env)))
+	     (not (env-nogood? env)))
     (setf (atre-focus atre) env) ;; change focus
     (setf (atre-queue atre) ;; re-queue implied-by rules
 	  (nconc (atre-queue atre) (atre-imp-rules atre)))
@@ -157,7 +157,7 @@
 
 (defun focus-okay? (atre)
   (and (atre-focus atre)
-       (not (Env.isNogood (atre-focus atre)))))
+       (not (env-nogood? (atre-focus atre)))))
 
 (defmacro with-focus (focus atre &rest forms)
   `(let ((old-focus (atre-focus ,atre)))
@@ -168,6 +168,6 @@
 ;; Interface to contradiction rules in ATMS
 
 (defun contradiction-rule (env proc atre)
-  (cond ((Env.isNogood env)
+  (cond ((env-nogood? env)
 	 (enqueue (list proc (list env) nil) atre))
-	(t (push (list proc (list env) nil) (Env.rules env)))))
+	(t (push (list proc (list env) nil) (env-rules env)))))

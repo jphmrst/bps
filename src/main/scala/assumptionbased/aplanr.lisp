@@ -115,7 +115,7 @@
 (defun apply-operator (state op-inst)
   (let ((operator (fetch-operator (car op-inst)))
 	(vals (cdr op-inst))
-	(assumptions (Env.assumptions state))
+	(assumptions (env-assumptions state))
 	(bindings nil)
 	(add-list nil)
 	(delete-list nil)
@@ -135,7 +135,7 @@
     (setq assumptions
 	  (remove-if #'(lambda (a) 
 			 (member (datum-lisp-form
-				   (TMSnode.datum a))
+				   (tms-node-datum a))
 				 delete-list
 				 :TEST #'equal)) assumptions))
     (dolist (new add-list)
