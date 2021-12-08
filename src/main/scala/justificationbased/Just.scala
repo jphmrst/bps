@@ -48,4 +48,8 @@ class Just[D, I](
   // (defun justification-satisfied? (just)
   //   (every #'in-node? (just-antecedents just)))
 
+  def getBlurb: String =
+    s"($index) $informant ${consequence.datum} <= ${antecedents.map(_.datum).mkString(", ")}"
+  def detailJust: Unit = println(getBlurb)
+
 } // class Just

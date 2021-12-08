@@ -36,11 +36,11 @@ class JTMS[D,I](
   val title: String,
   val nodeString: (Node[D, I]) => String =
     (n: Node[D, I]) => s"${n.datum.toString()}",
-  val debugging: Boolean = false,
+  var debugging: Boolean = false,
   val checkingContradictions: Boolean = true,
   var enqueueProcedure: Option[(Rule[I]) => Unit] = None,
-  var contradictionHandler: Option[(JTMS[D, I], ListBuffer[Node[D, I]]) => Unit] =
-    None
+  var contradictionHandler:
+      Option[(JTMS[D, I], ListBuffer[Node[D, I]]) => Unit] = None
 ) {
 
   /** Unique namer for nodes. */
@@ -100,7 +100,7 @@ class JTMS[D,I](
   //         :ENQUEUE-PROCEDURE enqueue-procedure
   //         ))
 
-  inline def dbg(msg: String) = if debugging then println(msg)
+  inline def dbg(msg: String): Unit = if debugging then println(msg)
   // (defmacro debugging-jtms (jtms msg &optional node &rest args)
   //   `(when (jtms-debugging ,jtms)
   //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
@@ -124,6 +124,17 @@ class JTMS[D,I](
   //   (if enqueue-procedure
   //       (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
 
+  /**
+    * Create a new node in this JTMS.
+    *
+    * @param datum The piece of data associated with the node.
+    * @param assumptionP True indicates that this node might be used
+    * as an assumption.  But note that an assumption node must be
+    * enabled before a judgment can use the node as a premise.  The
+    * default value is `false`.
+    * @param contradictionP True indicates that this node denotes a
+    * contradiction.  The default value is `false`.
+    */
   def createNode(
     datum: D,
     assumptionP: Boolean = false,
@@ -147,22 +158,52 @@ class JTMS[D,I](
   //     (push node (jtms-nodes jtms))
   //     node))
 
+  /** Add a rule for concluding belief in a node.
+    *
+    * @param informant Information value associated with this
+    * justification.
+    * @param consequence Node concluded by ths justification.
+    * @param antecedents The premises required to trigger belief in
+    * the `consequence.
+    */
   def justifyNode(
     informant: I, consequence: Node[D, I], antecedents: ListBuffer[Node[D, I]]):
       Unit = {
+    // Create the structure to represent this inference rule.
     val just =
       new Just[D, I](incrJustCounter, informant, consequence, antecedents)
+
+    // Associate the new justification structure with possible
+    // justifiers of the consequence.
+    consequence.justs += just
+
+    // For each of the antecedents, include the new justification
+    // structure as a consequence.
     for (node <- antecedents) do node.consequences += just
+
+    // Add the new justification structure to the master list of
+    // justifications.
     justs += just
+
+    // If debugging
     dbg({
       val antes = antecedents.map(nodeString)
       s"Justifying $consequence by $informant using ${antes}."
     })
+
+    // We attempt to use this new rule right now if either the
+    // consequence is currently OUT, or if there actually are
+    // antecedents.
     if !antecedents.isEmpty || consequence.isOutNode then {
+      // If the antecedents are satisfied, add it as a support for the
+      // consequence.
       if just.checkJustification then consequence.installSupport(just)
     } else {
+      // Otherwise we can install as a support straightaway.
       consequence.support = Some(just)
     }
+
+    // Detect new contradictions.
     checkForContradictions
   }
   // (defun justify-node (informant consequence antecedents &aux just jtms)
@@ -184,11 +225,25 @@ class JTMS[D,I](
   //       (setf (tms-node-support consequence) just))
   //   (check-for-contradictions jtms))
 
+  /** Search for support for nodes which were disbelieved after an
+    * assumption retraction.
+    *
+    * The original Lisp code returns the justification when
+    * short-circuiting from the inner loop.  But this return value is
+    * never used; moreover there is no return value used from callers
+    * of this function.  So in this type-checked translation, we
+    * return the unit value.
+    *
+    * @param outQueue List of nodes which have lost support.  The
+    * naming of the parameter as a queue in the Lisp code is odd: the
+    * list is only read; nothing is ever enqueued.
+    */
   def findAlternativeSupport(outQueue: Iterable[Node[D, I]]):
       Unit = { // Option[Just[D, I]] = {
-    dbg(s"   Looking for alternative supports.")
+    dbg(s"   Looking for alternative supports for ${outQueue.map(_.datum.toString).mkString(", ")}.")
     for (node <- outQueue) do {
-      if node.isInNode then {
+      dbg(s"     Looking for alternative supports for ${node.datum.toString}.")
+      if !node.isInNode then {
         returning {
           for (just <- node.justs) do {
             if just.checkJustification then {
@@ -317,6 +372,7 @@ class JTMS[D,I](
   //     (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
   //       (push assumption result))))
 
+  def debugNodes: Unit = nodes.map(_.debugNode)
   def whyNodes: Unit = nodes.map(_.whyNode)
   // (defun why-nodes (jtms)
   //   (dolist (node (jtms-nodes jtms)) (why-node node)))
@@ -328,6 +384,13 @@ class JTMS[D,I](
   // (defun ask-user-handler (jtms contradictions)
   //   (handle-one-contradiction (car contradictions))
   //   (check-for-contradictions jtms))
+
+  def debugJTMS: Unit = {
+    println("-----")
+    justs.map(_.detailJust)
+    debugNodes
+    println("-----")
+  }
 
   var contraAssumptions: ContraAssumptions[D, I] = ListBuffer.empty
   // (proclaim '(special *contra-assumptions*))

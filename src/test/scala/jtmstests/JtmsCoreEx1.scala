@@ -64,6 +64,7 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
   "JTMS ex1" `should` "all pass" in {
 
     na.enableAssumption
+    // showBeliefs(s"A enabled :: ")
     na.believed `should` be (true)
     nb.believed `should` be (false)
     nc.believed `should` be (false)
@@ -71,9 +72,9 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (false)
     nf.believed `should` be (false)
     ng.believed `should` be (false)
-    // showBeliefs(s"A enabled :: ")
 
     nb.enableAssumption
+    // showBeliefs(s"B enabled :: ")
     na.believed `should` be (true)
     nb.believed `should` be (true)
     nc.believed `should` be (false)
@@ -81,9 +82,9 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (false)
     nf.believed `should` be (true)
     ng.believed `should` be (false)
-    // showBeliefs(s"B enabled :: ")
 
     nc.enableAssumption
+    // showBeliefs(s"C enabled :: ")
     na.believed `should` be (true)
     nb.believed `should` be (true)
     nc.believed `should` be (true)
@@ -91,9 +92,10 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (true)
     nf.believed `should` be (true)
     ng.believed `should` be (true)
-    // showBeliefs(s"C enabled :: ")
 
     nd.enableAssumption
+    // showBeliefs("D enabled :: ")
+    // j.debugJTMS
     na.believed `should` be (true)
     nb.believed `should` be (true)
     nc.believed `should` be (true)
@@ -101,9 +103,10 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (true)
     nf.believed `should` be (true)
     ng.believed `should` be (true)
-    // showBeliefs(s"D enabled :: ")
 
     na.retractAssumption
+    // showBeliefs("A retracted :: ")
+    // j.debugJTMS
     na.believed `should` be (false)
     nb.believed `should` be (true)
     nc.believed `should` be (true)
@@ -111,6 +114,5 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (true)
     nf.believed `should` be (false)
     ng.believed `should` be (true)
-    // showBeliefs(s"A retracted :: ")
   }
 }

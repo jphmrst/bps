@@ -331,6 +331,33 @@ class Node[D, I](
   //    (T (format t "~%~A is OUT." (node-string node))))
   //   node)
 
+  def debugNode: Unit = {
+    println(s"Node $datum (isAssumption $isAssumption, isContradictory $isContradictory, ${if believed then "" else "not "}believed)")
+
+    support match {
+      case Some(s: Symbol) =>
+        if s == enabledAssumption then
+          println("- Supportted: enabled assumption")
+        else
+          println("- No support")
+      case Some(j: Just[D, I]) =>
+        println(s"- IN via ${j.informant} (${j.index})")
+      case None => println(s"- OUT")
+    }
+
+    if (justs.isEmpty) {
+      println("- Concluded by no justification rules")
+    } else {
+      println(s"- Concluded by rule${if justs.length == 1 then "" else "s"} ${justs.map(_.toString).mkString(", ")}")
+    }
+
+    if (consequences.isEmpty) {
+      println("- Antecedent to no rules")
+    } else {
+      println(s"- Antecedent to ${consequences.map(_.toString).mkString(", ")}")
+    }
+  }
+
   // Method exploreNetwork is interactive; omitting for now [JM Dec 2 '21]
   // -----------------------------------------------------------------
   // def exploreNetwork: Node[D, I] = if isInNode then {

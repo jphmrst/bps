@@ -44,7 +44,7 @@ trait JTMScoreEx3 extends JTMSexample[Symbol, String] {
 class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
     with JTMSexample[Symbol, String]("Multiple support example") {
   "JTMS ex3" `should` "all pass" in {
-    showAll("Initially")
+    // showAll("Initially")
 
     na.enableAssumption
     // showAll("A assumed")
