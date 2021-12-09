@@ -437,6 +437,22 @@ class ATMS[D, I](
   //   (dolist (bucket (atms-env-table atms))
   //     (dolist (env (cdr bucket))
   //       (if (= (env-index env) n) (return-from e env)))))
+
+  def printNogoods: String = ???
+  // ; From ainter.lisp
+  // (defun print-nogoods (atms &optional (stream t))
+  //   (print-env-table (atms-nogood-table atms) stream))
+
+  def printEnvs: String = ???
+  // ; From ainter.lisp
+  // (defun print-envs (atms &optional (stream t))
+  //   (print-env-table (atms-env-table atms) stream))
+
+  def printAtmsStatistics: Unit = ???
+  // ; From ainter.lisp
+  // (defun print-atms-statistics (atms)
+  //   (print-table "~% For env table:" (atms-env-table atms))
+  //   (print-table "~% For nogood table:" (atms-nogood-table atms)))
 }
 
 // ; From atms.lisp

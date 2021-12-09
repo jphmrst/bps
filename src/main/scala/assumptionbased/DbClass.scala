@@ -22,7 +22,10 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
-class DbClass[I]() {
+class DbClass[I](
+  val name: String,
+  val ruleEngine: RuleEngine[I]
+) {
 
   // ; From ainter.lisp
   // (defstruct (dbclass (:PRINT-FUNCTION print-atre-dbclass))
@@ -30,7 +33,9 @@ class DbClass[I]() {
   //   atre    ; ATRE it is part of.
   //   facts   ; Associated facts
   //   rules)   ; Associated rules
-  //
+
+  override def toString: String = s"<DbClass $name>"
+  def printRuleEngineDbClass: Unit = println(toString)
   // (defun print-atre-dbclass  (r st ignore)
   //   (declare (ignore ignore))
   //   (format st "<Dbclass ~A>" (dbclass-name r)))

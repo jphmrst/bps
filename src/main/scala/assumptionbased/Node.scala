@@ -174,7 +174,8 @@ class Node[D, I](
   //   (dolist (j (tms-node-justs node))
   //     (print-justification j stream)))
 
-  // ; From adata.lisp --- not translating; expand in place
+  // ; From adata.lisp --- not translating; expand in place at call sites
+  //
   // (defun view-node (node)
   //   (datum-lisp-form (tms-node-datum node)))
   //
