@@ -31,6 +31,9 @@ class Node[D, I](
 
   val index: Int = atms.incrNodeCounter
 
+  val label: ListBuffer[Env[D, I]] =
+    ListBuffer(atms.createEnv(ListBuffer(this)))
+
   // ; From atms.lisp
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
   //   (index 0)                                             ;; Unique name.

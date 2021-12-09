@@ -80,7 +80,9 @@ class ATMS[D, I](
     createNode("The contradiction", isContradictory = true)
 
   /** Empty environment. */
-  val emptyEnv: Env[D, I] = createEnv(???)
+  val emptyEnv: Env[D, I] = createEnv(ListBuffer.empty)
+
+  val envTable: EnvTable[D, I] = ???
 
   // ; From atms.lisp
   // (defstruct (atms (:PRINT-FUNCTION print-atms))
@@ -137,7 +139,17 @@ class ATMS[D, I](
   def createNode(
     datum: D | String,
     isAssumption: Boolean = false, isContradictory: Boolean = false):
-      Node[D, I] = ???
+      Node[D, I] = {
+    val node = new Node[D, I](this, datum, isAssumption, isContradictory)
+    if isContradictory then contradictions += node
+    if isAssumption then {
+      assumptions += node
+      node.label += createEnv(ListBuffer(node))
+    }
+    // The `(push (create-env ...` call is now in the initialization
+    // of the label field of the Node.
+    node
+  }
   // ; From atms.lisp
   // (defun tms-create-node (atms datum &key assumptionp contradictoryp
   //                                    &aux node)
@@ -153,7 +165,12 @@ class ATMS[D, I](
   //     (push (create-env atms (list node)) (tms-node-label node)))
   //   node)
 
-  def createEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] = ???
+  def createEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] = {
+    val e = new Env(incrEnvCounter, assumptions)
+    envTable.insertInTable(e)
+    setEnvContradictory(e)
+    e
+  }
   // ; From atms.lisp
   // (defun create-env (atms assumptions &aux e)
   //   (setq e (make-env :INDEX (incf (atms-env-counter atms))
@@ -164,7 +181,14 @@ class ATMS[D, I](
   //   (set-env-contradictory atms e)
   //   e)
 
-  def assumeNode(node: Node[D, I]): Unit = ???
+  def assumeNode(node: Node[D, I]): Unit = {
+    if !node.isAssumption then {
+      dbg(s"Converting $node into an assumption")
+      node.isAssumption = true
+      assumptions += node
+      ???
+    }
+  }
   // ; From atms.lisp
   // (defun assume-node (node &aux atms)
   //   (unless (tms-node-assumption? node)
@@ -176,7 +200,9 @@ class ATMS[D, I](
   //             node
   //             'ASSUME-NODE)))
 
-  def makeContradiction(node: Node[D, I]): Unit = ???
+  def makeContradiction(node: Node[D, I]): Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun make-contradiction
   //        (node &aux (atms (tms-node-atms node)) nogood)
@@ -190,7 +216,9 @@ class ATMS[D, I](
 
   def justifyNode(
     informant: I, consequence: Node[D, I], antecedents: ListBuffer[Node[D, I]]):
-      Unit = ???
+      Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun justify-node (informant consequence antecedents &aux just atms)
   //   (setq atms (tms-node-atms consequence)
@@ -209,7 +237,9 @@ class ATMS[D, I](
   //   (propagate just nil (list (atms-empty-env atms)))
   //   just)
 
-  def nogoodNodes(informant: I, nodes: ListBuffer[Node[D, I]]): Unit = ???
+  def nogoodNodes(informant: I, nodes: ListBuffer[Node[D, I]]): Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun nogood-nodes (informant nodes)
   //   (justify-node informant
@@ -218,7 +248,9 @@ class ATMS[D, I](
 
   def propagate(
     just: Just[D, I], antecedent: Node[D, I], env: Env[D, I]):
-      Unit = ???
+      Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun propagate (just antecedent envs &aux new-envs)
   //   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
@@ -226,7 +258,9 @@ class ATMS[D, I](
 
   def update(
     newEnvs: Iterable[Env[D, I]], consequence: Node[D, I], just: Just[D, I]):
-      Unit = ???
+      Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun update (new-envs consequence just &aux atms enqueuef)
   //   (setq atms (tms-node-atms consequence))
@@ -252,7 +286,9 @@ class ATMS[D, I](
     antecedent: Node[D, I],
     envs: Iterable[Env[D, I]],
     antecedents: ListBuffer[Node[D, I]]):
-      Iterable[Env[D, I]] = ???
+      Iterable[Env[D, I]] = {
+    ???
+  }
   // ; From atms.lisp
   // (defun weave (antecedent envs antecedents &aux new-envs new-env)
   //   (setq envs (copy-list envs))
@@ -274,13 +310,17 @@ class ATMS[D, I](
   //       (unless envs (return-from weave nil))))
   //   envs)
 
-  def isInAntecedent(nodes: Iterable[Node[D, I]]): Boolean = ???
+  def isInAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
+    ???
+  }
   // ; From atms.lisp
   // (defun in-antecedent? (nodes)
   //   (or (null nodes)
   //       (weave? (atms-empty-env (tms-node-atms (car nodes))) nodes)))
 
-  def removeNode(node: Node[D, I]): Unit = ???
+  def removeNode(node: Node[D, I]): Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun remove-node (node &aux atms)
   //   (if (tms-node-consequences node)
@@ -297,7 +337,9 @@ class ATMS[D, I](
   //     (setf (env-nodes env)
   //           (delete node (env-nodes env) :test #'eq :count 1))))
 
-  def lookupEnv(assumes: Iterable[Node[D, I]]): Env[D, I] = ???
+  def lookupEnv(assumes: Iterable[Node[D, I]]): Env[D, I] = {
+    ???
+  }
   // ; From atms.lisp
   // (defun lookup-env (assumes)
   //   (dolist (env (cdr (assoc (length assumes)
@@ -307,7 +349,9 @@ class ATMS[D, I](
   //     (if (equal (env-assumptions env) assumes)
   //         (return env))))
 
-  def newNogood(cenv: Env[D, I], just: Just[D, I]): Unit = ???
+  def newNogood(cenv: Env[D, I], just: Just[D, I]): Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun new-nogood (atms cenv just &aux count)
   //   (debugging atms (format nil "~%  ~A new minimal nogood." cenv))
@@ -329,7 +373,9 @@ class ATMS[D, I](
   //           (setf (env-nogood? old) cenv)
   //           (remove-env-from-labels old atms))))))
 
-  def setEnvContradictory(env: Env[D, I]): Unit = ???
+  def setEnvContradictory(env: Env[D, I]): Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun set-env-contradictory (atms env &aux count)
   //   (cond ((env-nogood? env) t)
@@ -343,7 +389,9 @@ class ATMS[D, I](
   //                                 cenv)
   //                           (return t)))))))))
 
-  def removeEnvFromLabels(env: Env[D, I]): Unit = ???
+  def removeEnvFromLabels(env: Env[D, I]): Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun remove-env-from-labels (env atms &aux enqueuef)
   //   (when (setq enqueuef (atms-enqueue-procedure atms))
@@ -357,7 +405,9 @@ class ATMS[D, I](
   // ; From atms.lisp
   // (proclaim '(special *solutions*))
 
-  def interpretations(choiceSets: ChoiceSets[D, I]): ListBuffer[Env[D, I]] = ???
+  def interpretations(choiceSets: ChoiceSets[D, I]): ListBuffer[Env[D, I]] = {
+    ???
+  }
   // ; From atms.lisp
   // (defun interpretations (atms choice-sets
   //                         &optional defaults &aux solutions)
@@ -385,7 +435,9 @@ class ATMS[D, I](
 
   def getDepthSolutions1(
     solution: Env[D, I], choiceSets: ChoiceSets[D, I]):
-      ListBuffer[Env[D, I]] = ???
+      ListBuffer[Env[D, I]] = {
+    ???
+  }
   // ; From atms.lisp
   // (defun get-depth-solutions1 (solution choice-sets
   //                                       &aux new-solution)
@@ -409,7 +461,9 @@ class ATMS[D, I](
     solution: Env[D, I],
     remaining: ListBuffer[Node[D, I]],
     original: ListBuffer[Node[D, I]]):
-      Unit = ???
+      Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun extend-via-defaults (solution remaining original)
   //   (do ((new-solution)
@@ -431,24 +485,32 @@ class ATMS[D, I](
   // (defun why-nodes (atms &optional (stream t))
   //   (dolist (n (reverse (atms-nodes atms))) (why-node n stream)))
 
-  def e(n: Node[D, I]): Unit = ???
+  def e(n: Node[D, I]): Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun e (atms n)
   //   (dolist (bucket (atms-env-table atms))
   //     (dolist (env (cdr bucket))
   //       (if (= (env-index env) n) (return-from e env)))))
 
-  def printNogoods: String = ???
+  def printNogoods: String = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun print-nogoods (atms &optional (stream t))
   //   (print-env-table (atms-nogood-table atms) stream))
 
-  def printEnvs: String = ???
+  def printEnvs: String = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun print-envs (atms &optional (stream t))
   //   (print-env-table (atms-env-table atms) stream))
 
-  def printAtmsStatistics: Unit = ???
+  def printAtmsStatistics: Unit = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun print-atms-statistics (atms)
   //   (print-table "~% For env table:" (atms-env-table atms))

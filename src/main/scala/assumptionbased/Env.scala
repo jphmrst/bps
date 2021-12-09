@@ -30,11 +30,26 @@ class EnvTable[D, I] {
   //   (dolist (bucket table)
   //     (dolist (env (cdr bucket))
   //       (print-env env stream))))
+
+  def insertInTable(env: Env[D, I]): Unit = ???
+  // ; From ainter.lisp
+  // (defun insert-in-table (table env &aux count entry)
+  //   (setq count (env-count env)
+  //         entry (assoc count table :TEST #'=))
+  //   (cond (entry (setf (cdr entry) (cons env (cdr entry))) table)
+  //         (t (ordered-insert
+  //              (list count env) table
+  //              #'(lambda (entry1 entry2)
+  //                  (< (car entry1) (car entry2)))))))
 }
 
 class Env[D, I](
-  val title: String
+  val index: Int,
+  val assumptions: ListBuffer[Node[D, I]]
 ) {
+
+  /** Number of assumptions. */
+  val count = assumptions.length
 
   // ; From atms.lisp
   // (defstruct (env (:PREDICATE env?)
@@ -84,17 +99,6 @@ class Env[D, I](
   //                                  #'assumption-order))
   //   (or (lookup-env nassumes)
   //       (create-env (tms-node-atms assumption) nassumes)))
-
-  def insertInTable(table: EnvTable[D, I]): Unit = ???
-  // ; From ainter.lisp
-  // (defun insert-in-table (table env &aux count entry)
-  //   (setq count (env-count env)
-  //         entry (assoc count table :TEST #'=))
-  //   (cond (entry (setf (cdr entry) (cons env (cdr entry))) table)
-  //         (t (ordered-insert
-  //              (list count env) table
-  //              #'(lambda (entry1 entry2)
-  //                  (< (car entry1) (car entry2)))))))
 
   def subsetEnv(e2: Env[D, I]): Boolean = ???
   // ; From ainter.lisp
