@@ -258,6 +258,15 @@ class ATMS[D, I](
   //                 (atms-contra-node (tms-node-atms (car nodes)))
   //                 nodes))
 
+  /**
+    *
+    *
+    * @param just
+    * @param antecedent
+    * @param envs FILLIN This list is not mutated: `weave` returns a
+    * non-shared copy of the list, so the mutations in `update` do not
+    * impact the original argument.
+    */
   def propagate(
     just: Just[D, I],
     antecedent: Option[Node[D, I]],
@@ -271,6 +280,13 @@ class ATMS[D, I](
   //   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
   //       (update new-envs (just-consequence just) just)))
 
+  /**
+    *
+    *
+    * @param newEnvs This list may be mutated by this method.
+    * @param consequence
+    * @param just
+    */
   def update(
     newEnvs: ListBuffer[Env[D, I]],
     consequence: Node[D, I],
@@ -325,6 +341,16 @@ class ATMS[D, I](
   //     (setq new-envs (delete nil new-envs :TEST #'eq))
   //     (unless new-envs (return-from update nil))))
 
+  /**
+    *
+    *
+    * @param antecedent
+    * @param envs FILLIN Note that this list is duplicated at the
+    * start of the method, so no changes are made to the passed-in
+    * argument.
+    * @param antecedents
+    * @return
+    */
   def weave(
     antecedent: Option[Node[D, I]],
     envs: Iterable[Env[D, I]],

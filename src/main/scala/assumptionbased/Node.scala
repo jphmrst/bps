@@ -100,6 +100,12 @@ class Node[D, I](
   //   (some #'(lambda (le) (not (env-nogood? (union-env le env))))
   //         (tms-node-label n)))
 
+  /**
+    *
+    *
+    * @param newEnvs A list of environments to be mutated by this call.
+    * @return
+    */
   def updateLabel(newEnvs: ListBuffer[Env[D, I]]): ListBuffer[Env[D, I]] = ???
   // ; From atms.lisp
   // (defun update-label (node new-envs &aux envs)
