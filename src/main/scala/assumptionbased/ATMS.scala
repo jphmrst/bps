@@ -82,7 +82,7 @@ class ATMS[D, I](
   /** Empty environment. */
   val emptyEnv: Env[D, I] = createEnv(ListBuffer.empty)
 
-  val envTable: EnvTable[D, I] = ???
+  val envTable = new EnvTable[D, I]
 
   // ; From atms.lisp
   // (defstruct (atms (:PRINT-FUNCTION print-atms))
@@ -186,7 +186,7 @@ class ATMS[D, I](
       dbg(s"Converting $node into an assumption")
       node.isAssumption = true
       assumptions += node
-      ???
+      update(ListBuffer(createEnv(ListBuffer(node))), node, justifyNodeAssumed)
     }
   }
   // ; From atms.lisp
@@ -201,7 +201,14 @@ class ATMS[D, I](
   //             'ASSUME-NODE)))
 
   def makeContradiction(node: Node[D, I]): Unit = {
-    ???
+    if !node.isContradictory then {
+      node.isContradictory = true
+      var nogood = node.label.headOption
+      while (!nogood.isEmpty) {
+        newNogood(nogood.get, justifyMakeContradiction)
+        nogood = node.label.headOption
+      }
+    }
   }
   // ; From atms.lisp
   // (defun make-contradiction
@@ -216,8 +223,14 @@ class ATMS[D, I](
 
   def justifyNode(
     informant: I, consequence: Node[D, I], antecedents: ListBuffer[Node[D, I]]):
-      Unit = {
-    ???
+      Just[D, I] = {
+    val just = new Just(incrJustCounter, informant, consequence, antecedents)
+    consequence.justs += just
+    for (node <- antecedents) do node.consequences += just
+    justs += just
+    dbg(s"Justifying $consequence in terms of informant on ${antecedents.map(nodeString)}")
+    propagate(just, None, List(emptyEnv))
+    just
   }
   // ; From atms.lisp
   // (defun justify-node (informant consequence antecedents &aux just atms)
@@ -237,9 +250,8 @@ class ATMS[D, I](
   //   (propagate just nil (list (atms-empty-env atms)))
   //   just)
 
-  def nogoodNodes(informant: I, nodes: ListBuffer[Node[D, I]]): Unit = {
-    ???
-  }
+  def nogoodNodes(informant: I, nodes: ListBuffer[Node[D, I]]): Unit =
+    justifyNode(informant, contraNode, nodes)
   // ; From atms.lisp
   // (defun nogood-nodes (informant nodes)
   //   (justify-node informant
@@ -247,9 +259,12 @@ class ATMS[D, I](
   //                 nodes))
 
   def propagate(
-    just: Just[D, I], antecedent: Node[D, I], env: Env[D, I]):
+    just: Just[D, I],
+    antecedent: Option[Node[D, I]],
+    envs: Iterable[Env[D, I]]):
       Unit = {
-    ???
+    val newEnvs = weave(antecedent, envs, just.antecedents)
+    if !newEnvs.isEmpty then update(newEnvs, just.consequence, just)
   }
   // ; From atms.lisp
   // (defun propagate (just antecedent envs &aux new-envs)
@@ -257,9 +272,37 @@ class ATMS[D, I](
   //       (update new-envs (just-consequence just) just)))
 
   def update(
-    newEnvs: Iterable[Env[D, I]], consequence: Node[D, I], just: Just[D, I]):
+    newEnvs: ListBuffer[Env[D, I]],
+    consequence: Node[D, I],
+    just: Justification[D, I]):
       Unit = {
-    ???
+    if consequence.isContradictory then {
+      for (env <- newEnvs) do newNogood(env, just)
+      return
+    }
+
+    // TODO ??? This is probably wrong but need Hyperspec.  I think
+    // this method is mutating new-envs — check that rplaca and delete
+    // do mutate their lists.  What about updateLabel and propagate?
+
+    var revisedEnvs = consequence.updateLabel(newEnvs)
+    if revisedEnvs.isEmpty then return
+
+    enqueueProcedure.map((enqueuef) => {
+      for (rule <- consequence.rules) do enqueuef(rule)
+      consequence.rules.clear
+    })
+
+    returning[Unit] {
+      for (supportedJust <- consequence.consequences) do {
+        propagate(supportedJust, Some(consequence), revisedEnvs)
+        while (!revisedEnvs.isEmpty) {
+          revisedEnvs =
+            revisedEnvs.filter((env) => consequence.label.contains(env))
+        }
+        ???
+      }
+    }
   }
   // ; From atms.lisp
   // (defun update (new-envs consequence just &aux atms enqueuef)
@@ -283,10 +326,10 @@ class ATMS[D, I](
   //     (unless new-envs (return-from update nil))))
 
   def weave(
-    antecedent: Node[D, I],
+    antecedent: Option[Node[D, I]],
     envs: Iterable[Env[D, I]],
     antecedents: ListBuffer[Node[D, I]]):
-      Iterable[Env[D, I]] = {
+      ListBuffer[Env[D, I]] = {
     ???
   }
   // ; From atms.lisp
@@ -311,7 +354,7 @@ class ATMS[D, I](
   //   envs)
 
   def isInAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
-    ???
+    nodes.isEmpty || ??? // isWeave(emptyEnv, nodes)
   }
   // ; From atms.lisp
   // (defun in-antecedent? (nodes)
@@ -349,7 +392,7 @@ class ATMS[D, I](
   //     (if (equal (env-assumptions env) assumes)
   //         (return env))))
 
-  def newNogood(cenv: Env[D, I], just: Just[D, I]): Unit = {
+  def newNogood(cenv: Env[D, I], just: Justification[D, I]): Unit = {
     ???
   }
   // ; From atms.lisp

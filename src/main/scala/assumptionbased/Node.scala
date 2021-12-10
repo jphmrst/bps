@@ -31,8 +31,18 @@ class Node[D, I](
 
   val index: Int = atms.incrNodeCounter
 
+  /** The minimal envs under which this node is believed. */
   val label: ListBuffer[Env[D, I]] =
     ListBuffer(atms.createEnv(ListBuffer(this)))
+
+  /** What this node provides support for. */
+  val consequences: ListBuffer[Just[D, I]] = ListBuffer.empty
+
+  /** Providers of support. */
+  val justs: ListBuffer[Just[D, I]] = ListBuffer.empty
+
+  /** Run when label non-empty. */
+  val rules: ListBuffer[Rule[I]] = ListBuffer.empty
 
   // ; From atms.lisp
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
