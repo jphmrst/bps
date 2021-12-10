@@ -84,6 +84,8 @@ class ATMS[D, I](
 
   val envTable = new EnvTable[D, I]
 
+  val nogoodTable = new EnvTable[D, I]
+
   // ; From atms.lisp
   // (defstruct (atms (:PRINT-FUNCTION print-atms))
   //   (title nil)
@@ -229,7 +231,7 @@ class ATMS[D, I](
     for (node <- antecedents) do node.consequences += just
     justs += just
     dbg(s"Justifying $consequence in terms of informant on ${antecedents.map(nodeString)}")
-    propagate(just, None, List(emptyEnv))
+    propagate(just, None, ListBuffer(emptyEnv))
     just
   }
   // ; From atms.lisp
@@ -270,7 +272,7 @@ class ATMS[D, I](
   def propagate(
     just: Just[D, I],
     antecedent: Option[Node[D, I]],
-    envs: Iterable[Env[D, I]]):
+    envs: ListBuffer[Env[D, I]]):
       Unit = {
     val newEnvs = weave(antecedent, envs, just.antecedents)
     if !newEnvs.isEmpty then update(newEnvs, just.consequence, just)
@@ -297,12 +299,9 @@ class ATMS[D, I](
       return
     }
 
-    // TODO ??? This is probably wrong but need Hyperspec.  I think
-    // this method is mutating new-envs — check that rplaca and delete
-    // do mutate their lists.  What about updateLabel and propagate?
-
-    var revisedEnvs = consequence.updateLabel(newEnvs)
-    if revisedEnvs.isEmpty then return
+    // `updateLabel` mutates its argument.
+    consequence.updateLabel(newEnvs)
+    if newEnvs.isEmpty then return
 
     enqueueProcedure.map((enqueuef) => {
       for (rule <- consequence.rules) do enqueuef(rule)
@@ -311,12 +310,11 @@ class ATMS[D, I](
 
     returning[Unit] {
       for (supportedJust <- consequence.consequences) do {
-        propagate(supportedJust, Some(consequence), revisedEnvs)
-        while (!revisedEnvs.isEmpty) {
-          revisedEnvs =
-            revisedEnvs.filter((env) => consequence.label.contains(env))
+        propagate(supportedJust, Some(consequence), newEnvs)
+        for (newEnv <- newEnvs) {
+          if !consequence.label.contains(newEnv) then newEnvs -= newEnv
         }
-        ???
+        if newEnvs.isEmpty then throwReturn(())
       }
     }
   }
@@ -335,7 +333,7 @@ class ATMS[D, I](
   //   (dolist (supported-just (tms-node-consequences consequence))
   //     (propagate supported-just consequence new-envs)
   //     (do ((new-envs new-envs (cdr new-envs)))
-  //         ((null new-envs))
+  //         ((null new-envs)) ; Exit condition only, no result value
   //       (unless (member (car new-envs) (tms-node-label consequence))
   //         (rplaca new-envs nil)))
   //     (setq new-envs (delete nil new-envs :TEST #'eq))
@@ -353,10 +351,31 @@ class ATMS[D, I](
     */
   def weave(
     antecedent: Option[Node[D, I]],
-    envs: Iterable[Env[D, I]],
+    origEnvs: ListBuffer[Env[D, I]],
     antecedents: ListBuffer[Node[D, I]]):
       ListBuffer[Env[D, I]] = {
-    ???
+    val envs = origEnvs.clone
+    returning[Unit] {
+      for (node <- antecedents) do {
+        if antecedent.map(_ != antecedent).getOrElse(true) then {
+          val newEnvs = ListBuffer.empty[Env[D, I]]
+          for (env <- envs) do {
+            for (nodeEnv <- node.label) do {
+              val newEnv = env.unionEnv(nodeEnv)
+              if !newEnv.isNogood
+              then for (nnewEnv <- newEnvs) do {
+                newEnv.compareEnv(nnewEnv) match {
+                  case EnvCompare.S12 => newEnvs -= newEnv
+                  case _ => throwReturn(())
+                }
+              }
+            }
+          }
+          if envs.isEmpty then throwReturn(())
+        }
+      }
+    }
+    envs
   }
   // ; From atms.lisp
   // (defun weave (antecedent envs antecedents &aux new-envs new-env)
@@ -380,7 +399,7 @@ class ATMS[D, I](
   //   envs)
 
   def isInAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
-    nodes.isEmpty || ??? // isWeave(emptyEnv, nodes)
+    nodes.isEmpty || emptyEnv.isWeave(nodes)
   }
   // ; From atms.lisp
   // (defun in-antecedent? (nodes)
@@ -388,7 +407,14 @@ class ATMS[D, I](
   //       (weave? (atms-empty-env (tms-node-atms (car nodes))) nodes)))
 
   def removeNode(node: Node[D, I]): Unit = {
-    ???
+    if !node.consequences.isEmpty
+    then throw new TmsError("Can't remove node with consequences")
+
+    nodes -= node
+    for (just <- node.justs) do
+      for (ant <- just.antecedents) do ant.consequences -= just
+
+    for (env <- node.label) do env.nodes -= node
   }
   // ; From atms.lisp
   // (defun remove-node (node &aux atms)
@@ -406,20 +432,46 @@ class ATMS[D, I](
   //     (setf (env-nodes env)
   //           (delete node (env-nodes env) :test #'eq :count 1))))
 
-  def lookupEnv(assumes: Iterable[Node[D, I]]): Env[D, I] = {
-    ???
-  }
+  def lookupEnv(assumes: ListBuffer[Node[D, I]]): Option[Env[D, I]] =
+    returning {
+      envTable.get(assumes.length) match {
+        case Some(envs) => {
+          for (env <- envs)
+            do if env.assumptions.corresponds(assumes)((x,y) => x == y) then {
+              throwReturn[Option[Env[D, I]]](Some(env))
+            }
+          None
+        }
+        case None => None
+      }
+    }
   // ; From atms.lisp
   // (defun lookup-env (assumes)
   //   (dolist (env (cdr (assoc (length assumes)
   //                            (atms-env-table (tms-node-atms (car assumes)))
   //                            :TEST #'=))
-  //                nil)
+  //                nil) ;; Result of the loop if exited
   //     (if (equal (env-assumptions env) assumes)
   //         (return env))))
 
   def newNogood(cenv: Env[D, I], just: Justification[D, I]): Unit = {
-    ???
+    dbg(s"$cenv new minimal nogood")
+    cenv.nogoodEvidence = Some(just)
+    removeEnvFromLabels(cenv)
+    nogoodTable.insertInTable(cenv)
+    val count = cenv.count
+    for ((size, sizeEnvs) <- nogoodTable)
+      do if (size > count)
+        then for (old <- sizeEnvs)
+          do if cenv.isSubsetEnv(old) then sizeEnvs -= old
+    for ((size, sizeEnvs) <- nogoodTable)
+      do if (size > count)
+        then for (old <- sizeEnvs)
+          do if (!old.isNogood && cenv.isSubsetEnv(old))
+            then {
+              old.nogoodEvidence = Some(cenv)
+              removeEnvFromLabels(old)
+            }
   }
   // ; From atms.lisp
   // (defun new-nogood (atms cenv just &aux count)
@@ -442,9 +494,22 @@ class ATMS[D, I](
   //           (setf (env-nogood? old) cenv)
   //           (remove-env-from-labels old atms))))))
 
-  def setEnvContradictory(env: Env[D, I]): Unit = {
-    ???
-  }
+  def setEnvContradictory(env: Env[D, I]): Unit =
+    if (!env.isNogood) then {
+      val count = env.count
+      returning {
+        for ((size, sizeEnvs) <- nogoodTable)
+          do if (count <= size)
+            then returning {
+              for (cenv <- sizeEnvs)
+                do if (cenv.isSubsetEnv(env))
+                  then {
+                    env.nogoodEvidence = Some(cenv)
+                    throwReturn(())
+                  }
+            }
+      }
+    }
   // ; From atms.lisp
   // (defun set-env-contradictory (atms env &aux count)
   //   (cond ((env-nogood? env) t)
@@ -459,7 +524,12 @@ class ATMS[D, I](
   //                           (return t)))))))))
 
   def removeEnvFromLabels(env: Env[D, I]): Unit = {
-    ???
+    enqueueProcedure.map((enqueuef) => {
+      for (rule <- env.rules) do enqueuef(rule)
+      env.rules.clear
+    })
+
+    for (node <- env.nodes) do node.label -= env
   }
   // ; From atms.lisp
   // (defun remove-env-from-labels (env atms &aux enqueuef)
@@ -585,6 +655,8 @@ class ATMS[D, I](
   //   (print-table "~% For env table:" (atms-env-table atms))
   //   (print-table "~% For nogood table:" (atms-nogood-table atms)))
 }
+
+class TmsError(msg: String) extends RuntimeException(msg)
 
 // ; From atms.lisp
 // (defun ordered-insert (item list test)

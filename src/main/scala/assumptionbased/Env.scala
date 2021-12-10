@@ -22,7 +22,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
-class EnvTable[D, I] {
+class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
 
   def printEnvTable: Unit = ???
   // ; From ainter.lisp
@@ -43,6 +43,12 @@ class EnvTable[D, I] {
   //                  (< (car entry1) (car entry2)))))))
 }
 
+enum EnvCompare {
+  case S12 extends EnvCompare
+  case S21 extends EnvCompare
+  case EQ extends EnvCompare
+}
+
 class Env[D, I](
   val index: Int,
   val assumptions: ListBuffer[Node[D, I]]
@@ -50,6 +56,15 @@ class Env[D, I](
 
   /** Number of assumptions. */
   val count = assumptions.length
+
+  /** If this node is nogood, stores the evidence. */
+  var nogoodEvidence: Option[Justification[D, I] | Env[D, I]] = None
+  inline def isNogood = !nogoodEvidence.isEmpty
+
+  val nodes: ListBuffer[Node[D, I]] = ListBuffer.empty
+
+  /** Call this if becomes nogood */
+  val rules: ListBuffer[Rule[I]] = ListBuffer.empty
 
   // ; From atms.lisp
   // (defstruct (env (:PREDICATE env?)
@@ -100,7 +115,7 @@ class Env[D, I](
   //   (or (lookup-env nassumes)
   //       (create-env (tms-node-atms assumption) nassumes)))
 
-  def subsetEnv(e2: Env[D, I]): Boolean = ???
+  def isSubsetEnv(e2: Env[D, I]): Boolean = ???
   // ; From ainter.lisp
   // (defun subset-env? (e1 e2)
   //   (cond ((eq e1 e2) t)
@@ -109,7 +124,7 @@ class Env[D, I](
   //         ((subsetp (env-assumptions e1)
   //                   (env-assumptions e2)))))
 
-  def compareEnv(e2: Env[D, I]): Boolean = ???
+  def compareEnv(e2: Env[D, I]): EnvCompare = ???
   // ; From ainter.lisp
   // (defun compare-env (e1 e2)
   //   (cond ((eq e1 e2) :EQ)
