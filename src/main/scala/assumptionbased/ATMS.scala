@@ -22,7 +22,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
-type ChoiceSets[D, I] = Unit
+type ChoiceSets[D, I] = ListBuffer[ListBuffer[Node[D, I]]]
 
 /** Implementation of assmuption-based truth maintenance systems.
   *
@@ -544,8 +544,22 @@ class ATMS[D, I](
   // ; From atms.lisp
   // (proclaim '(special *solutions*))
 
-  def interpretations(choiceSets: ChoiceSets[D, I]): ListBuffer[Env[D, I]] = {
+  val solutions: ListBuffer[Env[D, I]] = ListBuffer.empty
+
+  def interpretations(
+    givenChoiceSets: ChoiceSets[D, I]):
+      ListBuffer[Env[D, I]] = {
+    dbg(s"Constructing interpretations depth-first...")
+    solutions.clear
+    val choiceSets =
+      givenChoiceSets.map((altSet) => altSet.map(_.label.clone).concat)
+
+    // for (choice <- choiceSets)
+    //   do getDepthSolution1(choice, )
+
     ???
+
+    solutions
   }
   // ; From atms.lisp
   // (defun interpretations (atms choice-sets
