@@ -21,19 +21,18 @@
 package org.maraist.tms.assumptionbased.tests
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
-import org.maraist.tms.atms.{
-  ATMS, TMSnode}
+// import org.maraist.tms.assumptionbased.{ATMS, Node}
 
 class TestATMS extends AnyFlatSpec with Matchers {
 
   "FdK Test 1" `should` "all pass" in {
-    val atms = new ATMS[String]("atms-test1", debugging = true)
-    val a = new TMSnode[String](atms, "A")
-    val b = new TMSnode[String](atms, "B")
-    val c = new TMSnode[String](atms, "C")
-    val d = new TMSnode[String](atms, "D")
-    val e = new TMSnode[String](atms, "E")
-    val f = new TMSnode[String](atms, "F")
+    // val atms = new ATMS[String]("atms-test1", debugging = true)
+    // val a = new Node[String](atms, "A")
+    // val b = new Node[String](atms, "B")
+    // val c = new Node[String](atms, "C")
+    // val d = new Node[String](atms, "D")
+    // val e = new Node[String](atms, "E")
+    // val f = new Node[String](atms, "F")
 
     // (assume-node a)
     // (assume-node b)
