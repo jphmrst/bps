@@ -15,7 +15,7 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.truthmaintenancesystems.justificationbased
+package org.maraist.truthmaintenancesystems.justificationbased.ruleengine
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 val enabledAssumption = Symbol("Enabled-assumption")
@@ -42,10 +42,10 @@ class Node[D, I](
   val consequences: ListBuffer[Just[D, I]] = ListBuffer.empty
 
   /** Rules that should be triggered when node goes in. */
-  val inRules: ListBuffer[Rule[D, I]] = ListBuffer.empty
+  val inRules: ListBuffer[Rule[I]] = ListBuffer.empty
 
   /** Rules that should be triggered when node goes out. */
-  val outRules: ListBuffer[Rule[D, I]] = ListBuffer.empty
+  val outRules: ListBuffer[Rule[I]] = ListBuffer.empty
 
   /** Marker for sweep algorithms. */
   var mark: Option[Symbol] = None

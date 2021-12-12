@@ -15,7 +15,7 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.truthmaintenancesystems.justificationbased
+package org.maraist.truthmaintenancesystems.justificationbased.ruleengine
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
@@ -27,17 +27,18 @@ type ContraAssumptions[D, I] = ListBuffer[Node[D, I]]
   * @param title Name of this TMS, for output.
   * @param nodeString Default formatter for TMS nodes.
   * @param debugging Debugging flag.
+  * @param enqueueProcedure
   * @param contradictionHandler External handler for detecting contradictions.
   * @param checkingContradictions For external systems.
   * @tparam I Type of (external) informants in justifications.
   */
-class JTMS[D, I](
+class JTMS[D,I](
   val title: String,
   val nodeString: (Node[D, I]) => String =
     (n: Node[D, I]) => s"${n.datum.toString()}",
   var debugging: Boolean = false,
   val checkingContradictions: Boolean = true,
-  var enqueueProcedure: Option[(Rule[D, I]) => Unit] = None,
+  var enqueueProcedure: Option[(Rule[I]) => Unit] = None,
   var contradictionHandler:
       Option[(JTMS[D, I], ListBuffer[Node[D, I]]) => Unit] = None
 ) {

@@ -15,15 +15,13 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.truthmaintenancesystems.justificationbased
+package org.maraist.truthmaintenancesystems.justificationbased.ruleengine
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-abstract class Rule[D, I](val id: Int
-  // , val dbClass: DbClass[I]
-) {
-  //  type V
-  //  def matcher(m: Fact): Option[V]
-  //  def body(jtre: JTRE[I], values: V): Unit
+abstract class Rule[I](val id: Int, val dbClass: DbClass[I]) {
+  type V
+  def matcher(m: Fact): Option[V]
+  def body(jtre: JTRE[I], values: V): Unit
 
   // (defstruct (rule (:PRINT-FUNCTION jtre-rule-printer))
   //   id           ; Unique ID for easy lookup
@@ -45,7 +43,7 @@ abstract class Rule[D, I](val id: Int
 
   // ;;;; Running rules
 
-  def tryRuleOn(datum: D): Unit = ???
+  def tryRuleOn(datum: Datum[I]): Unit = ???
   // (defun try-rule-on (rule datum)
   //   (let ((*JTRE* (dbclass-jtre (datum-dbclass datum))))
   //     (multiple-value-bind (okay? bindings node?)
@@ -61,7 +59,7 @@ object Rule {
 
   // Waiting to translate this and other macro-heavy stuff
   //
-  // def buildRule[D, I](trigger: Any, body: Any): Rule[D, I] = ???
+  // def buildRule[I](trigger: Any, body: Any): Rule[I] = ???
   //
   // (defun build-rule (trigger body &aux match-procedure body-procedure)
   //   (multiple-value-bind (pattern condition var test)
