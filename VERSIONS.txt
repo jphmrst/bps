@@ -1,0 +1,12 @@
+#  -*- org -*-
+
+* Version 0.2
+  - Further testing and debugging of the standalone JTMS.
+  - Separation of the standalone JTMS from (untranslated) JTMS+JTRE
+    wrapper.
+  - Scaladoc documentation of the standalone JTMS.
+  - First version containing this file.
+
+* Version 0.1
+  Initial release
+  - Contains a mostly-working version of the standalone JTMS.
