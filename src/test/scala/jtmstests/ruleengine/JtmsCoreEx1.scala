@@ -57,6 +57,16 @@ trait JTMScoreEx1 extends JTMSexample[Symbol, String] {
   //   (enable-assumption nb)
   //   (enable-assumption nc)
   //   (enable-assumption nd))
+
+  def printNodeAssumptions: Unit = {
+    println(s"$na ${na.assumptionsOfNode}")
+    println(s"$nb ${nb.assumptionsOfNode}")
+    println(s"$nc ${nc.assumptionsOfNode}")
+    println(s"$nd ${nd.assumptionsOfNode}")
+    println(s"$ne ${ne.assumptionsOfNode}")
+    println(s"$nf ${nf.assumptionsOfNode}")
+    println(s"$ng ${ng.assumptionsOfNode}")
+  }
 }
 
 class JTMScoreEx1Test extends AnyFlatSpec with Matchers

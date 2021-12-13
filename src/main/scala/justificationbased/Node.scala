@@ -47,8 +47,8 @@ class Node[D, I](
   /** Rules that should be triggered when node goes out. */
   val outRules: ListBuffer[Rule[D, I]] = ListBuffer.empty
 
-  /** Marker for sweep algorithms. */
-  var mark: Option[Symbol] = None
+//  /** Marker for sweep algorithms. */
+//  var mark: Option[Symbol] = None
 
   /** Possible justifications. */
   val justs: ListBuffer[Just[D, I]] = ListBuffer.empty
@@ -268,12 +268,12 @@ class Node[D, I](
   // (defun supporting-justification-for-node (node) (tms-node-support node))
 
   def assumptionsOfNode: ListBuffer[Node[D, I]] = {
-    val marker = Symbol("mark")
+    val marking = Array.fill[Boolean](jtms.nodeCounter)(false)
     val queue = Queue[Node[D, I]](this) // Replaces `new`
     val assumptions = ListBuffer.empty[Node[D, I]]
     while (!queue.isEmpty) {
       val node = queue.dequeue()
-      if node.mark.map(_ == marker).getOrElse(false) then {
+      if marking(node.index) then {
         // Intentionally empty block
       } else if node.support.map(_ == enabledAssumption).getOrElse(false) then {
         assumptions += node
@@ -283,7 +283,7 @@ class Node[D, I](
           case j: Just[D, I] => { queue ++= j.antecedents }
         })
       }
-      node.mark = Some(marker)
+      marking(node.index) = true
     }
     assumptions
   }
