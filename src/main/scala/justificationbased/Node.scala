@@ -110,12 +110,24 @@ class Node[D, I, R] (
   //   (out-rules nil)  ;; Rules that should be triggered when node goes out
   //   (jtms nil))           ;; The JTMS in which this node appears.
 
+  /**
+    * Return the short tag for this node.
+    */
   override def toString(): String = s"<Node: $nodeString>"
+
+  /**
+    * Output a brief tag for this node.
+    */
   def printTmsNode: Unit = print(toString)
   // (defun print-tms-node (node stream ignore)
   //   (declare (ignore ignore))
   //   (format stream "#<Node: ~A>" (node-string node)))
 
+  /**
+    * Returns `true` if either this node is a believed assumption, or
+    * if it is concluded by an axiomatic justification with no
+    * antecedents.
+    */
   def isPremise: Boolean = support match {
     case None => false
     case Some(sup) => sup match {
@@ -129,19 +141,40 @@ class Node[D, I, R] (
   //        (not (eq support :ENABLED-ASSUMPTION))
   //        (null (just-antecedents support))))
 
+  /**
+    * Format this node in the manner standard for its [[JTMS]].
+    *
+    * @return
+    */
   def nodeString: String = jtms.nodeString(this)
   // (defun node-string (node)
   //   (funcall (jtms-node-string (tms-node-jtms node)) node))
 
+  /**
+    * Throw an error related to this node of the TMS.
+    *
+    * @throws TmsError This method is simply a wrapper for throwing an
+    * exception of this class.
+    */
   def tmsError(string: String): Unit = throw new TmsError(this, string)
   // (defun tms-error (string node) (error string (node-string node)))
 
+  /**
+    * API method checking whether this node is believed.
+    */
   def isInNode: Boolean = believed
   // (defun in-node? (node) (eq (tms-node-label node) :IN))
 
+  /**
+    * API method checking whether this node is disbelieved.
+    */
   def isOutNode: Boolean = !believed
   // (defun out-node? (node) (eq (tms-node-label node) :OUT))
 
+  /**
+    * Internal method used to flag this node as an assumption, and to
+    * enable belief in this assumption.
+    */
   def assumeNode: Unit = {
     if !isAssumption && !isPremise then {
       jtms.dbg(s"Converting $this into an assumption")
@@ -158,6 +191,10 @@ class Node[D, I, R] (
   //     (push node (jtms-assumptions jtms)))
   //   (enable-assumption node))
 
+  /**
+    * API method used when the external system categorizes this node
+    * as representing a contradiction.
+    */
   def makeContradiction: Unit = if !isContradictory then {
     isContradictory = true
     jtms.contradictions += this
@@ -169,6 +206,9 @@ class Node[D, I, R] (
   //     (push node (jtms-contradictions jtms))
   //     (check-for-contradictions jtms)))
 
+  /**
+    * Add a reason for this node to be believed.
+    */
   def installSupport(just: Just[D, I, R]): Unit = {
     makeNodeIn(just)
     propagateInness
@@ -177,6 +217,10 @@ class Node[D, I, R] (
   //   (make-node-in conseq just)
   //   (propagate-inness conseq))
 
+  /**
+    * Trigger justifications which rely (directly or indirectly) on
+    * this node as an antecedent when this node becomes believed.
+    */
   def propagateInness: Unit = {
     val q = Queue[Node[D, I, R]](this)
     while (!q.isEmpty) {
@@ -199,6 +243,10 @@ class Node[D, I, R] (
   //         (make-node-in (just-consequence justification) justification)
   //         (push (just-consequence justification) q)))))
 
+  /**
+    * Called when the given `reason` causes the JTMS to believe this
+    * node.
+    */
   def makeNodeIn(reason: Justification[D, I, R]) = {
     jtms.dbg(reason match {
       case _: EnabledAssumption =>
@@ -236,6 +284,10 @@ class Node[D, I, R] (
   //       (funcall enqueuef in-rule))
   //     (setf (tms-node-in-rules conseq) nil)))
 
+  /**
+    * Called when the external system chooses to disbelieve this
+    * assumption represented by this node.
+    */
   def retractAssumption: Unit = {
     if support.map(_ == EnabledAssumption).getOrElse(false)
     then {
@@ -254,6 +306,10 @@ class Node[D, I, R] (
   //                               (cons node
   //                                     (propagate-outness node jtms)))))
 
+  /**
+    * Called when the external system chooses to believe this
+    * assumption represented by this node.
+    */
   def enableAssumption: Unit = {
     if !isAssumption then tmsError(s"Can't enable the non-assumption $this")
     jtms.dbg(s"  Enabling assumption $this.")
@@ -283,6 +339,9 @@ class Node[D, I, R] (
   //    (t (setf (tms-node-support node) :ENABLED-ASSUMPTION)))
   //   (check-for-contradictions jtms))
 
+  /**
+    * Called when the JTMS disblieves this node.
+    */
   def makeNodeOut: Unit = {
     jtms.dbg(s"     retracting belief in $this.")
     support = None
@@ -303,11 +362,22 @@ class Node[D, I, R] (
   //             (funcall enqueuef out-rule)))
   //   (setf (tms-node-out-rules node) nil))
 
+  /**
+    * API method returning the reason the TMS believes this node.
+    *
+    * @return `None` if the TMS does not believe this node.
+    */
   inline def supportingJustificationForNode: Option[Justification[D, I, R]] =
     support
   // ;;; Well-founded support inqueries
   // (defun supporting-justification-for-node (node) (tms-node-support node))
 
+  /**
+    * API method returning the believed assumption nodes used to
+    * justify belief in this node.
+    *
+    * @return
+    */
   def assumptionsOfNode: ListBuffer[Node[D, I, R]] = {
     val marking = Array.fill[Boolean](jtms.nodeCounter)(false)
     val queue = Queue[Node[D, I, R]](this) // Replaces `new`
@@ -340,6 +410,11 @@ class Node[D, I, R] (
   //         (setq new (just-antecedents (tms-node-support node)))))
   //       (setf (tms-node-mark node) marker))))
 
+  /**
+    * Print the belief state and any justification of this node.
+    *
+    * @return This node.
+    */
   def whyNode: Node[D, I, R] = {
     support match {
       case Some(_: EnabledAssumption)  =>
@@ -367,6 +442,9 @@ class Node[D, I, R] (
   //    (T (format t "~%~A is OUT." (node-string node))))
   //   node)
 
+  /**
+    * Print verbose debugging output for this node.
+    */
   def debugNode: Unit = {
     println(s"Node $datum (isAssumption $isAssumption, isContradictory $isContradictory, ${if believed then "" else "not "}believed)")
 
@@ -393,5 +471,11 @@ class Node[D, I, R] (
 
 } // class Node
 
+/**
+  * Class of runtime errors thrown from the JTMS.
+  *
+  * @param node Relevant node.
+  * @param string Error message.
+  */
 class TmsError[D, I, R](val node: Node[D, I, R], string: String)
 extends RuntimeException(string)
