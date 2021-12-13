@@ -20,29 +20,46 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 /** Wrapper for one possible belief in the TMS.
   *
-  * @param datum
-  * @param jtms
+  * @param datum Datum associated with this node.
+  *
+  * @param jtms [[JTMS]] with this node is associated.
+  *
   * @param isAssumption The explicit designation that a belief is an
   * assumption.  Note that setting this flag only does *not* mean that
   * the TMS will choose to believe it: an assumption must be
   * explicitly activated using [[#enableAssumption]], and can be
   * subsequently disbelieved with [[#retractAssumption]].
+  *
   * @param isContradictory The explicit designation that a belief is a
   * contradiction.  Contradictions are never believed by the JTMS.
   * The JTMS will inform the external system (via
   * [[JTMS#enqueueProcedure]]) when a contradictory node becomes
   * believed for the external system to resolve (such as with
   * [[#assumptionsOfNode]]).
+  *
+  * @constructor The constructor is internal to the implementation,
+  * and should only be called from the [[JTMS#createNode]] method (or
+  * some overriding of that method).  However there is no sensible
+  * package restriction which will still allow extensions of the
+  * overall TMS/node system.
   */
-class Node[D, I](
+class Node[D, I] (
   val datum: D,
   val jtms: JTMS[D, I],
   var isAssumption: Boolean = false,
   var isContradictory: Boolean = false
 ) {
 
+  /**
+    * Unique nueric identifier for this node, unique among nodes of
+    * the same [[JTMS]].
+    */
   val index: Int = jtms.incrNodeCounter
 
+  /**
+    * If this node is believed by the [[JTMS]], this member refers to
+    * the evidence for this belief.
+    */
   var support: Option[Justification[D, I]] = None
 
   /** Whether the current node is `:IN`.  A value of `true` corresponds
@@ -51,15 +68,25 @@ class Node[D, I](
     */
   var believed: Boolean = false
 
+  /**
+    * List of justification relations which may be enabled by belief
+    * in this node.
+    */
   val consequences: ListBuffer[Just[D, I]] = ListBuffer.empty
 
-  /** Rules that should be triggered when node goes in. */
+  /**
+    * Rules that should be triggered when node goes in.
+    */
   val inRules: ListBuffer[Rule[D, I]] = ListBuffer.empty
 
-  /** Rules that should be triggered when node goes out. */
+  /**
+    * Rules that should be triggered when node goes out.
+    */
   val outRules: ListBuffer[Rule[D, I]] = ListBuffer.empty
 
-  /** Possible justifications. */
+  /**
+    * Possible justifications.
+    */
   val justs: ListBuffer[Just[D, I]] = ListBuffer.empty
 
   // (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
