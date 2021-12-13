@@ -85,7 +85,7 @@ class JTMS[D, I](
   //   (node-string nil)
   //   (contradiction-handler nil)
   //   (enqueue-procedure nil))
-
+  //
   // (defun create-jtms (title &key (node-string 'default-node-string)
   //                                debugging
   //                                (checking-contradictions t)
@@ -98,18 +98,7 @@ class JTMS[D, I](
   //         :CONTRADICTION-HANDLER contradiction-handler
   //         :ENQUEUE-PROCEDURE enqueue-procedure
   //         ))
-
-  inline def dbg(msg: String): Unit = if debugging then println(msg)
-  // (defmacro debugging-jtms (jtms msg &optional node &rest args)
-  //   `(when (jtms-debugging ,jtms)
-  //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
-
-  /** Print the JTMS by name. */
-  def printJtms(): Unit = println(s"<JTMS: $title>")
-  // (defun print-jtms (jtms stream ignore)
-  //   (declare (ignore ignore))
-  //   (format stream "#<JTMS: ~A>" (jtms-title jtms)))
-
+  //
   // (defun change-jtms (jtms &key contradiction-handler node-string
   //                          enqueue-procedure debugging
   //                               checking-contradictions)
@@ -122,6 +111,17 @@ class JTMS[D, I](
   //       (setf (jtms-contradiction-handler jtms) contradiction-handler))
   //   (if enqueue-procedure
   //       (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
+
+  inline def dbg(msg: String): Unit = if debugging then println(msg)
+  // (defmacro debugging-jtms (jtms msg &optional node &rest args)
+  //   `(when (jtms-debugging ,jtms)
+  //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
+
+  /** Print the JTMS by name. */
+  def printJtms(): Unit = println(s"<JTMS: $title>")
+  // (defun print-jtms (jtms stream ignore)
+  //   (declare (ignore ignore))
+  //   (format stream "#<JTMS: ~A>" (jtms-title jtms)))
 
   /**
     * Create a new node in this JTMS.
@@ -321,44 +321,6 @@ class JTMS[D, I](
   // (defmacro with-contradiction-check (jtms &body body)
   //   (contradiction-check jtms t body))
 
-  def contradictionCheck(
-    flag: Boolean,
-    body: (JTMS[D, I], Boolean) => Unit):
-      Unit = {
-    ???
-  }
-  // (defun contradiction-check (jtms flag body)
-  //   (let ((jtmsv (gensym)) (old-value (gensym)))
-  //     `(let* ((,jtmsv ,jtms)
-  //        (,old-value (jtms-checking-contradictions ,jtmsv)))
-  //        (unwind-protect
-  //       (progn (setf (jtms-checking-contradictions ,jtmsv) ,flag) ,@body)
-  //     (setf (jtms-checking-contradictions ,jtmsv) ,old-value)))))
-
-  // (defmacro with-contradiction-handler (jtms handler &body body)
-  //   (let ((jtmsv (gensym)) (old-handler (gensym)))
-  //     `(let* ((,jtmsv ,jtms)
-  //             (,old-handler (jtms-contradiction-handler ,jtmsv)))
-  //        (unwind-protect
-  //          (progn
-  //            (setf (jtms-contradiction-handler ,jtmsv) ,handler)
-  //            ,@body)
-  //        (setf (jtms-contradiction-handler ,jtmsv) ,old-handler)))))
-
-  def defaultAssumptions: Unit = {
-    ???
-  }
-  // (defun default-assumptions (jtms)
-  //   (with-contradiction-check jtms
-  //     (with-contradiction-handler jtms #'(lambda (&rest ignore)
-  //                                     (declare (ignore ignore))
-  //                                     (throw 'CONTRADICTION t))
-  //       (dolist (assumption (jtms-assumptions jtms))
-  //    (cond ((eq (tms-node-support assumption) :ENABLED-ASSUMPTION))
-  //          ((not (eq :DEFAULT (tms-node-assumption? assumption))))
-  //          ((catch 'CONTRADICTION (enable-assumption assumption))
-  //           (retract-assumption assumption)))))))
-
   def enabledAssumptions: List[Node[D, I]] = {
     val result = ListBuffer.empty[Node[D, I]]
     for (assumption <- assumptions)
@@ -376,14 +338,6 @@ class JTMS[D, I](
   // (defun why-nodes (jtms)
   //   (dolist (node (jtms-nodes jtms)) (why-node node)))
 
-  def askUserHandler(contradictions: List[Node[D, I]]): Unit = {
-    handleOneContradiction(contradictions.head)
-    checkForContradictions
-  }
-  // (defun ask-user-handler (jtms contradictions)
-  //   (handle-one-contradiction (car contradictions))
-  //   (check-for-contradictions jtms))
-
   def debugJTMS: Unit = {
     println("-----")
     justs.map(_.detailJust)
@@ -393,32 +347,6 @@ class JTMS[D, I](
 
   var contraAssumptions: ContraAssumptions[D, I] = ListBuffer.empty
   // (proclaim '(special *contra-assumptions*))
-
-  def handleOneContradiction(contraNode: Node[D, I]): Unit = {
-    contraAssumptions = contraNode.assumptionsOfNode
-    if contraAssumptions.isEmpty then
-      contraNode.tmsError(s"There is a flaw in the universe...$contraNode")
-    println(s"Contradiction found: ${nodeString(contraNode)}")
-    printContraList(contraAssumptions.toList)
-    println(s"Call (TMS-ANSWER <number>) to retract assumption.")
-    ???
-  }
-  // (defun handle-one-contradiction (contra-node
-  //                                   &aux the-answer *contra-assumptions*)
-  //   (setq *contra-assumptions* (assumptions-of-node contra-node))
-  //   (unless *contra-assumptions*
-  //     (tms-error "~%There is a flaw in the universe...~A" contra-node))
-  //   (format t "~%Contradiction found: ~A" (node-string contra-node))
-  //   (print-contra-list *contra-assumptions*)
-  //   (format t "~%Call (TMS-ANSWER <number>) to retract assumption.")
-  //   (setq the-answer
-  //    (catch 'tms-contradiction-handler
-  //      (break "JTMS contradiction break")))
-  //   (if (and (integerp the-answer)
-  //       (> the-answer 0)
-  //       (not (> the-answer (length *contra-assumptions*))))
-  //       (retract-assumption (nth (1- the-answer)
-  //                           *contra-assumptions*))))
 
   def printContraList(nodes: List[Node[D, I]]): Unit = {
     var counter: Int = 1
@@ -434,21 +362,4 @@ class JTMS[D, I](
   //     (format t "~%~A ~A" counter
   //        (node-string (car nn)))))
 
-  def tmsAnswer(num: Int): Unit = if num > 0 then {
-    if num <= contraAssumptions.length
-    then throw new TmsContradictionHandler(num)
-    else println("Ignoring answer, too big.")
-  }
-  else println("Ignoring answer, too big.")
-  // (defun tms-answer (num)
-  //   (if (integerp num)
-  //       (if (> num 0)
-  //           (if (not (> num (length *contra-assumptions*)))
-  //             (throw 'tms-contradiction-handler num)
-  //             (format t "~%Ignoring answer, too big."))
-  //           (format t "~%Ignoring answer, too small"))
-  //       (format t "~%Ignoring answer, must be an integer.")))
-
 } // class JTMS
-
-class TmsContradictionHandler(num: Int) extends RuntimeException

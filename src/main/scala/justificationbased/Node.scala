@@ -20,8 +20,6 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 val enabledAssumption = Symbol("Enabled-assumption")
 
-type Support[D, I] = Justification[D, I] // | Node[D, I]
-
 class Node[D, I](
   val datum: D,
   val jtms: JTMS[D, I],
@@ -31,7 +29,7 @@ class Node[D, I](
 
   val index: Int = jtms.incrNodeCounter
 
-  var support: Option[Support[D, I]] = None
+  var support: Option[Justification[D, I]] = None
 
   /** Whether the current node is `:IN`.  A value of `true` corresponds
     * to a `label` of `:IN` in the old Lisp `struct`ure; `false`, to
@@ -92,9 +90,6 @@ class Node[D, I](
 
   def tmsError(string: String): Unit = throw new TmsError(this, string)
   // (defun tms-error (string node) (error string (node-string node)))
-
-  def defaultNodeString(n: Node[D, I]): String = n.datum.toString
-  // (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
 
   def isInNode: Boolean = believed
   // (defun in-node? (node) (eq (tms-node-label node) :IN))
@@ -355,72 +350,6 @@ class Node[D, I](
       println(s"- Antecedent to ${consequences.map(_.toString).mkString(", ")}")
     }
   }
-
-  // Method exploreNetwork is interactive; omitting for now [JM Dec 2 '21]
-  // -----------------------------------------------------------------
-  // def exploreNetwork: Node[D, I] = if isInNode then {
-  //
-  //   // Outer do macro
-  //   val stack: ListBuffer[Node[D, I]] = ListBuffer.empty
-  //   var current: Node[D, I] = this
-  //   var notYetDone: Boolean = true
-  //   while (notYetDone) {
-  //     current.whyNode
-  //     val options: ListBuffer[Node[D, I]] = current.support match {
-  //       case Some(j: Just[D, I]) => j.antecedents
-  //       case _ => ListBuffer.empty
-  //     }
-  //     val oLen: Int = options.length
-  //
-  //     // Inner do macro
-  //     var notGoodYet: Boolean = false
-  //     var choice: Int = 0
-  //
-  //     ???
-  //   }
-  //   current
-  // } else {
-  //   println(s" Sorry, ${nodeString} not believed.")
-  //   this
-  // }
-  // -----------------------------------------------------------------
-  // (defun explore-network (node)
-  //   (unless (in-node? node)
-  //      (format t "~% Sorry, ~A not believed." (node-string node))
-  //      (return-from explore-network node))
-  //   (do ((stack nil)
-  //        (current node)
-  //        (options nil)
-  //        (olen 0)
-  //        (done? nil))
-  //      (done? current)
-  //      (why-node current)
-  //      (setq options (if (typep (tms-node-support current) 'just)
-  //                        (just-antecedents (tms-node-support current))))
-  //      (setq olen (length options))
-  //      (do ((good? nil) (choice 0))
-  //         (good? (case good?
-  //                   (q (return-from explore-network current))
-  //                   (0 (if stack
-  //                          (setq current (pop stack))
-  //                          (return-from explore-network current)))
-  //                   (t (push current stack)
-  //                      (setq current (nth (1- good?) options)))))
-  //        (format t "~%>>>")
-  //        (setq choice (read))
-  //        (cond ((or (eq choice 'q)
-  //                   (and (integerp choice)
-  //                        (not (> choice olen))
-  //                        (not (< choice 0))))
-  //               (setq good? choice))
-  //              (t (format t "~% Must be q or an integer from 0 to ~D."
-  //                   olen))))))
-
-  // Removed.  Used only once, in JTRE; now expanded there.
-  //
-  // ;; From jdata.lisp
-  // (defun view-node (node)
-  //   (datum-lisp-form (tms-node-datum node)))
 
 } // class Node
 
