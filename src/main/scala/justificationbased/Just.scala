@@ -18,18 +18,32 @@
 package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-type Justification[D, I] = Just[D, I] | EnabledAssumption
+type Justification[D, I, R] = Just[D, I, R] | EnabledAssumption
 
 class EnabledAssumption private ()
 object EnabledAssumption extends EnabledAssumption {
   def unapply(e: EnabledAssumption): Some[Unit] = Some(())
 }
 
-class Just[D, I](
+/**
+  *
+  *
+  * @param index
+  * @param informant
+  * @param consequence
+  * @param antecedents
+  *
+  * @tparam D Type of data associated with each [[Node]] of this
+  * [[JTMS]].
+  * @tparam I Type of informants in the external system.
+  * @tparam R Type of rules which may be associated with each [[Node]]
+  * of this [[JTMS]].
+  */
+class Just[D, I, R](
   val index: Int,
   val informant: I,
-  val consequence: Node[D, I],
-  val antecedents: ListBuffer[Node[D, I]]
+  val consequence: Node[D, I, R],
+  val antecedents: ListBuffer[Node[D, I, R]]
 ) {
   // (defstruct (just (:PRINT-FUNCTION print-just))
   //   (index 0)

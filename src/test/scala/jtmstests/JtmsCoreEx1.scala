@@ -22,7 +22,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.*
 
-trait JTMScoreEx1 extends JTMSexample[Symbol, String] {
+trait JTMScoreEx1 extends JTMSexample[Symbol, String, Nothing] {
   val na = j.createNode(Symbol("a"), assumptionP = true)
   val nb = j.createNode(Symbol("b"), assumptionP = true)
   val nc = j.createNode(Symbol("c"), assumptionP = true)
@@ -82,7 +82,7 @@ trait JTMScoreEx1 extends JTMSexample[Symbol, String] {
 }
 
 class JTMScoreEx1Test extends AnyFlatSpec with Matchers
-    with JTMScoreEx1 with JTMSexample[Symbol, String]("Simple example") {
+    with JTMScoreEx1 with JTMSexample[Symbol, String, Nothing]("Simple example") {
   "JTMS ex1" `should` "all pass" in {
 
     na.enableAssumption

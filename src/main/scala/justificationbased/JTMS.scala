@@ -28,8 +28,10 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * @param contradictionHandler External handler for detecting contradictions.
   * @param checkingContradictions For external systems.
   *
-  * @tparam D Type of data associated with each node.
-  * @tparam I Type of (external) informants in justifications.
+  * @tparam D Type of data associated with each [[Node]] of this JTMS.
+  * @tparam I Type of informants in the external system.
+  * @tparam R Type of rules which may be associated with each [[Node]]
+  * of this JTMS.
   *
   * @constructor The `title` argument is required; others are optional.
   *
@@ -47,15 +49,15 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * from outside this package.
   * @groupprio internal 10
   */
-class JTMS[D, I](
+class JTMS[D, I, R](
   val title: String,
-  val nodeString: (Node[D, I]) => String =
-    (n: Node[D, I]) => s"${n.datum.toString()}",
+  val nodeString: (Node[D, I, R]) => String =
+    (n: Node[D, I, R]) => s"${n.datum.toString()}",
   var debugging: Boolean = false,
   val checkingContradictions: Boolean = true,
-  var enqueueProcedure: Option[(Rule[D, I]) => Unit] = None,
+  var enqueueProcedure: Option[(R) => Unit] = None,
   var contradictionHandler:
-      Option[(JTMS[D, I], ListBuffer[Node[D, I]]) => Unit] = None
+      Option[(JTMS[D, I, R], ListBuffer[Node[D, I, R]]) => Unit] = None
 ) {
 
   /** Unique namer for nodes.
@@ -87,22 +89,22 @@ class JTMS[D, I](
   /** List of all tms nodes.
     * @group internal
     */
-  var nodes: ListBuffer[Node[D, I]] = ListBuffer.empty
+  var nodes: ListBuffer[Node[D, I, R]] = ListBuffer.empty
 
   /** List of all justifications.
     * @group internal
     */
-  var justs: ListBuffer[Just[D, I]] = ListBuffer.empty
+  var justs: ListBuffer[Just[D, I, R]] = ListBuffer.empty
 
   /** List of contradiction nodes.
     * @group internal
     */
-  var contradictions: ListBuffer[Node[D, I]] = ListBuffer.empty
+  var contradictions: ListBuffer[Node[D, I, R]] = ListBuffer.empty
 
   /** List of assumption nodes.
     * @group internal
     */
-  var assumptions: ListBuffer[Node[D, I]] = ListBuffer.empty
+  var assumptions: ListBuffer[Node[D, I, R]] = ListBuffer.empty
 
   // (defstruct (jtms (:PRINT-FUNCTION print-jtms))
   //   (title nil)
@@ -180,9 +182,9 @@ class JTMS[D, I](
     datum: D,
     assumptionP: Boolean = false,
     contradictionP: Boolean = false):
-      Node[D, I] = {
+      Node[D, I, R] = {
     val node =
-      new Node[D, I](datum, this, assumptionP, contradictionP)
+      new Node[D, I, R](datum, this, assumptionP, contradictionP)
     if assumptionP then assumptions += node
     if contradictionP then contradictions += node
     nodes += node
@@ -210,11 +212,13 @@ class JTMS[D, I](
     * the `consequence.
     */
   def justifyNode(
-    informant: I, consequence: Node[D, I], antecedents: ListBuffer[Node[D, I]]):
+    informant: I,
+    consequence: Node[D, I, R],
+    antecedents: ListBuffer[Node[D, I, R]]):
       Unit = {
     // Create the structure to represent this inference rule.
     val just =
-      new Just[D, I](incrJustCounter, informant, consequence, antecedents)
+      new Just[D, I, R](incrJustCounter, informant, consequence, antecedents)
 
     // Associate the new justification structure with possible
     // justifiers of the consequence.
@@ -283,8 +287,8 @@ class JTMS[D, I](
     * naming of the parameter as a queue in the Lisp code is odd: the
     * list is only read; nothing is ever enqueued.
     */
-  def findAlternativeSupport(outQueue: Iterable[Node[D, I]]):
-      Unit = { // Option[Just[D, I]] = {
+  def findAlternativeSupport(outQueue: Iterable[Node[D, I, R]]):
+      Unit = { // Option[Just[D, I, R]] = {
     dbg(s"   Looking for alternative supports for ${outQueue.map(_.datum.toString).mkString(", ")}.")
     for (node <- outQueue) do {
       dbg(s"     Looking for alternative supports for ${node.datum.toString}.")
@@ -293,7 +297,7 @@ class JTMS[D, I](
           for (just <- node.justs) do {
             if just.checkJustification then {
               just.consequence.installSupport(just)
-              throwReturn(()) // [Option[Just[D, I]]](Some(just))
+              throwReturn(()) // [Option[Just[D, I, R]]](Some(just))
             }
           }
         }
@@ -316,7 +320,7 @@ class JTMS[D, I](
     * @group internal
     */
   def checkForContradictions: Unit = {
-    val localContras: ListBuffer[Node[D, I]] = ListBuffer.empty
+    val localContras: ListBuffer[Node[D, I, R]] = ListBuffer.empty
     if checkingContradictions then {
       for (cNode <- contradictions) {
         if cNode.isInNode then localContras += cNode
@@ -343,10 +347,10 @@ class JTMS[D, I](
     * @param node The node which has been recently disbelieved.
     * @return List of node which may now also no longer be believed.
     */
-  def propagateOutness(node: Node[D, I]): List[Node[D, I]] = {
+  def propagateOutness(node: Node[D, I, R]): List[Node[D, I, R]] = {
     dbg(s"   Propagating disbelief in $node.")
-    var outQueue = new ListBuffer[Node[D, I]]
-    val queue = Queue.empty[Just[D, I]]
+    var outQueue = new ListBuffer[Node[D, I, R]]
+    val queue = Queue.empty[Just[D, I, R]]
     queue ++= node.consequences
     while (!queue.isEmpty) {
       val j = queue.dequeue
@@ -386,8 +390,8 @@ class JTMS[D, I](
     *
     * @return
     */
-  def enabledAssumptions: List[Node[D, I]] = {
-    val result = ListBuffer.empty[Node[D, I]]
+  def enabledAssumptions: List[Node[D, I, R]] = {
+    val result = ListBuffer.empty[Node[D, I, R]]
     for (assumption <- assumptions)
       do if assumption.support.map(_ == EnabledAssumption).getOrElse(false)
     then result += assumption
@@ -430,7 +434,7 @@ class JTMS[D, I](
     *
     * @group diagnostic
     */
-  def printContraList(nodes: List[Node[D, I]]): Unit = {
+  def printContraList(nodes: List[Node[D, I, R]]): Unit = {
     var counter: Int = 1
     for (n <- nodes) do {
       println(s"${counter} ${nodeString(n)}")
