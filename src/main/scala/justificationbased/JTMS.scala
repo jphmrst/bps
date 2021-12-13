@@ -27,6 +27,8 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * @param debugging Debugging flag.
   * @param contradictionHandler External handler for detecting contradictions.
   * @param checkingContradictions For external systems.
+  *
+  * @tparam D Type of data associated with each node.
   * @tparam I Type of (external) informants in justifications.
   *
   * @constructor The `title` argument is required; others are optional.
@@ -142,7 +144,9 @@ class JTMS[D, I](
   //   (if enqueue-procedure
   //       (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
 
-  /**
+  /** Main gateway for debugging messages.
+    *
+    * @param msg This debugging message.
     *
     * @group internal
     */
@@ -152,6 +156,7 @@ class JTMS[D, I](
   //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
 
   /** Print the JTMS by name.
+    *
     * @group interface
     */
   def printJtms(): Unit = println(s"<JTMS: $title>")
@@ -159,8 +164,7 @@ class JTMS[D, I](
   //   (declare (ignore ignore))
   //   (format stream "#<JTMS: ~A>" (jtms-title jtms)))
 
-  /**
-    * Create a new node in this JTMS.
+  /** Create a new node in this JTMS.
     *
     * @group interface
     *
@@ -306,7 +310,8 @@ class JTMS[D, I](
   //           (install-support (just-consequence just) just)
   //           (return just))))))
 
-  /**
+  /** Pass all believed contradiction nodes to the
+    * [[#contradictionHandler]].
     *
     * @group internal
     */
@@ -330,12 +335,13 @@ class JTMS[D, I](
   //         (funcall (jtms-contradiction-handler jtms)
   //                  jtms contradictions))))
 
-  /**
+  /** Propagate the retraction of an assumption by finding all other
+    * nodes which used that assumption in their justification.
     *
     * @group internal
     *
-    * @param node
-    * @return
+    * @param node The node which has been recently disbelieved.
+    * @return List of node which may now also no longer be believed.
     */
   def propagateOutness(node: Node[D, I]): List[Node[D, I]] = {
     dbg(s"   Propagating disbelief in $node.")
@@ -374,7 +380,7 @@ class JTMS[D, I](
   // (defmacro with-contradiction-check (jtms &body body)
   //   (contradiction-check jtms t body))
 
-  /**
+  /** Return the list of the currently enabled assumptions.
     *
     * @group internal
     *
@@ -392,13 +398,13 @@ class JTMS[D, I](
   //     (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
   //       (push assumption result))))
 
-  /**
+  /** Print a verbose list of the current nodes.
     *
     * @group diagnostic
     */
   def debugNodes: Unit = nodes.map(_.debugNode)
 
-  /**
+  /** Print the justifications of the current nodes.
     *
     * @group diagnostic
     */
@@ -406,7 +412,7 @@ class JTMS[D, I](
   // (defun why-nodes (jtms)
   //   (dolist (node (jtms-nodes jtms)) (why-node node)))
 
-  /**
+  /** Print a verbose debugging output of this JTMS as text.
     *
     * @group diagnostic
     */
@@ -417,7 +423,10 @@ class JTMS[D, I](
     println("-----")
   }
 
-  /**
+  /** Print a verbose debugging output list of the contradictions in
+    * this JTMS.
+    *
+    * @param nodes The list of contradictions to be printed.
     *
     * @group diagnostic
     */
