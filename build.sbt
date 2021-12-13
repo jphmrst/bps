@@ -44,7 +44,7 @@ ThisBuild / versionScheme := Some("semver-spec")
 Global / excludeLintKeys ++= Set(scalacOptions)
 Compile / doc / scalacOptions ++= Seq(
   "-groups",
-  "-doc-root-content", "src/main/rootdoc.txt"
+  "-doc-root-content", "rootdoc.txt"
 )
 
 lazy val main = project

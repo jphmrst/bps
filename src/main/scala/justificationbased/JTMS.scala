@@ -28,6 +28,22 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * @param contradictionHandler External handler for detecting contradictions.
   * @param checkingContradictions For external systems.
   * @tparam I Type of (external) informants in justifications.
+  *
+  * @constructor The `title` argument is required; others are optional.
+  *
+  * @groupname interface Interface methods
+  * @groupdesc interface Top-level methods for control of the JTMS
+  * from an external system.
+  * @groupprio interface 1
+  *
+  * @groupname diagnostic Diagnostic and debugging methods
+  * @groupdesc diagnostic Reporting the current JTMS state as text.
+  * @groupprio diagnostic 2
+  *
+  * @groupname internal Internal methods
+  * @groupdesc internal Implementation methods; not generally for use
+  * from outside this package.
+  * @groupprio internal 10
   */
 class JTMS[D, I](
   val title: String,
@@ -40,34 +56,50 @@ class JTMS[D, I](
       Option[(JTMS[D, I], ListBuffer[Node[D, I]]) => Unit] = None
 ) {
 
-  /** Unique namer for nodes. */
+  /** Unique namer for nodes.
+    * @group internal
+    */
   var nodeCounter: Int = 0
-  /** Increment the node counter and return its value. */
+  /** Increment the node counter and return its value.
+    * @group internal
+    */
   def incrNodeCounter: Int = {
     val result = nodeCounter
     nodeCounter = nodeCounter + 1
     result
   }
 
-  /** Unique namer for justifications. */
+  /** Unique namer for justifications.
+    * @group internal
+    */
   var justCounter: Int = 0
-  /** Increment the justifications counter and return its value. */
+  /** Increment the justifications counter and return its value.
+    * @group internal
+    */
   def incrJustCounter: Int = {
     val result = justCounter
     justCounter = justCounter + 1
     result
   }
 
-  /** List of all tms nodes. */
+  /** List of all tms nodes.
+    * @group internal
+    */
   var nodes: ListBuffer[Node[D, I]] = ListBuffer.empty
 
-  /** List of all justifications. */
+  /** List of all justifications.
+    * @group internal
+    */
   var justs: ListBuffer[Just[D, I]] = ListBuffer.empty
 
-  /** List of contradiction nodes. */
+  /** List of contradiction nodes.
+    * @group internal
+    */
   var contradictions: ListBuffer[Node[D, I]] = ListBuffer.empty
 
-  /** List of assumption nodes. */
+  /** List of assumption nodes.
+    * @group internal
+    */
   var assumptions: ListBuffer[Node[D, I]] = ListBuffer.empty
 
   // (defstruct (jtms (:PRINT-FUNCTION print-jtms))
@@ -110,12 +142,18 @@ class JTMS[D, I](
   //   (if enqueue-procedure
   //       (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
 
+  /**
+    *
+    * @group internal
+    */
   inline def dbg(msg: String): Unit = if debugging then println(msg)
   // (defmacro debugging-jtms (jtms msg &optional node &rest args)
   //   `(when (jtms-debugging ,jtms)
   //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
 
-  /** Print the JTMS by name. */
+  /** Print the JTMS by name.
+    * @group interface
+    */
   def printJtms(): Unit = println(s"<JTMS: $title>")
   // (defun print-jtms (jtms stream ignore)
   //   (declare (ignore ignore))
@@ -123,6 +161,8 @@ class JTMS[D, I](
 
   /**
     * Create a new node in this JTMS.
+    *
+    * @group interface
     *
     * @param datum The piece of data associated with the node.
     * @param assumptionP True indicates that this node might be used
@@ -156,6 +196,8 @@ class JTMS[D, I](
   //     node))
 
   /** Add a rule for concluding belief in a node.
+    *
+    * @group interface
     *
     * @param informant Information value associated with this
     * justification.
@@ -231,6 +273,8 @@ class JTMS[D, I](
     * of this function.  So in this type-checked translation, we
     * return the unit value.
     *
+    * @group internal
+    *
     * @param outQueue List of nodes which have lost support.  The
     * naming of the parameter as a queue in the Lisp code is odd: the
     * list is only read; nothing is ever enqueued.
@@ -262,6 +306,10 @@ class JTMS[D, I](
   //           (install-support (just-consequence just) just)
   //           (return just))))))
 
+  /**
+    *
+    * @group internal
+    */
   def checkForContradictions: Unit = {
     val localContras: ListBuffer[Node[D, I]] = ListBuffer.empty
     if checkingContradictions then {
@@ -282,6 +330,13 @@ class JTMS[D, I](
   //         (funcall (jtms-contradiction-handler jtms)
   //                  jtms contradictions))))
 
+  /**
+    *
+    * @group internal
+    *
+    * @param node
+    * @return
+    */
   def propagateOutness(node: Node[D, I]): List[Node[D, I]] = {
     dbg(s"   Propagating disbelief in $node.")
     var outQueue = new ListBuffer[Node[D, I]]
@@ -319,6 +374,12 @@ class JTMS[D, I](
   // (defmacro with-contradiction-check (jtms &body body)
   //   (contradiction-check jtms t body))
 
+  /**
+    *
+    * @group internal
+    *
+    * @return
+    */
   def enabledAssumptions: List[Node[D, I]] = {
     val result = ListBuffer.empty[Node[D, I]]
     for (assumption <- assumptions)
@@ -331,11 +392,24 @@ class JTMS[D, I](
   //     (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
   //       (push assumption result))))
 
+  /**
+    *
+    * @group diagnostic
+    */
   def debugNodes: Unit = nodes.map(_.debugNode)
+
+  /**
+    *
+    * @group diagnostic
+    */
   def whyNodes: Unit = nodes.map(_.whyNode)
   // (defun why-nodes (jtms)
   //   (dolist (node (jtms-nodes jtms)) (why-node node)))
 
+  /**
+    *
+    * @group diagnostic
+    */
   def debugJTMS: Unit = {
     println("-----")
     justs.map(_.detailJust)
@@ -343,9 +417,10 @@ class JTMS[D, I](
     println("-----")
   }
 
-  var contraAssumptions: ListBuffer[Node[D, I]] = ListBuffer.empty
-  // (proclaim '(special *contra-assumptions*))
-
+  /**
+    *
+    * @group diagnostic
+    */
   def printContraList(nodes: List[Node[D, I]]): Unit = {
     var counter: Int = 1
     for (n <- nodes) do {
