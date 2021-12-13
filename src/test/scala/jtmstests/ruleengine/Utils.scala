@@ -15,15 +15,15 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.truthmaintenancesystems.justificationbased.tests
+package org.maraist.truthmaintenancesystems.justificationbased.ruleengine.tests
 import scala.language.adhocExtensions
 import scala.collection.mutable.ListBuffer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
-import org.maraist.truthmaintenancesystems.justificationbased.*
+import org.maraist.truthmaintenancesystems.justificationbased.ruleengine.*
 
-trait JTMSexample[DatumType, InformantType, R](name: String) {
-  val j = new JTMS[DatumType, InformantType, R](name, debugging = false)
+trait JTMSexample[DatumType, InformantType](name: String) {
+  val j = new JTMS[DatumType, InformantType](name, debugging = false)
 
   def beliefsString: String
   def contradictoryString: String

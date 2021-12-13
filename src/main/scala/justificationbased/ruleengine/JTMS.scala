@@ -15,96 +15,63 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.truthmaintenancesystems.justificationbased
+package org.maraist.truthmaintenancesystems.justificationbased.ruleengine
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
-/** Standalone implementation of justification-based truth maintenance
-  * systems.
+/** Temporary type placeholder, until we work out a final form. */
+type ContraAssumptions[D, I] = ListBuffer[Node[D, I]]
+
+/** Implementation of justification-based truth maintenance systems.
   *
   * @param title Name of this TMS, for output.
   * @param nodeString Default formatter for TMS nodes.
   * @param debugging Debugging flag.
+  * @param enqueueProcedure
   * @param contradictionHandler External handler for detecting contradictions.
   * @param checkingContradictions For external systems.
-  *
-  * @tparam D Type of data associated with each [[Node]] of this JTMS.
-  * @tparam I Type of informants in the external system.
-  * @tparam R Type of rules which may be associated with each [[Node]]
-  * of this JTMS.
-  *
-  * @constructor The `title` argument is required; others are optional.
-  *
-  * @groupname interface Interface methods
-  * @groupdesc interface Top-level methods for control of the JTMS
-  * from an external system.
-  * @groupprio interface 1
-  *
-  * @groupname diagnostic Diagnostic and debugging methods
-  * @groupdesc diagnostic Reporting the current JTMS state as text.
-  * @groupprio diagnostic 2
-  *
-  * @groupname internal Internal methods
-  * @groupdesc internal Implementation methods; not generally for use
-  * from outside this package.
-  * @groupprio internal 10
+  * @tparam I Type of (external) informants in justifications.
   */
-class JTMS[D, I, R](
+class JTMS[D,I](
   val title: String,
-  val nodeString: (Node[D, I, R]) => String =
-    (n: Node[D, I, R]) => s"${n.datum.toString()}",
+  val nodeString: (Node[D, I]) => String =
+    (n: Node[D, I]) => s"${n.datum.toString()}",
   var debugging: Boolean = false,
   val checkingContradictions: Boolean = true,
-  var enqueueProcedure: Option[(R) => Unit] = None,
+  var enqueueProcedure: Option[(Rule[I]) => Unit] = None,
   var contradictionHandler:
-      Option[(JTMS[D, I, R], ListBuffer[Node[D, I, R]]) => Unit] = None
+      Option[(JTMS[D, I], ListBuffer[Node[D, I]]) => Unit] = None
 ) {
 
-  /** Unique namer for nodes.
-    * @group internal
-    */
+  /** Unique namer for nodes. */
   var nodeCounter: Int = 0
-  /** Increment the node counter and return its value.
-    * @group internal
-    */
+  /** Increment the node counter and return its value. */
   def incrNodeCounter: Int = {
     val result = nodeCounter
     nodeCounter = nodeCounter + 1
     result
   }
 
-  /** Unique namer for justifications.
-    * @group internal
-    */
+  /** Unique namer for justifications. */
   var justCounter: Int = 0
-  /** Increment the justifications counter and return its value.
-    * @group internal
-    */
+  /** Increment the justifications counter and return its value. */
   def incrJustCounter: Int = {
     val result = justCounter
     justCounter = justCounter + 1
     result
   }
 
-  /** List of all tms nodes.
-    * @group internal
-    */
-  var nodes: ListBuffer[Node[D, I, R]] = ListBuffer.empty
+  /** List of all tms nodes. */
+  var nodes: ListBuffer[Node[D, I]] = ListBuffer.empty
 
-  /** List of all justifications.
-    * @group internal
-    */
-  var justs: ListBuffer[Just[D, I, R]] = ListBuffer.empty
+  /** List of all justifications. */
+  var justs: ListBuffer[Just[D, I]] = ListBuffer.empty
 
-  /** List of contradiction nodes.
-    * @group internal
-    */
-  var contradictions: ListBuffer[Node[D, I, R]] = ListBuffer.empty
+  /** List of contradiction nodes. */
+  var contradictions: ListBuffer[Node[D, I]] = ListBuffer.empty
 
-  /** List of assumption nodes.
-    * @group internal
-    */
-  var assumptions: ListBuffer[Node[D, I, R]] = ListBuffer.empty
+  /** List of assumption nodes. */
+  var assumptions: ListBuffer[Node[D, I]] = ListBuffer.empty
 
   // (defstruct (jtms (:PRINT-FUNCTION print-jtms))
   //   (title nil)
@@ -119,7 +86,7 @@ class JTMS[D, I, R](
   //   (node-string nil)
   //   (contradiction-handler nil)
   //   (enqueue-procedure nil))
-  //
+
   // (defun create-jtms (title &key (node-string 'default-node-string)
   //                                debugging
   //                                (checking-contradictions t)
@@ -132,7 +99,18 @@ class JTMS[D, I, R](
   //         :CONTRADICTION-HANDLER contradiction-handler
   //         :ENQUEUE-PROCEDURE enqueue-procedure
   //         ))
-  //
+
+  inline def dbg(msg: String): Unit = if debugging then println(msg)
+  // (defmacro debugging-jtms (jtms msg &optional node &rest args)
+  //   `(when (jtms-debugging ,jtms)
+  //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
+
+  /** Print the JTMS by name. */
+  def printJtms(): Unit = println(s"<JTMS: $title>")
+  // (defun print-jtms (jtms stream ignore)
+  //   (declare (ignore ignore))
+  //   (format stream "#<JTMS: ~A>" (jtms-title jtms)))
+
   // (defun change-jtms (jtms &key contradiction-handler node-string
   //                          enqueue-procedure debugging
   //                               checking-contradictions)
@@ -146,29 +124,8 @@ class JTMS[D, I, R](
   //   (if enqueue-procedure
   //       (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
 
-  /** Main gateway for debugging messages.
-    *
-    * @param msg This debugging message.
-    *
-    * @group internal
-    */
-  inline def dbg(msg: String): Unit = if debugging then println(msg)
-  // (defmacro debugging-jtms (jtms msg &optional node &rest args)
-  //   `(when (jtms-debugging ,jtms)
-  //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
-
-  /** Print the JTMS by name.
-    *
-    * @group interface
-    */
-  def printJtms(): Unit = println(s"<JTMS: $title>")
-  // (defun print-jtms (jtms stream ignore)
-  //   (declare (ignore ignore))
-  //   (format stream "#<JTMS: ~A>" (jtms-title jtms)))
-
-  /** Create a new node in this JTMS.
-    *
-    * @group interface
+  /**
+    * Create a new node in this JTMS.
     *
     * @param datum The piece of data associated with the node.
     * @param assumptionP True indicates that this node might be used
@@ -182,9 +139,9 @@ class JTMS[D, I, R](
     datum: D,
     assumptionP: Boolean = false,
     contradictionP: Boolean = false):
-      Node[D, I, R] = {
+      Node[D, I] = {
     val node =
-      new Node[D, I, R](datum, this, assumptionP, contradictionP)
+      new Node[D, I](datum, this, assumptionP, contradictionP)
     if assumptionP then assumptions += node
     if contradictionP then contradictions += node
     nodes += node
@@ -203,8 +160,6 @@ class JTMS[D, I, R](
 
   /** Add a rule for concluding belief in a node.
     *
-    * @group interface
-    *
     * @param informant Information value associated with this
     * justification.
     * @param consequence Node concluded by ths justification.
@@ -212,13 +167,11 @@ class JTMS[D, I, R](
     * the `consequence.
     */
   def justifyNode(
-    informant: I,
-    consequence: Node[D, I, R],
-    antecedents: ListBuffer[Node[D, I, R]]):
+    informant: I, consequence: Node[D, I], antecedents: ListBuffer[Node[D, I]]):
       Unit = {
     // Create the structure to represent this inference rule.
     val just =
-      new Just[D, I, R](incrJustCounter, informant, consequence, antecedents)
+      new Just[D, I](incrJustCounter, informant, consequence, antecedents)
 
     // Associate the new justification structure with possible
     // justifiers of the consequence.
@@ -281,14 +234,12 @@ class JTMS[D, I, R](
     * of this function.  So in this type-checked translation, we
     * return the unit value.
     *
-    * @group internal
-    *
     * @param outQueue List of nodes which have lost support.  The
     * naming of the parameter as a queue in the Lisp code is odd: the
     * list is only read; nothing is ever enqueued.
     */
-  def findAlternativeSupport(outQueue: Iterable[Node[D, I, R]]):
-      Unit = { // Option[Just[D, I, R]] = {
+  def findAlternativeSupport(outQueue: Iterable[Node[D, I]]):
+      Unit = { // Option[Just[D, I]] = {
     dbg(s"   Looking for alternative supports for ${outQueue.map(_.datum.toString).mkString(", ")}.")
     for (node <- outQueue) do {
       dbg(s"     Looking for alternative supports for ${node.datum.toString}.")
@@ -297,7 +248,7 @@ class JTMS[D, I, R](
           for (just <- node.justs) do {
             if just.checkJustification then {
               just.consequence.installSupport(just)
-              throwReturn(()) // [Option[Just[D, I, R]]](Some(just))
+              throwReturn(()) // [Option[Just[D, I]]](Some(just))
             }
           }
         }
@@ -314,13 +265,8 @@ class JTMS[D, I, R](
   //           (install-support (just-consequence just) just)
   //           (return just))))))
 
-  /** Pass all believed contradiction nodes to the
-    * [[#contradictionHandler]].
-    *
-    * @group internal
-    */
   def checkForContradictions: Unit = {
-    val localContras: ListBuffer[Node[D, I, R]] = ListBuffer.empty
+    val localContras: ListBuffer[Node[D, I]] = ListBuffer.empty
     if checkingContradictions then {
       for (cNode <- contradictions) {
         if cNode.isInNode then localContras += cNode
@@ -339,18 +285,10 @@ class JTMS[D, I, R](
   //         (funcall (jtms-contradiction-handler jtms)
   //                  jtms contradictions))))
 
-  /** Propagate the retraction of an assumption by finding all other
-    * nodes which used that assumption in their justification.
-    *
-    * @group internal
-    *
-    * @param node The node which has been recently disbelieved.
-    * @return List of node which may now also no longer be believed.
-    */
-  def propagateOutness(node: Node[D, I, R]): List[Node[D, I, R]] = {
+  def propagateOutness(node: Node[D, I]): List[Node[D, I]] = {
     dbg(s"   Propagating disbelief in $node.")
-    var outQueue = new ListBuffer[Node[D, I, R]]
-    val queue = Queue.empty[Just[D, I, R]]
+    var outQueue = new ListBuffer[Node[D, I]]
+    val queue = Queue.empty[Just[D, I]]
     queue ++= node.consequences
     while (!queue.isEmpty) {
       val j = queue.dequeue
@@ -384,16 +322,48 @@ class JTMS[D, I, R](
   // (defmacro with-contradiction-check (jtms &body body)
   //   (contradiction-check jtms t body))
 
-  /** Return the list of the currently enabled assumptions.
-    *
-    * @group internal
-    *
-    * @return
-    */
-  def enabledAssumptions: List[Node[D, I, R]] = {
-    val result = ListBuffer.empty[Node[D, I, R]]
+  def contradictionCheck(
+    flag: Boolean,
+    body: (JTMS[D, I], Boolean) => Unit):
+      Unit = {
+    ???
+  }
+  // (defun contradiction-check (jtms flag body)
+  //   (let ((jtmsv (gensym)) (old-value (gensym)))
+  //     `(let* ((,jtmsv ,jtms)
+  //        (,old-value (jtms-checking-contradictions ,jtmsv)))
+  //        (unwind-protect
+  //       (progn (setf (jtms-checking-contradictions ,jtmsv) ,flag) ,@body)
+  //     (setf (jtms-checking-contradictions ,jtmsv) ,old-value)))))
+
+  // (defmacro with-contradiction-handler (jtms handler &body body)
+  //   (let ((jtmsv (gensym)) (old-handler (gensym)))
+  //     `(let* ((,jtmsv ,jtms)
+  //             (,old-handler (jtms-contradiction-handler ,jtmsv)))
+  //        (unwind-protect
+  //          (progn
+  //            (setf (jtms-contradiction-handler ,jtmsv) ,handler)
+  //            ,@body)
+  //        (setf (jtms-contradiction-handler ,jtmsv) ,old-handler)))))
+
+  def defaultAssumptions: Unit = {
+    ???
+  }
+  // (defun default-assumptions (jtms)
+  //   (with-contradiction-check jtms
+  //     (with-contradiction-handler jtms #'(lambda (&rest ignore)
+  //                                     (declare (ignore ignore))
+  //                                     (throw 'CONTRADICTION t))
+  //       (dolist (assumption (jtms-assumptions jtms))
+  //    (cond ((eq (tms-node-support assumption) :ENABLED-ASSUMPTION))
+  //          ((not (eq :DEFAULT (tms-node-assumption? assumption))))
+  //          ((catch 'CONTRADICTION (enable-assumption assumption))
+  //           (retract-assumption assumption)))))))
+
+  def enabledAssumptions: List[Node[D, I]] = {
+    val result = ListBuffer.empty[Node[D, I]]
     for (assumption <- assumptions)
-      do if assumption.support.map(_ == EnabledAssumption).getOrElse(false)
+      do if assumption.support.map(_ == enabledAssumption).getOrElse(false)
     then result += assumption
     result.toList
   }
@@ -402,24 +372,19 @@ class JTMS[D, I, R](
   //     (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
   //       (push assumption result))))
 
-  /** Print a verbose list of the current nodes.
-    *
-    * @group diagnostic
-    */
   def debugNodes: Unit = nodes.map(_.debugNode)
-
-  /** Print the justifications of the current nodes.
-    *
-    * @group diagnostic
-    */
   def whyNodes: Unit = nodes.map(_.whyNode)
   // (defun why-nodes (jtms)
   //   (dolist (node (jtms-nodes jtms)) (why-node node)))
 
-  /** Print a verbose debugging output of this JTMS as text.
-    *
-    * @group diagnostic
-    */
+  def askUserHandler(contradictions: List[Node[D, I]]): Unit = {
+    handleOneContradiction(contradictions.head)
+    checkForContradictions
+  }
+  // (defun ask-user-handler (jtms contradictions)
+  //   (handle-one-contradiction (car contradictions))
+  //   (check-for-contradictions jtms))
+
   def debugJTMS: Unit = {
     println("-----")
     justs.map(_.detailJust)
@@ -427,14 +392,36 @@ class JTMS[D, I, R](
     println("-----")
   }
 
-  /** Print a verbose debugging output list of the contradictions in
-    * this JTMS.
-    *
-    * @param nodes The list of contradictions to be printed.
-    *
-    * @group diagnostic
-    */
-  def printContraList(nodes: List[Node[D, I, R]]): Unit = {
+  var contraAssumptions: ContraAssumptions[D, I] = ListBuffer.empty
+  // (proclaim '(special *contra-assumptions*))
+
+  def handleOneContradiction(contraNode: Node[D, I]): Unit = {
+    contraAssumptions = contraNode.assumptionsOfNode
+    if contraAssumptions.isEmpty then
+      contraNode.tmsError(s"There is a flaw in the universe...$contraNode")
+    println(s"Contradiction found: ${nodeString(contraNode)}")
+    printContraList(contraAssumptions.toList)
+    println(s"Call (TMS-ANSWER <number>) to retract assumption.")
+    ???
+  }
+  // (defun handle-one-contradiction (contra-node
+  //                                   &aux the-answer *contra-assumptions*)
+  //   (setq *contra-assumptions* (assumptions-of-node contra-node))
+  //   (unless *contra-assumptions*
+  //     (tms-error "~%There is a flaw in the universe...~A" contra-node))
+  //   (format t "~%Contradiction found: ~A" (node-string contra-node))
+  //   (print-contra-list *contra-assumptions*)
+  //   (format t "~%Call (TMS-ANSWER <number>) to retract assumption.")
+  //   (setq the-answer
+  //    (catch 'tms-contradiction-handler
+  //      (break "JTMS contradiction break")))
+  //   (if (and (integerp the-answer)
+  //       (> the-answer 0)
+  //       (not (> the-answer (length *contra-assumptions*))))
+  //       (retract-assumption (nth (1- the-answer)
+  //                           *contra-assumptions*))))
+
+  def printContraList(nodes: List[Node[D, I]]): Unit = {
     var counter: Int = 1
     for (n <- nodes) do {
       println(s"${counter} ${nodeString(n)}")
@@ -448,4 +435,21 @@ class JTMS[D, I, R](
   //     (format t "~%~A ~A" counter
   //        (node-string (car nn)))))
 
+  def tmsAnswer(num: Int): Unit = if num > 0 then {
+    if num <= contraAssumptions.length
+    then throw new TmsContradictionHandler(num)
+    else println("Ignoring answer, too big.")
+  }
+  else println("Ignoring answer, too big.")
+  // (defun tms-answer (num)
+  //   (if (integerp num)
+  //       (if (> num 0)
+  //           (if (not (> num (length *contra-assumptions*)))
+  //             (throw 'tms-contradiction-handler num)
+  //             (format t "~%Ignoring answer, too big."))
+  //           (format t "~%Ignoring answer, too small"))
+  //       (format t "~%Ignoring answer, must be an integer.")))
+
 } // class JTMS
+
+class TmsContradictionHandler(num: Int) extends RuntimeException

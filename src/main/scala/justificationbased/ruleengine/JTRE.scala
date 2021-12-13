@@ -15,7 +15,7 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.truthmaintenancesystems.justificationbased
+package org.maraist.truthmaintenancesystems.justificationbased.ruleengine
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 type Fact = Matchable

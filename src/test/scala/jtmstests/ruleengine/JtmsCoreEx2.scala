@@ -15,39 +15,35 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.truthmaintenancesystems.justificationbased.tests
+package org.maraist.truthmaintenancesystems.justificationbased.ruleengine.tests
 import scala.language.adhocExtensions
 import scala.collection.mutable.ListBuffer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
-import org.maraist.truthmaintenancesystems.justificationbased.*
+import org.maraist.truthmaintenancesystems.justificationbased.ruleengine.*
 
-trait JTMSexample[DatumType, InformantType, R](name: String) {
-  val j = new JTMS[DatumType, InformantType, R](name, debugging = false)
+class JTMScoreEx2 extends AnyFlatSpec with Matchers with JTMScoreEx1
+    with JTMSexample[Symbol, String]("JTMS+JTRE simple example") {
+  val contra = j.createNode(Symbol("Loser"), contradictionP = true)
 
-  def beliefsString: String
-  def contradictoryString: String
+  override def beliefsString: String =
+    s"${super.beliefsString} contra:${contra.believed}"
 
-  def showAll(tag: String): Unit = {
-    println(tag)
-    showBeliefs("  Believed :: ")
-    showContradictory("  Contradictory :: ")
+  override def contradictoryString: String =
+    s"${super.beliefsString} contra:${contra.isContradictory}"
+
+  "JTMS+JTRE ex2" `should` "all pass" in {
+    na.enableAssumption
+    nb.enableAssumption
+    nc.enableAssumption
+    nd.enableAssumption
+
+    // showAll(s"Before contra justify")
+    j.justifyNode("j5", contra, ListBuffer(ne, nf))
+    // showAll(s"After contra justify")
+
+    // (Defun ex2 () ;; uses Ex1 to test the contradiction stuff.
+    //   (setq contra (tms-create-node *jtms* 'Loser :contradictoryp T))
+    //   (justify-node 'j5 contra (list ne nf)))
   }
-
-  def showBeliefs(tag: String = ""): Unit = println(s"$tag$beliefsString")
-
-  def showContradictory(tag: String = ""): Unit =
-    println(s"$tag$contradictoryString")
 }
-
-// (defun get-node (datum jtms)
-//   (dolist (node (jtms-nodes jtms))
-//     (if (equal datum (tms-node-datum node)) (return node))))
-
-// (defun get-justification (num jtms)
-//   (dolist (just (jtms-justs jtms))
-//     (if (= num (just-index just)) (return just))))
-
-// (proclaim '(special na nb nc nd ne nf ng contra *jtms*))
-
-

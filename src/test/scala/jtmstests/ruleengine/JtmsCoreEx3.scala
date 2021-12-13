@@ -15,14 +15,14 @@
 // implied, for NON-COMMERCIAL use.  See the License for the specific
 // language governing permissions and limitations under the License.
 
-package org.maraist.truthmaintenancesystems.justificationbased.tests
+package org.maraist.truthmaintenancesystems.justificationbased.ruleengine.tests
 import scala.language.adhocExtensions
 import scala.collection.mutable.{ListBuffer,HashSet}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
-import org.maraist.truthmaintenancesystems.justificationbased.*
+import org.maraist.truthmaintenancesystems.justificationbased.ruleengine.*
 
-trait JTMScoreEx3 extends JTMSexample[Symbol, String, Unit] {
+trait JTMScoreEx3 extends JTMSexample[Symbol, String] {
   val na = j.createNode(Symbol("A"), assumptionP = true)
   val nc = j.createNode(Symbol("C"), assumptionP = true)
   val ne = j.createNode(Symbol("E"), assumptionP = true)
@@ -42,10 +42,11 @@ trait JTMScoreEx3 extends JTMSexample[Symbol, String, Unit] {
 }
 
 class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
-    with JTMSexample[Symbol, String, Unit]("Multiple support example") {
-  "JTMS ex3" `should` "all pass" in {
-    val changed = new HashSet[Unit]
-    val enqueuef: (Unit => Unit) = (node) => { changed += node }
+    with JTMSexample[Symbol, String]("JTMS+JTRE multiple support example") {
+  "JTMS+JTRE ex3" `should` "all pass" in {
+    val changed = new HashSet[Rule[String]]
+    val enqueuef: (Rule[String] => Unit) =
+      (node) => { changed += node }
     j.enqueueProcedure = Some(enqueuef)
     // showAll("Initially")
 

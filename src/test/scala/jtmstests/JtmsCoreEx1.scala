@@ -22,7 +22,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.*
 
-trait JTMScoreEx1 extends JTMSexample[Symbol, String] {
+trait JTMScoreEx1 extends JTMSexample[Symbol, String, Nothing] {
   val na = j.createNode(Symbol("a"), assumptionP = true)
   val nb = j.createNode(Symbol("b"), assumptionP = true)
   val nc = j.createNode(Symbol("c"), assumptionP = true)
@@ -39,6 +39,28 @@ trait JTMScoreEx1 extends JTMSexample[Symbol, String] {
   def beliefsString: String = s"a:${na.believed} b:${nb.believed} c:${nc.believed} d:${nd.believed} e:${ne.believed} f:${nf.believed} g:${ng.believed}"
 
   def contradictoryString: String = s"a:${na.isContradictory} b:${nb.isContradictory} c:${nc.isContradictory} d:${nd.isContradictory} e:${ne.isContradictory} f:${nf.isContradictory} g:${ng.isContradictory}"
+
+  def printNodeAssumptions: Unit = {
+    println("----------")
+    println(s"$na assumptions ${na.assumptionsOfNode}")
+    println(s"$nb assumptions ${nb.assumptionsOfNode}")
+    println(s"$nc assumptions ${nc.assumptionsOfNode}")
+    println(s"$nd assumptions ${nd.assumptionsOfNode}")
+    println(s"$ne assumptions ${ne.assumptionsOfNode}")
+    println(s"$nf assumptions ${nf.assumptionsOfNode}")
+    println(s"$ng assumptions ${ng.assumptionsOfNode}")
+  }
+
+  def printNodeSupport: Unit = {
+    println("----------")
+    println(s"$na supports ${na.supportingJustificationForNode}")
+    println(s"$nb supports ${nb.supportingJustificationForNode}")
+    println(s"$nc supports ${nc.supportingJustificationForNode}")
+    println(s"$nd supports ${nd.supportingJustificationForNode}")
+    println(s"$ne supports ${ne.supportingJustificationForNode}")
+    println(s"$nf supports ${nf.supportingJustificationForNode}")
+    println(s"$ng supports ${ng.supportingJustificationForNode}")
+  }
 
   // (defun ex1 ()
   //   (setq *jtms* (create-jtms "Simple Example" :debugging T)
@@ -60,7 +82,7 @@ trait JTMScoreEx1 extends JTMSexample[Symbol, String] {
 }
 
 class JTMScoreEx1Test extends AnyFlatSpec with Matchers
-    with JTMScoreEx1 with JTMSexample[Symbol, String]("Simple example") {
+    with JTMScoreEx1 with JTMSexample[Symbol, String, Nothing]("Simple example") {
   "JTMS ex1" `should` "all pass" in {
 
     na.enableAssumption
@@ -72,6 +94,23 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (false)
     nf.believed `should` be (false)
     ng.believed `should` be (false)
+    // printNodeAssumptions
+    na.assumptionsOfNode.length `should` be (1)
+    na.assumptionsOfNode(0) `should` be (na)
+    nb.assumptionsOfNode.isEmpty `should` be (true)
+    nc.assumptionsOfNode.isEmpty `should` be (true)
+    nd.assumptionsOfNode.isEmpty `should` be (true)
+    ne.assumptionsOfNode.isEmpty `should` be (true)
+    nf.assumptionsOfNode.isEmpty `should` be (true)
+    ng.assumptionsOfNode.isEmpty `should` be (true)
+    // printNodeSupport
+    na.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nb.supportingJustificationForNode.isEmpty `should` be (true)
+    nc.supportingJustificationForNode.isEmpty `should` be (true)
+    nd.supportingJustificationForNode.isEmpty `should` be (true)
+    ne.supportingJustificationForNode.isEmpty `should` be (true)
+    nf.supportingJustificationForNode.isEmpty `should` be (true)
+    ng.supportingJustificationForNode.isEmpty `should` be (true)
 
     nb.enableAssumption
     // showBeliefs(s"B enabled :: ")
@@ -82,6 +121,26 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (false)
     nf.believed `should` be (true)
     ng.believed `should` be (false)
+    // printNodeAssumptions
+    na.assumptionsOfNode.length `should` be (1)
+    na.assumptionsOfNode(0) `should` be (na)
+    nb.assumptionsOfNode.length `should` be (1)
+    nb.assumptionsOfNode(0) `should` be (nb)
+    nc.assumptionsOfNode.isEmpty `should` be (true)
+    nd.assumptionsOfNode.isEmpty `should` be (true)
+    ne.assumptionsOfNode.isEmpty `should` be (true)
+    nf.assumptionsOfNode.length `should` be (2)
+    nf.assumptionsOfNode.contains(na) `should` be (true)
+    nf.assumptionsOfNode.contains(nb) `should` be (true)
+    ng.assumptionsOfNode.isEmpty `should` be (true)
+    // printNodeSupport
+    na.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nb.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nc.supportingJustificationForNode.isEmpty `should` be (true)
+    nd.supportingJustificationForNode.isEmpty `should` be (true)
+    ne.supportingJustificationForNode.isEmpty `should` be (true)
+    nf.supportingJustificationForNode.map(_ == j.justs(0)).getOrElse(false) `should` be (true)
+    ng.supportingJustificationForNode.isEmpty `should` be (true)
 
     nc.enableAssumption
     // showBeliefs(s"C enabled :: ")
@@ -92,6 +151,32 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (true)
     nf.believed `should` be (true)
     ng.believed `should` be (true)
+    // printNodeAssumptions
+    na.assumptionsOfNode.length `should` be (1)
+    na.assumptionsOfNode(0) `should` be (na)
+    nb.assumptionsOfNode.length `should` be (1)
+    nb.assumptionsOfNode(0) `should` be (nb)
+    nc.assumptionsOfNode.length `should` be (1)
+    nc.assumptionsOfNode(0) `should` be (nc)
+    nd.assumptionsOfNode.isEmpty `should` be (true)
+    ne.assumptionsOfNode.length `should` be (2)
+    ne.assumptionsOfNode.contains(nb) `should` be (true)
+    ne.assumptionsOfNode.contains(nc) `should` be (true)
+    nf.assumptionsOfNode.length `should` be (2)
+    nf.assumptionsOfNode.contains(na) `should` be (true)
+    nf.assumptionsOfNode.contains(nb) `should` be (true)
+    ng.assumptionsOfNode.length `should` be (3)
+    ng.assumptionsOfNode.contains(na) `should` be (true)
+    ng.assumptionsOfNode.contains(nb) `should` be (true)
+    ng.assumptionsOfNode.contains(nc) `should` be (true)
+    // printNodeSupport
+    na.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nb.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nc.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nd.supportingJustificationForNode.isEmpty `should` be (true)
+    ne.supportingJustificationForNode.map(_ == j.justs(1)).getOrElse(false) `should` be (true)
+    nf.supportingJustificationForNode.map(_ == j.justs(0)).getOrElse(false) `should` be (true)
+    ng.supportingJustificationForNode.map(_ == j.justs(2)).getOrElse(false) `should` be (true)
 
     nd.enableAssumption
     // showBeliefs("D enabled :: ")
@@ -103,6 +188,33 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (true)
     nf.believed `should` be (true)
     ng.believed `should` be (true)
+    // printNodeAssumptions
+    na.assumptionsOfNode.length `should` be (1)
+    na.assumptionsOfNode(0) `should` be (na)
+    nb.assumptionsOfNode.length `should` be (1)
+    nb.assumptionsOfNode(0) `should` be (nb)
+    nc.assumptionsOfNode.length `should` be (1)
+    nc.assumptionsOfNode(0) `should` be (nc)
+    nd.assumptionsOfNode.length `should` be (1)
+    nd.assumptionsOfNode(0) `should` be (nd)
+    ne.assumptionsOfNode.length `should` be (2)
+    ne.assumptionsOfNode.contains(nb) `should` be (true)
+    ne.assumptionsOfNode.contains(nc) `should` be (true)
+    nf.assumptionsOfNode.length `should` be (2)
+    nf.assumptionsOfNode.contains(na) `should` be (true)
+    nf.assumptionsOfNode.contains(nb) `should` be (true)
+    ng.assumptionsOfNode.length `should` be (3)
+    ng.assumptionsOfNode.contains(na) `should` be (true)
+    ng.assumptionsOfNode.contains(nb) `should` be (true)
+    ng.assumptionsOfNode.contains(nc) `should` be (true)
+    // printNodeSupport
+    na.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nb.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nc.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nd.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    ne.supportingJustificationForNode.map(_ == j.justs(1)).getOrElse(false) `should` be (true)
+    nf.supportingJustificationForNode.map(_ == j.justs(0)).getOrElse(false) `should` be (true)
+    ng.supportingJustificationForNode.map(_ == j.justs(2)).getOrElse(false) `should` be (true)
 
     na.retractAssumption
     // showBeliefs("A retracted :: ")
@@ -114,5 +226,29 @@ class JTMScoreEx1Test extends AnyFlatSpec with Matchers
     ne.believed `should` be (true)
     nf.believed `should` be (false)
     ng.believed `should` be (true)
+    // printNodeAssumptions
+    na.assumptionsOfNode.isEmpty `should` be (true)
+    nb.assumptionsOfNode.length `should` be (1)
+    nb.assumptionsOfNode(0) `should` be (nb)
+    nc.assumptionsOfNode.length `should` be (1)
+    nc.assumptionsOfNode(0) `should` be (nc)
+    nd.assumptionsOfNode.length `should` be (1)
+    nd.assumptionsOfNode(0) `should` be (nd)
+    ne.assumptionsOfNode.length `should` be (2)
+    ne.assumptionsOfNode.contains(nb) `should` be (true)
+    ne.assumptionsOfNode.contains(nc) `should` be (true)
+    nf.assumptionsOfNode.isEmpty `should` be (true)
+    ng.assumptionsOfNode.length `should` be (3)
+    ng.assumptionsOfNode.contains(nb) `should` be (true)
+    ng.assumptionsOfNode.contains(nc) `should` be (true)
+    ng.assumptionsOfNode.contains(nd) `should` be (true)
+    // printNodeSupport
+    na.supportingJustificationForNode.isEmpty  `should` be (true)
+    nb.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nc.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    nd.supportingJustificationForNode.map(_ == EnabledAssumption).getOrElse(false) `should` be (true)
+    ne.supportingJustificationForNode.map(_ == j.justs(1)).getOrElse(false) `should` be (true)
+    nf.supportingJustificationForNode.isEmpty  `should` be (true)
+    ng.supportingJustificationForNode.map(_ == j.justs(3)).getOrElse(false) `should` be (true)
   }
 }
