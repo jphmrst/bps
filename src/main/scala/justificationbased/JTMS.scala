@@ -19,10 +19,8 @@ package org.maraist.truthmaintenancesystems.justificationbased
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
-/** Temporary type placeholder, until we work out a final form. */
-type ContraAssumptions[D, I] = ListBuffer[Node[D, I]]
-
-/** Implementation of justification-based truth maintenance systems.
+/** Standalone implementation of justification-based truth maintenance
+  * systems.
   *
   * @param title Name of this TMS, for output.
   * @param nodeString Default formatter for TMS nodes.
@@ -324,7 +322,7 @@ class JTMS[D, I](
   def enabledAssumptions: List[Node[D, I]] = {
     val result = ListBuffer.empty[Node[D, I]]
     for (assumption <- assumptions)
-      do if assumption.support.map(_ == enabledAssumption).getOrElse(false)
+      do if assumption.support.map(_ == EnabledAssumption).getOrElse(false)
     then result += assumption
     result.toList
   }
@@ -345,7 +343,7 @@ class JTMS[D, I](
     println("-----")
   }
 
-  var contraAssumptions: ContraAssumptions[D, I] = ListBuffer.empty
+  var contraAssumptions: ListBuffer[Node[D, I]] = ListBuffer.empty
   // (proclaim '(special *contra-assumptions*))
 
   def printContraList(nodes: List[Node[D, I]]): Unit = {

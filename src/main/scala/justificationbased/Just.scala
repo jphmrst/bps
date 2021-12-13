@@ -18,7 +18,12 @@
 package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 
-type Justification[D, I] = Just[D, I] | Symbol
+type Justification[D, I] = Just[D, I] | EnabledAssumption
+
+class EnabledAssumption private ()
+object EnabledAssumption extends EnabledAssumption {
+  def unapply(e: EnabledAssumption): Some[Unit] = Some(())
+}
 
 class Just[D, I](
   val index: Int,

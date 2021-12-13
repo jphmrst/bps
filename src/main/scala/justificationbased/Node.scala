@@ -18,8 +18,22 @@
 package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
-val enabledAssumption = Symbol("Enabled-assumption")
-
+/** Wrapper for one possible belief in the TMS.
+  *
+  * @param datum
+  * @param jtms
+  * @param isAssumption The explicit designation that a belief is an
+  * assumption.  Note that setting this flag only does *not* mean that
+  * the TMS will choose to believe it: an assumption must be
+  * explicitly activated using [[#enableAssumption]], and can be
+  * subsequently disbelieved with [[#retractAssumption]].
+  * @param isContradictory The explicit designation that a belief is a
+  * contradiction.  Contradictions are never believed by the JTMS.
+  * The JTMS will inform the external system (via
+  * [[JTMS#enqueueProcedure]]) when a contradictory node becomes
+  * believed for the external system to resolve (such as with
+  * [[#assumptionsOfNode]]).
+  */
 class Node[D, I](
   val datum: D,
   val jtms: JTMS[D, I],
@@ -44,9 +58,6 @@ class Node[D, I](
 
   /** Rules that should be triggered when node goes out. */
   val outRules: ListBuffer[Rule[D, I]] = ListBuffer.empty
-
-//  /** Marker for sweep algorithms. */
-//  var mark: Option[Symbol] = None
 
   /** Possible justifications. */
   val justs: ListBuffer[Just[D, I]] = ListBuffer.empty
@@ -74,7 +85,7 @@ class Node[D, I](
   def isPremise: Boolean = support match {
     case None => false
     case Some(sup) => sup match {
-      case s: Symbol => sup != enabledAssumption
+      case _: EnabledAssumption => true
       case just: Just[D, I] => just.antecedents.isEmpty
       // case n: Node[D, I] => false // TODO Come back to this --- what if it's a Node here?
     }
@@ -156,7 +167,8 @@ class Node[D, I](
 
   def makeNodeIn(reason: Justification[D, I]) = {
     jtms.dbg(reason match {
-      case s: Symbol  => s"     Making $this in via symbolic $s."
+      case _: EnabledAssumption =>
+        s"     Making $this in as enabled assumption."
       case j: Just[D, I] => {
         val mapped = j.antecedents.map(jtms.nodeString)
         s"     Making $this in via ${j.informant} :: $mapped."
@@ -191,7 +203,7 @@ class Node[D, I](
   //     (setf (tms-node-in-rules conseq) nil)))
 
   def retractAssumption: Unit = {
-    if support.map(_ == enabledAssumption).getOrElse(false)
+    if support.map(_ == EnabledAssumption).getOrElse(false)
     then {
       jtms.dbg(s"  Retracting assumption $this")
       makeNodeOut
@@ -212,15 +224,15 @@ class Node[D, I](
     if !isAssumption then tmsError(s"Can't enable the non-assumption $this")
     jtms.dbg(s"  Enabling assumption $this.")
     if isOutNode then {
-      makeNodeIn(enabledAssumption)
+      makeNodeIn(EnabledAssumption)
       propagateInness
     } else {
-      if support.map(_ != enabledAssumption).getOrElse(true)
+      if support.map(_ != EnabledAssumption).getOrElse(true)
           && !support.map(_ match {
             case j: Just[D, I] => j.antecedents.isEmpty
-            case _: Symbol => true // TODO Really?
+            case _: EnabledAssumption => true // TODO Really?
           }).getOrElse(false) then {
-        support = Some(enabledAssumption)
+        support = Some(EnabledAssumption)
       }
     }
     jtms.checkForContradictions
@@ -270,11 +282,11 @@ class Node[D, I](
       val node = queue.dequeue()
       if marking(node.index) then {
         // Intentionally empty block
-      } else if node.support.map(_ == enabledAssumption).getOrElse(false) then {
+      } else if node.support.map(_ == EnabledAssumption).getOrElse(false) then {
         assumptions += node
       } else if node.isInNode then {
         node.support.map(_ match {
-          case _: Symbol  => { }
+          case _: EnabledAssumption  => { }
           case j: Just[D, I] => { queue ++= j.antecedents }
         })
       }
@@ -296,11 +308,8 @@ class Node[D, I](
 
   def whyNode: Node[D, I] = {
     support match {
-      case Some(s: Symbol)  =>
-        if s == enabledAssumption then
-          println(s"${nodeString} is an enabled assumption")
-        else
-          println(s"${nodeString} is OUT")
+      case Some(_: EnabledAssumption)  =>
+        println(s"${nodeString} is an enabled assumption")
       case Some(j: Just[D, I]) => {
         println(s"${nodeString} is IN via ${j.informant} on")
         j.antecedents.map((a) => println(s"  ${a.nodeString}"))
@@ -328,11 +337,8 @@ class Node[D, I](
     println(s"Node $datum (isAssumption $isAssumption, isContradictory $isContradictory, ${if believed then "" else "not "}believed)")
 
     support match {
-      case Some(s: Symbol) =>
-        if s == enabledAssumption then
-          println("- Supportted: enabled assumption")
-        else
-          println("- No support")
+      case Some(_: EnabledAssumption) =>
+        println("- Supported: enabled assumption")
       case Some(j: Just[D, I]) =>
         println(s"- IN via ${j.informant} (${j.index})")
       case None => println(s"- OUT")
