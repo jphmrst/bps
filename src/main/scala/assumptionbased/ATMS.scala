@@ -75,16 +75,16 @@ class ATMS[D, I](
   /** List of assumption nodes. */
   var assumptions: ListBuffer[Node[D, I]] = ListBuffer.empty
 
-  /** Dummy contradiction node. */
-  val contraNode: Node[D, I] =
-    createNode("The contradiction", isContradictory = true)
+  val envTable = new EnvTable[D, I]
+
+  val nogoodTable = new EnvTable[D, I]
 
   /** Empty environment. */
   val emptyEnv: Env[D, I] = createEnv(ListBuffer.empty)
 
-  val envTable = new EnvTable[D, I]
-
-  val nogoodTable = new EnvTable[D, I]
+  /** Dummy contradiction node. */
+  val contraNode: Node[D, I] =
+    createNode("The contradiction", isContradictory = true)
 
   // ; From atms.lisp
   // (defstruct (atms (:PRINT-FUNCTION print-atms))

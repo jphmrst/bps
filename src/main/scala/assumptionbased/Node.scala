@@ -76,13 +76,17 @@ class Node[D, I](
   // (defun assumption-order (a1 a2)
   //   (< (tms-node-index a1) (tms-node-index a2)))
 
-  def isTrueNode: Boolean = ???
+  def isTrueNode: Boolean = {
+    ???
+  }
   // ; From atms.lisp
   // (defun true-node? (node)
   //   (eq (car (tms-node-label node))
   //       (atms-empty-env (tms-node-atms node))))
 
-  def isInNode: Boolean = ???
+  def isInNode: Boolean = {
+    ???
+  }
   // ; From atms.lisp
   // (defun in-node? (n &optional env)
   //   (if env
@@ -90,11 +94,15 @@ class Node[D, I](
   //             (tms-node-label n))
   //       (not (null (tms-node-label n)))))
 
-  def isOutNode: Boolean = ???
+  def isOutNode: Boolean = {
+    ???
+  }
   // ; From atms.lisp
   // (defun out-node? (n env) (not (in-node? n env)))
 
-  def isNodeConsistentWith(env: Env[D, I]): Boolean = ???
+  def isNodeConsistentWith(env: Env[D, I]): Boolean = {
+    ???
+  }
   // ; From atms.lisp
   // (defun node-consistent-with? (n env)
   //   (some #'(lambda (le) (not (env-nogood? (union-env le env))))
@@ -106,7 +114,9 @@ class Node[D, I](
     * @param newEnvs A list of environments to be mutated by this call.
     * @return
     */
-  def updateLabel(newEnvs: ListBuffer[Env[D, I]]): ListBuffer[Env[D, I]] = ???
+  def updateLabel(newEnvs: ListBuffer[Env[D, I]]): ListBuffer[Env[D, I]] = {
+    ???
+  }
   // ; From atms.lisp
   // (defun update-label (node new-envs &aux envs)
   //   (setq envs (tms-node-label node))
@@ -127,7 +137,9 @@ class Node[D, I](
   //   (setf (tms-node-label node) (delete nil envs :TEST #'eq))
   //   new-envs)
 
-  def findOrMakeEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] = ???
+  def findOrMakeEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] = {
+    ???
+  }
   // ; From atms.lisp
   // (defun find-or-make-env (assumptions atms)
   //   (unless assumptions
@@ -142,7 +154,9 @@ class Node[D, I](
   // ;;; derivation. This is quite complicated because this is really a
   // ;;; simple consequent JTMS.
 
-  def explainNode(env: Env[D, I]): Env[D, I] = ???
+  def explainNode(env: Env[D, I]): Env[D, I] = {
+    ???
+  }
   // ; From atms.lisp
   // (defun explain-node (node env) (explain-node-1 env node nil nil))
 
@@ -151,7 +165,9 @@ class Node[D, I](
     node: Node[D, I],
     queuedNodes: List[Node[D, I]],
     explanation: Just[D, I]):
-      Env[D, I] = ???
+      Env[D, I] = {
+    ???
+  }
   // ; From atms.lisp
   // (defun explain-node-1 (env node queued-nodes explanation)
   //   (cond
@@ -178,7 +194,9 @@ class Node[D, I](
 
   // ;;; Printing
 
-  def whyNode: Unit = ???
+  def whyNode: Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun why-node (node &optional (stream t) (prefix ""))
   //   (format stream "~%<~A~A,{" prefix (tms-node-datum node))
@@ -186,7 +204,9 @@ class Node[D, I](
   //     (env-string e stream))
   //   (format stream "}>"))
 
-  def nodeJustifications: Unit = ???
+  def nodeJustifications: Unit = {
+    ???
+  }
   // ; From atms.lisp
   // (defun node-justifications (node &optional (stream t))
   //   (format t "~% For ~A:" (node-string node))

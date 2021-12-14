@@ -24,14 +24,22 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
 
-  def printEnvTable: Unit = ???
+  def printEnvTable: Unit = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun print-env-table (table stream)
   //   (dolist (bucket table)
   //     (dolist (env (cdr bucket))
   //       (print-env env stream))))
 
-  def insertInTable(env: Env[D, I]): Unit = ???
+  def insertInTable(env: Env[D, I]): Unit = {
+    val count = env.count
+    this.get(count) match {
+      case None => this(count) = ListBuffer(env)
+      case Some(entry) => entry += env
+    }
+  }
   // ; From ainter.lisp
   // (defun insert-in-table (table env &aux count entry)
   //   (setq count (env-count env)
@@ -80,7 +88,9 @@ class Env[D, I](
   //   (declare (ignore ignore))
   //   (format stream "E-~D" (env-index env)))
 
-  def isWeave(nodes: Iterable[Node[D, I]]): Boolean = ???
+  def isWeave(nodes: Iterable[Node[D, I]]): Boolean = {
+    ???
+  }
   // ; From atms.lisp
   // (defun weave? (env nodes &aux new-env)
   //   (cond ((null nodes) t)
@@ -90,12 +100,16 @@ class Env[D, I](
   //                (if (weave? new-env (cdr nodes))
   //                    (return T)))))))
 
-  def envOrder(e2: Env[D, I]): Boolean = ???
+  def envOrder(e2: Env[D, I]): Boolean = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun env-order (e1 e2)
   //   (< (env-index e1) (env-index e2)))
 
-  def unionEnv(e2: Env[D, I]): Env[D, I] = ???
+  def unionEnv(e2: Env[D, I]): Env[D, I] = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun union-env (e1 e2)
   //   (when (> (env-count e1)
@@ -106,7 +120,9 @@ class Env[D, I](
   //     (if (env-nogood? e2) (return nil)))
   //   e2)
 
-  def consEnv(assumption: Node[D, I]): Env[D, I] = ???
+  def consEnv(assumption: Node[D, I]): Env[D, I] = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun cons-env (assumption env &aux nassumes)
   //   (setq nassumes (ordered-insert assumption
@@ -115,7 +131,9 @@ class Env[D, I](
   //   (or (lookup-env nassumes)
   //       (create-env (tms-node-atms assumption) nassumes)))
 
-  def isSubsetEnv(e2: Env[D, I]): Boolean = ???
+  def isSubsetEnv(e2: Env[D, I]): Boolean = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun subset-env? (e1 e2)
   //   (cond ((eq e1 e2) t)
@@ -124,7 +142,9 @@ class Env[D, I](
   //         ((subsetp (env-assumptions e1)
   //                   (env-assumptions e2)))))
 
-  def compareEnv(e2: Env[D, I]): EnvCompare = ???
+  def compareEnv(e2: Env[D, I]): EnvCompare = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun compare-env (e1 e2)
   //   (cond ((eq e1 e2) :EQ)
@@ -135,12 +155,16 @@ class Env[D, I](
   //         ((subsetp (env-assumptions e2) (env-assumptions e1))
   //          :S21)))
 
-  def isSupportingAntecedent(nodes: Iterable[Node[D, I]]): Boolean = ???
+  def isSupportingAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun supporting-antecedent? (nodes env)
   //   (dolist (node nodes t) (unless (in-node? node env) (return nil))))
 
-  def printEnv: Unit = ???
+  def printEnv: Unit = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun print-env (e &optional (stream t))
   //   (format stream "~%~A:~A"
@@ -148,7 +172,9 @@ class Env[D, I](
   //                 "* " " "))
   //   (env-string e stream))
 
-  def envString: String = ???
+  def envString: String = {
+    ???
+  }
   // ; From ainter.lisp
   // (defun env-string (e &optional stream
   //                      &aux assumptions strings printer)
