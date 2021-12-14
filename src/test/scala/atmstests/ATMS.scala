@@ -26,13 +26,13 @@ import org.maraist.truthmaintenancesystems.assumptionbased.{ATMS, Node}
 class TestATMS extends AnyFlatSpec with Matchers {
 
   "FdK Test 1" `should` "all pass" in {
-    // val atms = new ATMS[String]("atms-test1", debugging = true)
-    // val a = new Node[String](atms, "A")
-    // val b = new Node[String](atms, "B")
-    // val c = new Node[String](atms, "C")
-    // val d = new Node[String](atms, "D")
-    // val e = new Node[String](atms, "E")
-    // val f = new Node[String](atms, "F")
+    val atms = new ATMS[Symbol, String]("atms-test1", debugging = true)
+    val a = atms.createNode("A")
+    val b = atms.createNode("B")
+    val c = atms.createNode("C")
+    val d = atms.createNode("D")
+    val e = atms.createNode("E")
+    val f = atms.createNode("F")
 
     // (assume-node a)
     // (assume-node b)
