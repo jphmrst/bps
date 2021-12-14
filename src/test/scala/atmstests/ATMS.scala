@@ -34,7 +34,7 @@ class TestATMS extends AnyFlatSpec with Matchers {
     val e = atms.createNode("E")
     val f = atms.createNode("F")
 
-    // (assume-node a)
+    atms.assumeNode(a)
     // (assume-node b)
     // (assume-node c)
     // (justify-node 'J1 d (list a b))
