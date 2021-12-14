@@ -115,26 +115,62 @@ class Node[D, I](
     * @return
     */
   def updateLabel(newEnvs: ListBuffer[Env[D, I]]): ListBuffer[Env[D, I]] = {
+    val envs = label
     ???
   }
-  // ; From atms.lisp
+  // ; From atms.lisp --- comments by JM
   // (defun update-label (node new-envs &aux envs)
   //   (setq envs (tms-node-label node))
+  //
+  //   ;; Outer loop: traverse the new-envs list.  In the loop,
+  //   ;; new-envs points to the first element of the list.
   //   (do ((new-envs new-envs (cdr new-envs)))
   //       ((null new-envs))
+  //
+  //     ;; Inner loop: traverse the labels of this node.
+  //     ;; - nenvs and envs both alias to cons cells in the label list.
   //     (do ((nenvs envs (cdr nenvs)))
+  //         ;; The exit condition and (ignored, but side-effecting)
+  //         ;; result value.
   //         ((null nenvs) (push (car new-envs) envs))
-  //       (cond ((null (car nenvs)))
-  //             ((null (car new-envs)))
-  //             ((case (compare-env (car new-envs) (car nenvs))
-  //                ((:EQ :S21) (rplaca new-envs nil))
-  //                (:S12 (setf (env-nodes (car nenvs))
-  //                            (delete node (env-nodes (car nenvs))
-  //                                    :COUNT 1))
-  //                      (rplaca nenvs nil)))))))
+  //
+  //       (cond
+  //
+  //         ;; Do nothing if either of the cons-cell traversers have
+  //         ;; NIL at at their CAR.  Could arise from the RPLACAs, I
+  //         ;; guess.
+  //         ((null (car nenvs)))
+  //         ((null (car new-envs)))
+  //
+  //         ;; The real case: compare the environments at the start
+  //         ;; of each list traverser.
+  //         ((case (compare-env (car new-envs) (car nenvs))
+  //
+  //            ;; If incomparable, or if the label's environment is a
+  //            ;; superset, then null out the CAR of the scanner on the
+  //            ;; NEW-ENVS.
+  //            ((:EQ :S21) (rplaca new-envs nil))
+  //
+  //            ;; (1) Remove this node from the list of nodes in the Env
+  //            ;; at the CAR of the scanner on the label's environments,
+  //            ;; and (2) null out that CAR from the label's environments,
+  //            (:S12 (setf (env-nodes (car nenvs))
+  //                        (delete node (env-nodes (car nenvs))
+  //                                :COUNT 1))
+  //                  (rplaca nenvs nil)))))))
+  //
+  //   ;; After the loop: tidy the Env passed in as an argument by
+  //   ;; removing all NILs, and push this Node onto the node-list
+  //   ;; of each Envs which remains.
   //   (setq new-envs (delete nil new-envs :TEST #'eq))
   //   (dolist (new-env new-envs) (push node (env-nodes new-env)))
+  //
+  //   ;; Tidy and update the LABEL list of environments.
   //   (setf (tms-node-label node) (delete nil envs :TEST #'eq))
+  //
+  //   ;; Return the updated version of the list we were passed in
+  //   ;; (since side-effecting calls may have changed the top CONS
+  //   ;; cell).
   //   new-envs)
 
   def findOrMakeEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] = {
