@@ -143,6 +143,7 @@ class ATMS[D, I](
     isAssumption: Boolean = false, isContradictory: Boolean = false):
       Node[D, I] = {
     val node = new Node[D, I](this, datum, isAssumption, isContradictory)
+    nodes += node
     if isContradictory then contradictions += node
     if isAssumption then {
       assumptions += node
@@ -633,12 +634,17 @@ class ATMS[D, I](
   //     (unless (env-nogood? new-solution)
   //       (extend-via-defaults new-solution (cdr defaults) original))))
 
-  def whyNodes: Unit = for (node <- nodes.reverse) do node.whyNode
+  def whyNodes: Unit = {
+    println(s"${nodes.length} nodes")
+    for (node <- nodes) do {
+      node.whyNode("   ", " - ")
+    }
+  }
   // ; From atms.lisp
   // (defun why-nodes (atms &optional (stream t))
   //   (dolist (n (reverse (atms-nodes atms))) (why-node n stream)))
 
-  def e(n: Node[D, I]): Unit = {
+  def e(n: Node[D, I]): Env[D, I] = {
     ???
   }
   // ; From atms.lisp
@@ -647,15 +653,16 @@ class ATMS[D, I](
   //     (dolist (env (cdr bucket))
   //       (if (= (env-index env) n) (return-from e env)))))
 
-  def printNogoods: String = {
+  def printNogoods: Unit = {
     ???
   }
   // ; From ainter.lisp
   // (defun print-nogoods (atms &optional (stream t))
   //   (print-env-table (atms-nogood-table atms) stream))
 
-  def printEnvs: String = {
-    ???
+  def printEnvs: Unit = {
+    println(s"${envTable.envCount} environments")
+    envTable.printEnvTable(" ")
   }
   // ; From ainter.lisp
   // (defun print-envs (atms &optional (stream t))
@@ -668,6 +675,14 @@ class ATMS[D, I](
   // (defun print-atms-statistics (atms)
   //   (print-table "~% For env table:" (atms-env-table atms))
   //   (print-table "~% For nogood table:" (atms-nogood-table atms)))
+
+  inline def debugAtms: Unit = if debugging then {
+    println("----------")
+    printAtms
+    whyNodes
+    printEnvs
+    println("----------")
+  }
 }
 
 class TmsError(msg: String) extends RuntimeException(msg)

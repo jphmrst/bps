@@ -265,8 +265,20 @@ class Node[D, I](
 
   // ;;; Printing
 
-  def whyNode: Unit = {
-    ???
+  def whyNode(prefix: String = "", firstPrefix: String = ""): Unit = {
+    println(s"$firstPrefix$datum")
+    label.length match {
+      case 0 => println(s"${prefix}Empty label")
+      case 1 => println(s"${prefix}Label environment: ${label(0).envString}")
+      case n => {
+        println(s"${prefix}Label environments ($n)")
+        var e = 0
+        label.map((env) => {
+          e = e + 1
+          println(s"$prefix$e. ${env.envString}")
+        })
+      }
+    }
   }
   // ; From atms.lisp
   // (defun why-node (node &optional (stream t) (prefix ""))

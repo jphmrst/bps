@@ -24,8 +24,13 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
 
-  def printEnvTable: Unit = {
-    ???
+  def printEnvTable(prefix: String): Unit = {
+    var e = 0
+    for ((length, envs) <- this)
+      do for (env <- envs) do {
+        e = e + 1
+        println(s"$prefix$e. ${env.envString}")
+      }
   }
   // ; From ainter.lisp
   // (defun print-env-table (table stream)
@@ -49,6 +54,8 @@ class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
   //              (list count env) table
   //              #'(lambda (entry1 entry2)
   //                  (< (car entry1) (car entry2)))))))
+
+  def envCount: Int = map((n,es) => es.length).foldRight(0)(_ + _)
 }
 
 enum EnvCompare {
@@ -174,9 +181,8 @@ class Env[D, I](
   // (defun supporting-antecedent? (nodes env)
   //   (dolist (node nodes t) (unless (in-node? node env) (return nil))))
 
-  def printEnv: Unit = {
-    ???
-  }
+  def printEnv(prefix: String): Unit =
+    println(s"${prefix}$envString")
   // ; From ainter.lisp
   // (defun print-env (e &optional (stream t))
   //   (format stream "~%~A:~A"
@@ -184,8 +190,10 @@ class Env[D, I](
   //                 "* " " "))
   //   (env-string e stream))
 
-  def envString: String = {
-    ???
+  def envString: String = assumptions.length match {
+    case 0 => "(empty)"
+    case _ => (if isNogood then "X " else "") +
+      assumptions.map((a) => a.atms.nodeString(a)).toList.mkString(", ")
   }
   // ; From ainter.lisp
   // (defun env-string (e &optional stream
