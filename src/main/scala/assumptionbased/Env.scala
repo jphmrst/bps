@@ -55,6 +55,7 @@ enum EnvCompare {
   case S12 extends EnvCompare
   case S21 extends EnvCompare
   case EQ extends EnvCompare
+  case Disjoint extends EnvCompare
 }
 
 class Env[D, I](
@@ -143,7 +144,18 @@ class Env[D, I](
   //                   (env-assumptions e2)))))
 
   def compareEnv(e2: Env[D, I]): EnvCompare = {
-    ???
+    if this == e2
+    then EnvCompare.EQ
+    else if count < e2.count
+    then {
+      if Env.subsetp(assumptions, e2.assumptions)
+      then EnvCompare.S12
+      else EnvCompare.Disjoint
+    } else {
+      if Env.subsetp(e2.assumptions, assumptions)
+      then EnvCompare.S21
+      else EnvCompare.Disjoint
+    }
   }
   // ; From ainter.lisp
   // (defun compare-env (e1 e2)
@@ -183,6 +195,16 @@ class Env[D, I](
   //     (setq printer (atms-node-string (tms-node-atms (car assumptions)))))
   //   (dolist (a assumptions) (push (funcall printer a) strings))
   //   (format stream "{~{~A~^,~}}" (sort strings #'string-lessp)))
+}
+
+object Env {
+  /**
+    * For Lisp calls to `subsetp`.
+    */
+  def subsetp[A](xs: ListBuffer[A], ys: ListBuffer[A]): Boolean = returning {
+    for (x <- xs) do if !ys.contains(x) then throwReturn(false)
+    true
+  }
 }
 
 // ; From ainter.lisp

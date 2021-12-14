@@ -109,21 +109,50 @@ class Node[D, I](
   //         (tms-node-label n)))
 
   /**
+    * TODO Fill in method purpose.
     *
+    * Note that the original list returned its argument, since
+    * destructive updates to Lisp's lists might result in a change to
+    * the first `cons` cell.  Since Scala [[ListBuffer]]s are wrapped,
+    * this change to the overall list reference is not possible, and
+    * so this method returns `Unit`.
     *
     * @param newEnvs A list of environments to be mutated by this call.
     * @return
     */
-  def updateLabel(newEnvs: ListBuffer[Env[D, I]]): ListBuffer[Env[D, I]] = {
-    val envs = label
-    ???
+  def updateLabel(newEnvs: ListBuffer[Env[D, I]]): Unit = {
+    var toRemoveFromNewEnvs = HashSet.empty[Env[D, I]]
+    for (newEnv <- newEnvs) do {
+      var addThisNewEnvToLabel = true
+      var toRemoveFromLabel = HashSet.empty[Env[D, I]]
+      for (labelEnv <- label) do {
+        newEnv.compareEnv(labelEnv) match {
+          case EnvCompare.Disjoint => { }
+          case EnvCompare.EQ  => {
+            toRemoveFromNewEnvs += newEnv
+            addThisNewEnvToLabel = false
+          }
+          case EnvCompare.S21 => {
+            toRemoveFromNewEnvs += newEnv
+            addThisNewEnvToLabel = false
+          }
+          case EnvCompare.S12 => {
+            toRemoveFromLabel += labelEnv
+          }
+        }
+      }
+      label --= toRemoveFromLabel
+      if addThisNewEnvToLabel then label += newEnv
+    }
+    newEnvs --= toRemoveFromNewEnvs
+    for (newEnv <- newEnvs) do newEnv.nodes += this
   }
   // ; From atms.lisp --- comments by JM
   // (defun update-label (node new-envs &aux envs)
   //   (setq envs (tms-node-label node))
   //
   //   ;; Outer loop: traverse the new-envs list.  In the loop,
-  //   ;; new-envs points to the first element of the list.
+  //   ;; new-envs points to the newxt CONS cell of the list.
   //   (do ((new-envs new-envs (cdr new-envs)))
   //       ((null new-envs))
   //
@@ -146,8 +175,8 @@ class Node[D, I](
   //         ;; of each list traverser.
   //         ((case (compare-env (car new-envs) (car nenvs))
   //
-  //            ;; If incomparable, or if the label's environment is a
-  //            ;; superset, then null out the CAR of the scanner on the
+  //            ;; If the same, or if the label's environment is a
+  //            ;; subset, then null out the CAR of the scanner on the
   //            ;; NEW-ENVS.
   //            ((:EQ :S21) (rplaca new-envs nil))
   //
@@ -157,11 +186,17 @@ class Node[D, I](
   //            (:S12 (setf (env-nodes (car nenvs))
   //                        (delete node (env-nodes (car nenvs))
   //                                :COUNT 1))
-  //                  (rplaca nenvs nil)))))))
+  //                  (rplaca nenvs nil)))))
+  //
+  //      ) ;; End of the inner DO-loop.
+  //        ;; Here the end condition of that loop adds the current
+  //        ;; new-env CAR to the node label, unless the former has
+  //        ;; been nulled out.
+  //    )
   //
   //   ;; After the loop: tidy the Env passed in as an argument by
   //   ;; removing all NILs, and push this Node onto the node-list
-  //   ;; of each Envs which remains.
+  //   ;; of each Env which remains.
   //   (setq new-envs (delete nil new-envs :TEST #'eq))
   //   (dolist (new-env new-envs) (push node (env-nodes new-env)))
   //
