@@ -115,7 +115,11 @@ class Env[D, I](
   // (defun env-order (e1 e2)
   //   (< (env-index e1) (env-index e2)))
 
-  def unionEnv(e2: Env[D, I]): Env[D, I] = {
+  def unionEnv(that: Env[D, I]): Env[D, I] = {
+    val disordered = count > that.count
+    val e1 = if disordered then that else this
+    val e2 = if disordered then this else that
+
     ???
   }
   // ; From ainter.lisp
@@ -129,6 +133,7 @@ class Env[D, I](
   //   e2)
 
   def consEnv(assumption: Node[D, I]): Env[D, I] = {
+    // val nassumes =
     ???
   }
   // ; From ainter.lisp
@@ -213,6 +218,21 @@ object Env {
     for (x <- xs) do if !ys.contains(x) then throwReturn(false)
     true
   }
+
+  def orderedInsert[D, I](
+    item: Node[D, I],
+    list: ListBuffer[Node[D, I]],
+    test: (Node[D, I], Node[D, I]) => Boolean):
+      Unit = {
+
+    ???
+  }
+  // ; From atms.lisp
+  // (defun ordered-insert (item list test)
+  //   (cond ((null list) (list item))
+  //         ((funcall test item (car list)) (cons item list))
+  //         ((eq item (car list)) list)
+  //         (t (cons (car list) (ordered-insert item (cdr list) test)))))
 }
 
 // ; From ainter.lisp

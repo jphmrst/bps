@@ -688,12 +688,5 @@ class ATMS[D, I](
 class TmsError(msg: String) extends RuntimeException(msg)
 
 // ; From atms.lisp
-// (defun ordered-insert (item list test)
-//   (cond ((null list) (list item))
-//         ((funcall test item (car list)) (cons item list))
-//         ((eq item (car list)) list)
-//         (t (cons (car list) (ordered-insert item (cdr list) test)))))
-
-// ; From atms.lisp
 // (defmacro ordered-push (item list test)
 //   `(setq ,list (ordered-insert ,item ,list ,test)))
