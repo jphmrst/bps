@@ -135,14 +135,9 @@ class Env[D, I](
   //     (if (env-nogood? e2) (return nil)))
   //   e2)
 
-  def consEnv(assumption: Node[D, I]): Env[D, I] = {
-    val nassumes =
-      Env.orderedInsert(assumption, assumptions, Env.assumptionOrder)
-    assumption.atms.lookupEnv(nassumes) match {
-      case Some(e) => e
-      case None => assumption.atms.createEnv(nassumes)
-    }
-  }
+  def consEnv(assumption: Node[D, I]): Env[D, I] =
+    assumption.atms.getEnv(
+      Env.orderedInsert(assumption, assumptions, Env.assumptionOrder))
   // ; From ainter.lisp
   // (defun cons-env (assumption env &aux nassumes)
   //   (setq nassumes (ordered-insert assumption

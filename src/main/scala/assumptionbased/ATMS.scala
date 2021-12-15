@@ -148,7 +148,7 @@ class ATMS[D, I](
     if isContradictory then contradictions += node
     if isAssumption then {
       assumptions += node
-      node.label += createEnv(List(node))
+      node.label += getEnv(List(node))
     }
     // The `(push (create-env ...` call is now in the initialization
     // of the label field of the Node.
@@ -190,7 +190,7 @@ class ATMS[D, I](
       dbg(s"Converting $node into an assumption")
       node.isAssumption = true
       assumptions += node
-      update(ListBuffer(createEnv(List(node))), node, justifyNodeAssumed)
+      update(ListBuffer(getEnv(List(node))), node, justifyNodeAssumed)
     }
   }
   // ; From atms.lisp
@@ -461,6 +461,12 @@ class ATMS[D, I](
   //                nil) ;; Result of the loop if exited
   //     (if (equal (env-assumptions env) assumes)
   //         (return env))))
+
+  /** Either lookup or create an [[Env]] for the given assumptions, if
+    * one does not already exists.
+    */
+  def getEnv(assumes: List[Node[D, I]]): Env[D, I] =
+    lookupEnv(assumes).getOrElse(createEnv(assumes))
 
   def newNogood(cenv: Env[D, I], just: Justification[D, I]): Unit = {
     dbg(s"        * New minimal nogood ${cenv.envString}")
