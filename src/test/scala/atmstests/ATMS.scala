@@ -35,7 +35,7 @@ class TestATMS extends AnyFlatSpec with Matchers {
     val h = atms.createNode("H")
     atms.debugAtms
 
-    atms.justifyNode("R1", h, ListBuffer(c, e))
+    val j1 = atms.justifyNode("R1", h, ListBuffer(c, e))
     atms.debugAtms
 
     h.label.length `should` be (1)
@@ -44,9 +44,9 @@ class TestATMS extends AnyFlatSpec with Matchers {
     h.label(0).assumptions.contains(e) `should` be (true)
 
     val g = atms.createNode("G")
-    atms.justifyNode("R2", g, ListBuffer(a, c))
+    val j2 = atms.justifyNode("R2", g, ListBuffer(a, c))
     val x = atms.createNode("X", isContradictory = true)
-    atms.justifyNode("R3", x, ListBuffer(g))
+    val j3 = atms.justifyNode("R3", x, ListBuffer(g))
     atms.debugAtms
     println(atms.interpretations)
   }

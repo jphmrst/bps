@@ -41,6 +41,8 @@ class Just[D, I](
   //            (consequence nil)
   //            (antecedents nil))
 
+  def blurb: String = s"[${informant.toString}.$index] ${consequence.datum.toString} <= ${antecedents.map(_.datum.toString).mkString(", ")}"
+
   override def toString: String = s"<${informant.toString} $index>"
   def printJust: Unit = println(toString)
   // (defun print-just (just stream ignore)

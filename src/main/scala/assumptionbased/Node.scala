@@ -255,6 +255,11 @@ class Node[D, I](
   //                      (explain-node-1 env a queued-nodes new-explanation))
   //                (unless new-explanation (return nil)))))))))
 
+  def differsFrom(that: Option[Node[D, I]]): Boolean = that match {
+    case None => true
+    case Some(n) => this != n
+  }
+
   // ;;; Printing
 
   def whyNode(prefix: String = "", firstPrefix: String = ""): Unit = {

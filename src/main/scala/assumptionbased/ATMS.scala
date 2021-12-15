@@ -19,6 +19,7 @@ package org.maraist.truthmaintenancesystems.assumptionbased
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 import org.maraist.truthmaintenancesystems.utils.Printing.*
+import org.maraist.truthmaintenancesystems.assumptionbased.Blurb
 
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
@@ -229,6 +230,7 @@ class ATMS[D, I](
     informant: I, consequence: Node[D, I], antecedents: ListBuffer[Node[D, I]]):
       Just[D, I] = {
     val just = new Just(incrJustCounter, informant, consequence, antecedents)
+    dbg(s"Adding justification ${just.blurb}")
     consequence.justs += just
     for (node <- antecedents) do node.consequences += just
     justs += just
@@ -276,6 +278,7 @@ class ATMS[D, I](
     antecedent: Option[Node[D, I]],
     envs: ListBuffer[Env[D, I]]):
       Unit = {
+    dbg(s"Calling propagate with\n  just ${Blurb.justification(just)}\n  antecedent ${Blurb.nodeOption(antecedent)}\n  ${Blurb.envLB(envs)}")
     val newEnvs = weave(antecedent, envs, just.antecedents)
     if !newEnvs.isEmpty then update(newEnvs, just.consequence, just)
   }
@@ -296,7 +299,7 @@ class ATMS[D, I](
     consequence: Node[D, I],
     just: Justification[D, I]):
       Unit = {
-    dbg(s"Calling update with\n  ${newEnvs.map((e) => "{" + e.envString + "}").mkString(",")}\n  consequence ${consequence.datum} (${if consequence.isContradictory then "" else "not "}contradictory)\n  just ${just.toString}")
+    dbg(s"Calling update with\n  ${Blurb.envLB(newEnvs)}\n  consequence ${Blurb.node(consequence)}\n  just ${Blurb.justification(just)}")
 
     if consequence.isContradictory then {
       for (env <- newEnvs) do newNogood(env, just)
@@ -348,7 +351,7 @@ class ATMS[D, I](
   //     (unless new-envs (return-from update nil))))
 
   /**
-    *
+    * TODO Mistranslated.  Add comments to Lisp and try again.
     *
     * @param antecedent
     * @param envs FILLIN Note that this list is duplicated at the
@@ -362,27 +365,31 @@ class ATMS[D, I](
     origEnvs: ListBuffer[Env[D, I]],
     antecedents: ListBuffer[Node[D, I]]):
       ListBuffer[Env[D, I]] = {
+    dbg(s"Calling weave with\n  antecedent ${Blurb.nodeOption(antecedent)}\n  origEnvs ${Blurb.envLB(origEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
     val envs = origEnvs.clone
     returning[Unit] {
-      for (node <- antecedents) do {
-        if antecedent.map(_ != antecedent).getOrElse(true) then {
-          val newEnvs = ListBuffer.empty[Env[D, I]]
-          for (env <- envs) do {
-            for (nodeEnv <- node.label) do {
-              val newEnv = env.unionEnv(nodeEnv)
-              if !newEnv.isNogood
-              then for (nnewEnv <- newEnvs) do {
+      for (node <- antecedents; if node.differsFrom(antecedent)) do {
+        val newEnvs = ListBuffer.empty[Env[D, I]]
+        for (env <- envs) do {
+          for (nodeEnv <- node.label) do {
+            val newEnv = env.unionEnv(nodeEnv)
+            if !newEnv.isNogood
+            then returning[Unit] {
+              for (nnewEnv <- newEnvs) do {
                 newEnv.compareEnv(nnewEnv) match {
                   case EnvCompare.S12 => newEnvs -= newEnv
-                  case _ => throwReturn(())
+                  case EnvCompare.S21 => throwReturn(())
+                  case EnvCompare.EQ  => throwReturn(())
+                  case _ => { }
                 }
               }
             }
           }
-          if envs.isEmpty then throwReturn(())
         }
+        if envs.isEmpty then throwReturn(())
       }
     }
+    dbg(s" --> result of weave is ${Blurb.envLB(envs)}")
     envs
   }
   // ; From atms.lisp
