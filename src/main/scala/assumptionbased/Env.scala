@@ -24,6 +24,18 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun print-env-table (table stream)
+  (dolist (bucket table)
+    (dolist (env (cdr bucket))
+      (print-env env stream))))
+</pre>
+    */
   def printEnvTable(prefix: String): Unit = {
     var e = 0
     for ((length, envs) <- this)
@@ -32,12 +44,23 @@ class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
         println(s"$prefix$e. ${env.envString}")
       }
   }
-  // ; From ainter.lisp
-  // (defun print-env-table (table stream)
-  //   (dolist (bucket table)
-  //     (dolist (env (cdr bucket))
-  //       (print-env env stream))))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun insert-in-table (table env &aux count entry)
+  (setq count (env-count env)
+        entry (assoc count table :TEST #'=))
+  (cond (entry (setf (cdr entry) (cons env (cdr entry))) table)
+        (t (ordered-insert
+             (list count env) table
+             #'(lambda (entry1 entry2)
+                 (< (car entry1) (car entry2)))))))
+</pre>
+    */
   def insertInTable(env: Env[D, I]): Unit = {
     val count = env.count
     this.get(count) match {
@@ -45,16 +68,10 @@ class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
       case Some(entry) => entry += env
     }
   }
-  // ; From ainter.lisp
-  // (defun insert-in-table (table env &aux count entry)
-  //   (setq count (env-count env)
-  //         entry (assoc count table :TEST #'=))
-  //   (cond (entry (setf (cdr entry) (cons env (cdr entry))) table)
-  //         (t (ordered-insert
-  //              (list count env) table
-  //              #'(lambda (entry1 entry2)
-  //                  (< (car entry1) (car entry2)))))))
 
+  /**
+    *
+    */
   def envCount: Int = map((n,es) => es.length).foldRight(0)(_ + _)
 }
 
@@ -96,25 +113,55 @@ class Env[D, I](
   //   (declare (ignore ignore))
   //   (format stream "E-~D" (env-index env)))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From atms.lisp
+(defun weave? (env nodes &aux new-env)
+  (cond ((null nodes) t)
+        (t (dolist (e (tms-node-label (car nodes)))
+             (setq new-env (union-env e env))
+             (unless (env-nogood? new-env)
+               (if (weave? new-env (cdr nodes))
+                   (return T)))))))
+</pre>
+    */
   def isWeave(nodes: Iterable[Node[D, I]]): Boolean = {
     ???
   }
-  // ; From atms.lisp
-  // (defun weave? (env nodes &aux new-env)
-  //   (cond ((null nodes) t)
-  //         (t (dolist (e (tms-node-label (car nodes)))
-  //              (setq new-env (union-env e env))
-  //              (unless (env-nogood? new-env)
-  //                (if (weave? new-env (cdr nodes))
-  //                    (return T)))))))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun env-order (e1 e2)
+  (< (env-index e1) (env-index e2)))
+</pre>
+    */
   def envOrder(e2: Env[D, I]): Boolean = {
     ???
   }
-  // ; From ainter.lisp
-  // (defun env-order (e1 e2)
-  //   (< (env-index e1) (env-index e2)))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun union-env (e1 e2)
+  (when (> (env-count e1)
+           (env-count e2))
+    (psetq e1 e2 e2 e1))
+  (dolist (assume (env-assumptions e1))
+    (setq e2 (cons-env assume e2))
+    (if (env-nogood? e2) (return nil)))
+  e2)
+</pre>
+    */
   def unionEnv(that: Env[D, I]): Env[D, I] = returning[Env[D, I]]{
     val disordered = count > that.count
     val e1 = if disordered then that else this
@@ -125,38 +172,59 @@ class Env[D, I](
     }
     e2
   }
-  // ; From ainter.lisp
-  // (defun union-env (e1 e2)
-  //   (when (> (env-count e1)
-  //            (env-count e2))
-  //     (psetq e1 e2 e2 e1))
-  //   (dolist (assume (env-assumptions e1))
-  //     (setq e2 (cons-env assume e2))
-  //     (if (env-nogood? e2) (return nil)))
-  //   e2)
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun cons-env (assumption env &aux nassumes)
+  (setq nassumes (ordered-insert assumption
+                                 (env-assumptions env)
+                                 #'assumption-order))
+  (or (lookup-env nassumes)
+      (create-env (tms-node-atms assumption) nassumes)))
+</pre>
+    */
   def consEnv(assumption: Node[D, I]): Env[D, I] =
     assumption.atms.getEnv(
       Env.orderedInsert(assumption, assumptions, Env.assumptionOrder))
-  // ; From ainter.lisp
-  // (defun cons-env (assumption env &aux nassumes)
-  //   (setq nassumes (ordered-insert assumption
-  //                                  (env-assumptions env)
-  //                                  #'assumption-order))
-  //   (or (lookup-env nassumes)
-  //       (create-env (tms-node-atms assumption) nassumes)))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun subset-env? (e1 e2)
+  (cond ((eq e1 e2) t)
+        ((> (env-count e1)
+            (env-count e2)) nil)
+        ((subsetp (env-assumptions e1)
+                  (env-assumptions e2)))))
+</pre>
+    */
   def isSubsetEnv(e2: Env[D, I]): Boolean = {
     ???
   }
-  // ; From ainter.lisp
-  // (defun subset-env? (e1 e2)
-  //   (cond ((eq e1 e2) t)
-  //         ((> (env-count e1)
-  //             (env-count e2)) nil)
-  //         ((subsetp (env-assumptions e1)
-  //                   (env-assumptions e2)))))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun compare-env (e1 e2)
+  (cond ((eq e1 e2) :EQ)
+        ((< (env-count e1) (env-count e2))
+         (if (subsetp (env-assumptions e1)
+                      (env-assumptions e2))
+             :S12))
+        ((subsetp (env-assumptions e2) (env-assumptions e1))
+         :S21)))
+</pre>
+    */
   def compareEnv(e2: Env[D, I]): EnvCompare = {
     if this == e2
     then EnvCompare.EQ
@@ -171,32 +239,52 @@ class Env[D, I](
       else EnvCompare.Disjoint
     }
   }
-  // ; From ainter.lisp
-  // (defun compare-env (e1 e2)
-  //   (cond ((eq e1 e2) :EQ)
-  //         ((< (env-count e1) (env-count e2))
-  //          (if (subsetp (env-assumptions e1)
-  //                       (env-assumptions e2))
-  //              :S12))
-  //         ((subsetp (env-assumptions e2) (env-assumptions e1))
-  //          :S21)))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun supporting-antecedent? (nodes env)
+  (dolist (node nodes t) (unless (in-node? node env) (return nil))))
+</pre>
+    */
   def isSupportingAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
     ???
   }
-  // ; From ainter.lisp
-  // (defun supporting-antecedent? (nodes env)
-  //   (dolist (node nodes t) (unless (in-node? node env) (return nil))))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun print-env (e &optional (stream t))
+  (format stream "~%~A:~A"
+          e (if (env-nogood? e)
+                "* " " "))
+  (env-string e stream))
+</pre>
+    */
   def printEnv(prefix: String): Unit =
     println(s"${prefix}$envString")
-  // ; From ainter.lisp
-  // (defun print-env (e &optional (stream t))
-  //   (format stream "~%~A:~A"
-  //           e (if (env-nogood? e)
-  //                 "* " " "))
-  //   (env-string e stream))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun env-string (e &optional stream
+                     &aux assumptions strings printer)
+  (setq assumptions (env-assumptions e))
+  (when assumptions
+    (setq printer (atms-node-string (tms-node-atms (car assumptions)))))
+  (dolist (a assumptions) (push (funcall printer a) strings))
+  (format stream "{~{~A~^,~}}" (sort strings #'string-lessp)))
+</pre>
+    */
   def envString: String = (
     (if this.isNogood then "X " else "") +
       (assumptions.length match {
@@ -205,14 +293,6 @@ class Env[D, I](
 
       })
   )
-  // ; From ainter.lisp
-  // (defun env-string (e &optional stream
-  //                      &aux assumptions strings printer)
-  //   (setq assumptions (env-assumptions e))
-  //   (when assumptions
-  //     (setq printer (atms-node-string (tms-node-atms (car assumptions)))))
-  //   (dolist (a assumptions) (push (funcall printer a) strings))
-  //   (format stream "{~{~A~^,~}}" (sort strings #'string-lessp)))
 }
 
 object Env {
@@ -224,6 +304,19 @@ object Env {
     true
   }
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From atms.lisp
+(defun ordered-insert (item list test)
+  (cond ((null list) (list item))
+        ((funcall test item (car list)) (cons item list))
+        ((eq item (car list)) list)
+        (t (cons (car list) (ordered-insert item (cdr list) test)))))
+</pre>
+    */
   def orderedInsert[D, I](
     item: Node[D, I],
     list: List[Node[D, I]],
@@ -238,18 +331,19 @@ object Env {
       else car :: orderedInsert(item, cdr, test)
     }
   }
-  // ; From atms.lisp
-  // (defun ordered-insert (item list test)
-  //   (cond ((null list) (list item))
-  //         ((funcall test item (car list)) (cons item list))
-  //         ((eq item (car list)) list)
-  //         (t (cons (car list) (ordered-insert item (cdr list) test)))))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From atms.lisp
+(defun assumption-order (a1 a2)
+  (< (tms-node-index a1) (tms-node-index a2)))
+</pre>
+    */
   def assumptionOrder[D, I](a1: Node[D, I], a2: Node[D, I]): Boolean =
     a1.index < a2.index
-  // ; From atms.lisp
-  // (defun assumption-order (a1 a2)
-  //   (< (tms-node-index a1) (tms-node-index a2)))
 }
 
 // ; From ainter.lisp

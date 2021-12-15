@@ -27,6 +27,24 @@ type Justification[D, I] = Just[D, I] | Symbol
 val justifyNodeAssumed: Symbol = Symbol("assume-node")
 val justifyMakeContradiction: Symbol = Symbol("make-contradiction")
 
+/**
+  *
+  *
+  *
+  * **Arguments and value members translated from**:
+  * <pre>
+  // ; From atms.lisp
+  // (defstruct (just (:PRINT-FUNCTION print-just))
+  //            (index 0)
+  //            (informant nil)
+  //            (consequence nil)
+  //            (antecedents nil))
+</pre>
+  * @param index
+  * @param informant
+  * @param consequence
+  * @param antecedents
+  */
 class Just[D, I](
   val index: Int,
   val informant: I,
@@ -34,29 +52,44 @@ class Just[D, I](
   val antecedents: ListBuffer[Node[D, I]]
 ) {
 
-  // ; From atms.lisp
-  // (defstruct (just (:PRINT-FUNCTION print-just))
-  //            (index 0)
-  //            (informant nil)
-  //            (consequence nil)
-  //            (antecedents nil))
 
+  /**
+    *
+    */
   def blurb: String = s"[${informant.toString}.$index] ${consequence.datum.toString} <= ${antecedents.map(_.datum.toString).mkString(", ")}"
 
+  /**
+    *
+    */
   override def toString: String = s"<${informant.toString} $index>"
-  def printJust: Unit = println(toString)
-  // (defun print-just (just stream ignore)
-  //   (declare (ignore ignore))
-  //   (format stream "<~A ~D>" (just-informant just)
-  //           (just-index just)))
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+(defun print-just (just stream ignore)
+  (declare (ignore ignore))
+  (format stream "<~A ~D>" (just-informant just)
+          (just-index just)))
+</pre>
+    */
+  def printJust: Unit = println(toString)
+
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+; From atms.lisp
+(defun print-justification (j &optional (stream t))
+  (format stream "~%  ~A, " (just-informant j))
+  (dolist (a (just-antecedents j))
+    (why-node a stream "     ")))
+</pre>
+    */
   def printJustification: Unit = {
     println(s"  $informant $index")
     for (a <- antecedents) do a.whyNode
   }
-  // ; From atms.lisp
-  // (defun print-justification (j &optional (stream t))
-  //   (format stream "~%  ~A, " (just-informant j))
-  //   (dolist (a (just-antecedents j))
-  //     (why-node a stream "     ")))
 }
