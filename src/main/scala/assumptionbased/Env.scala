@@ -67,7 +67,7 @@ enum EnvCompare {
 
 class Env[D, I](
   val index: Int,
-  val assumptions: ListBuffer[Node[D, I]]
+  val assumptions: List[Node[D, I]]
 ) {
 
   /** Number of assumptions. */
@@ -214,7 +214,7 @@ object Env {
   /**
     * For Lisp calls to `subsetp`.
     */
-  def subsetp[A](xs: ListBuffer[A], ys: ListBuffer[A]): Boolean = returning {
+  def subsetp[A](xs: List[A], ys: List[A]): Boolean = returning {
     for (x <- xs) do if !ys.contains(x) then throwReturn(false)
     true
   }

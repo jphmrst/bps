@@ -80,7 +80,7 @@ class ATMS[D, I](
   val nogoodTable = new EnvTable[D, I]
 
   /** Empty environment. */
-  val emptyEnv: Env[D, I] = createEnv(ListBuffer.empty)
+  val emptyEnv: Env[D, I] = createEnv(List.empty)
 
   /** Dummy contradiction node. */
   val contraNode: Node[D, I] =
@@ -147,7 +147,7 @@ class ATMS[D, I](
     if isContradictory then contradictions += node
     if isAssumption then {
       assumptions += node
-      node.label += createEnv(ListBuffer(node))
+      node.label += createEnv(List(node))
     }
     // The `(push (create-env ...` call is now in the initialization
     // of the label field of the Node.
@@ -168,7 +168,7 @@ class ATMS[D, I](
   //     (push (create-env atms (list node)) (tms-node-label node)))
   //   node)
 
-  def createEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] = {
+  def createEnv(assumptions: List[Node[D, I]]): Env[D, I] = {
     val e = new Env(incrEnvCounter, assumptions)
     envTable.insertInTable(e)
     setEnvContradictory(e)
@@ -189,7 +189,7 @@ class ATMS[D, I](
       dbg(s"Converting $node into an assumption")
       node.isAssumption = true
       assumptions += node
-      update(ListBuffer(createEnv(ListBuffer(node))), node, justifyNodeAssumed)
+      update(ListBuffer(createEnv(List(node))), node, justifyNodeAssumed)
     }
   }
   // ; From atms.lisp

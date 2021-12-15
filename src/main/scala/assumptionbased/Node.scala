@@ -33,7 +33,7 @@ class Node[D, I](
 
   /** The minimal envs under which this node is believed. */
   val label: ListBuffer[Env[D, I]] =
-    ListBuffer(atms.createEnv(ListBuffer(this)))
+    ListBuffer(atms.createEnv(List(this)))
 
   /** What this node provides support for. */
   val consequences: ListBuffer[Just[D, I]] = ListBuffer.empty

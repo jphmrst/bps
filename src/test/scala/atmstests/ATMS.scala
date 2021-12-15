@@ -19,6 +19,7 @@
 // Translated from KDF/JdK version 61 of 7/21/92.
 
 package org.maraist.truthmaintenancesystems.assumptionbased.tests
+import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.assumptionbased.{ATMS, Node}
@@ -34,16 +35,29 @@ class TestATMS extends AnyFlatSpec with Matchers {
     val e = atms.createNode("E")
     val f = atms.createNode("F")
 
+    atms.debugAtms
     atms.assumeNode(a)
-    // (assume-node b)
-    // (assume-node c)
-    // (justify-node 'J1 d (list a b))
+
+    atms.debugAtms
+    atms.assumeNode(b)
+
+    atms.debugAtms
+    atms.assumeNode(c)
+
+    atms.debugAtms
+    // atms.justifyNode("J1", d, ListBuffer(a, b))
+
+    // atms.debugAtms
     // (justify-node 'J2 e (list b c))
+
+    // atms.debugAtms
     // (justify-node 'J3 f (list d e))
 
+    // atms.debugAtms
     // assert(pfa.transitionProb("B", 3, "C") === 0.0)
-    // assert(pfa.transitionProb("B", 3, "D") === 0.5 +- 0.000000001)
 
+    // atms.debugAtms
+    // assert(pfa.transitionProb("B", 3, "D") === 0.5 +- 0.000000001)
   }
 
 }
