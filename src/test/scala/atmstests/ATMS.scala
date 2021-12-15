@@ -26,6 +26,7 @@ import org.maraist.truthmaintenancesystems.assumptionbased.{ATMS, Node}
 
 class TestATMS extends AnyFlatSpec with Matchers {
 
+  // F&dK Sec. 12.5
   "FdK simple example" `should` "all pass" in {
     val atms = new ATMS[Symbol, String]("atms-test0", debugging = true)
     val a = atms.createNode("A", isAssumption = true)
@@ -41,6 +42,13 @@ class TestATMS extends AnyFlatSpec with Matchers {
     h.label(0).assumptions.length `should` be (2)
     h.label(0).assumptions.contains(c) `should` be (true)
     h.label(0).assumptions.contains(e) `should` be (true)
+
+    val g = atms.createNode("G")
+    atms.justifyNode("R2", g, ListBuffer(a, c))
+    val x = atms.createNode("X", isContradictory = true)
+    atms.justifyNode("R3", x, ListBuffer(g))
+    atms.debugAtms
+    println(atms.interpretations)
   }
 
   "FdK Test 1" `should` "all pass" in {
