@@ -34,30 +34,28 @@ class TestATMS extends AnyFlatSpec with Matchers {
     val d = atms.createNode("D")
     val e = atms.createNode("E")
     val f = atms.createNode("F")
-
     atms.debugAtms
+
     atms.assumeNode(a)
-
     atms.debugAtms
+
     atms.assumeNode(b)
-
     atms.debugAtms
+
+    atms.justifyNode("J1", d, ListBuffer(a, b))
+    atms.debugAtms
+
+    atms.justifyNode("J2", e, ListBuffer(b, c))
+    atms.debugAtms
+
     atms.assumeNode(c)
-
     atms.debugAtms
-    // atms.justifyNode("J1", d, ListBuffer(a, b))
 
-    // atms.debugAtms
-    // (justify-node 'J2 e (list b c))
+    atms.justifyNode("J3", f, ListBuffer(d, e))
+    atms.debugAtms
 
-    // atms.debugAtms
-    // (justify-node 'J3 f (list d e))
-
-    // atms.debugAtms
-    // assert(pfa.transitionProb("B", 3, "C") === 0.0)
-
-    // atms.debugAtms
-    // assert(pfa.transitionProb("B", 3, "D") === 0.5 +- 0.000000001)
+    atms.nogoodNodes("X1", ListBuffer(d, e))
+    atms.debugAtms
   }
 
 }

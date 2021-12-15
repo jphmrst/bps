@@ -71,11 +71,6 @@ class Node[D, I](
   // ; From atms.lisp
   // (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
 
-  def assumptionOrder(a2: Node[D, I]): Boolean = index < a2.index
-  // ; From atms.lisp
-  // (defun assumption-order (a1 a2)
-  //   (< (tms-node-index a1) (tms-node-index a2)))
-
   def isTrueNode: Boolean = {
     ???
   }
@@ -84,9 +79,9 @@ class Node[D, I](
   //   (eq (car (tms-node-label node))
   //       (atms-empty-env (tms-node-atms node))))
 
-  def isInNode: Boolean = {
-    ???
-  }
+  def isInNode: Boolean = !label.isEmpty
+
+  def isInNodeUnder(env: Env[D, I]): Boolean = label.exists(_.isSubsetEnv(env))
   // ; From atms.lisp
   // (defun in-node? (n &optional env)
   //   (if env
@@ -94,15 +89,12 @@ class Node[D, I](
   //             (tms-node-label n))
   //       (not (null (tms-node-label n)))))
 
-  def isOutNode: Boolean = {
-    ???
-  }
+  def isOutNode(env: Env[D, I]): Boolean = !isInNodeUnder(env)
   // ; From atms.lisp
   // (defun out-node? (n env) (not (in-node? n env)))
 
-  def isNodeConsistentWith(env: Env[D, I]): Boolean = {
-    ???
-  }
+  def isNodeConsistentWith(env: Env[D, I]): Boolean =
+    label.exists((le) => !le.unionEnv(env).isNogood)
   // ; From atms.lisp
   // (defun node-consistent-with? (n env)
   //   (some #'(lambda (le) (not (env-nogood? (union-env le env))))
@@ -286,6 +278,28 @@ class Node[D, I](
   //   (dolist (e (tms-node-label node))
   //     (env-string e stream))
   //   (format stream "}>"))
+
+  def debugNode: Unit = {
+    println(s"- $datum")
+    label.length match {
+      case 0 => println("  Empty label")
+      case 1 => println(s"  Label environment: ${label(0).envString}")
+      case n => {
+        println(s"  Label environments ($n)")
+        var e = 0
+        label.map((env) => {
+          e = e + 1
+          println(s"  $e. ${env.envString}")
+        })
+      }
+    }
+    consequences.length match {
+      case 0 => println("  Antecedent to no justifications")
+      case n =>
+        println("  Antecedent to " +
+          consequences.map(_.informant.toString).mkString(", "))
+    }
+  }
 
   def nodeJustifications: Unit = {
     ???

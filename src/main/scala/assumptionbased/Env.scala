@@ -115,12 +115,15 @@ class Env[D, I](
   // (defun env-order (e1 e2)
   //   (< (env-index e1) (env-index e2)))
 
-  def unionEnv(that: Env[D, I]): Env[D, I] = {
+  def unionEnv(that: Env[D, I]): Env[D, I] = returning[Env[D, I]]{
     val disordered = count > that.count
     val e1 = if disordered then that else this
-    val e2 = if disordered then this else that
-
-    ???
+    var e2: Env[D, I] = if disordered then this else that
+    for (assume <- e1.assumptions) do {
+      e2 = e2.consEnv(assume)
+      if e2.isNogood then throwReturn(e2)
+    }
+    e2
   }
   // ; From ainter.lisp
   // (defun union-env (e1 e2)
@@ -133,8 +136,12 @@ class Env[D, I](
   //   e2)
 
   def consEnv(assumption: Node[D, I]): Env[D, I] = {
-    // val nassumes =
-    ???
+    val nassumes =
+      Env.orderedInsert(assumption, assumptions, Env.assumptionOrder)
+    assumption.atms.lookupEnv(nassumes) match {
+      case Some(e) => e
+      case None => assumption.atms.createEnv(nassumes)
+    }
   }
   // ; From ainter.lisp
   // (defun cons-env (assumption env &aux nassumes)
@@ -195,11 +202,14 @@ class Env[D, I](
   //                 "* " " "))
   //   (env-string e stream))
 
-  def envString: String = assumptions.length match {
-    case 0 => "(empty)"
-    case _ => (if isNogood then "X " else "") +
-      assumptions.map((a) => a.atms.nodeString(a)).toList.mkString(", ")
-  }
+  def envString: String = (
+    (if this.isNogood then "X " else "") +
+      (assumptions.length match {
+        case 0 => "(empty)"
+        case _ => assumptions.map((a) => a.atms.nodeString(a)).toList.mkString(", ")
+
+      })
+  )
   // ; From ainter.lisp
   // (defun env-string (e &optional stream
   //                      &aux assumptions strings printer)
@@ -221,11 +231,17 @@ object Env {
 
   def orderedInsert[D, I](
     item: Node[D, I],
-    list: ListBuffer[Node[D, I]],
+    list: List[Node[D, I]],
     test: (Node[D, I], Node[D, I]) => Boolean):
-      Unit = {
-
-    ???
+      List[Node[D, I]] = list match {
+    case Nil => List(item)
+    case (car :: cdr) => {
+      if test(item, car)
+      then item :: list
+      else if item == car
+      then list
+      else car :: orderedInsert(item, cdr, test)
+    }
   }
   // ; From atms.lisp
   // (defun ordered-insert (item list test)
@@ -233,6 +249,12 @@ object Env {
   //         ((funcall test item (car list)) (cons item list))
   //         ((eq item (car list)) list)
   //         (t (cons (car list) (ordered-insert item (cdr list) test)))))
+
+  def assumptionOrder[D, I](a1: Node[D, I], a2: Node[D, I]): Boolean =
+    a1.index < a2.index
+  // ; From atms.lisp
+  // (defun assumption-order (a1 a2)
+  //   (< (tms-node-index a1) (tms-node-index a2)))
 }
 
 // ; From ainter.lisp

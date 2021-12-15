@@ -18,6 +18,7 @@
 package org.maraist.truthmaintenancesystems.assumptionbased
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
+import org.maraist.truthmaintenancesystems.utils.Printing.*
 
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
@@ -231,7 +232,7 @@ class ATMS[D, I](
     consequence.justs += just
     for (node <- antecedents) do node.consequences += just
     justs += just
-    dbg(s"Justifying $consequence in terms of informant on ${antecedents.map(nodeString)}")
+    dbg(s"Justifying ${consequence.datum} by $informant on ${antecedents.map(nodeString).mkString(", ")}")
     propagate(just, None, ListBuffer(emptyEnv))
     just
   }
@@ -295,8 +296,11 @@ class ATMS[D, I](
     consequence: Node[D, I],
     just: Justification[D, I]):
       Unit = {
+    dbg(s"Calling update with\n  ${newEnvs.map((e) => "{" + e.envString + "}").mkString(",")}\n  consequence ${consequence.datum} (${if consequence.isContradictory then "" else "not "}contradictory)\n  just ${just.toString}")
+
     if consequence.isContradictory then {
       for (env <- newEnvs) do newNogood(env, just)
+      dbg("  Registered each newEnv as nogood in ATMS")
       return
     }
 
@@ -311,10 +315,13 @@ class ATMS[D, I](
 
     returning[Unit] {
       for (supportedJust <- consequence.consequences) do {
+        dbg("  Relaying to propagate for ${supportedJust.toString}")
         propagate(supportedJust, Some(consequence), newEnvs)
+        val envsToRemove = ListBuffer.empty[Env[D, I]]
         for (newEnv <- newEnvs) {
-          if !consequence.label.contains(newEnv) then newEnvs -= newEnv
+          if !consequence.label.contains(newEnv) then envsToRemove += newEnv
         }
+        newEnvs --= envsToRemove
         if newEnvs.isEmpty then throwReturn(())
       }
     }
@@ -433,7 +440,7 @@ class ATMS[D, I](
   //     (setf (env-nodes env)
   //           (delete node (env-nodes env) :test #'eq :count 1))))
 
-  def lookupEnv(assumes: ListBuffer[Node[D, I]]): Option[Env[D, I]] =
+  def lookupEnv(assumes: List[Node[D, I]]): Option[Env[D, I]] =
     returning {
       envTable.get(assumes.length) match {
         case Some(envs) => {
@@ -456,7 +463,7 @@ class ATMS[D, I](
   //         (return env))))
 
   def newNogood(cenv: Env[D, I], just: Justification[D, I]): Unit = {
-    dbg(s"$cenv new minimal nogood")
+    dbg(s"        * New minimal nogood ${cenv.envString}")
     cenv.nogoodEvidence = Some(just)
     removeEnvFromLabels(cenv)
     nogoodTable.insertInTable(cenv)
@@ -635,7 +642,6 @@ class ATMS[D, I](
   //       (extend-via-defaults new-solution (cdr defaults) original))))
 
   def whyNodes: Unit = {
-    println(s"${nodes.length} nodes")
     for (node <- nodes) do {
       node.whyNode("   ", " - ")
     }
@@ -654,14 +660,16 @@ class ATMS[D, I](
   //       (if (= (env-index env) n) (return-from e env)))))
 
   def printNogoods: Unit = {
-    ???
+    val count = nogoodTable.envCount
+    println(s"$count nogood environment${plural(count)}")
+    nogoodTable.printEnvTable(" ")
   }
   // ; From ainter.lisp
   // (defun print-nogoods (atms &optional (stream t))
   //   (print-env-table (atms-nogood-table atms) stream))
 
   def printEnvs: Unit = {
-    println(s"${envTable.envCount} environments")
+    println(s"${envTable.envCount} environment${plural(envTable.envCount)}")
     envTable.printEnvTable(" ")
   }
   // ; From ainter.lisp
@@ -679,9 +687,17 @@ class ATMS[D, I](
   inline def debugAtms: Unit = if debugging then {
     println("----------")
     printAtms
-    whyNodes
+    debugNodes
     printEnvs
+    printNogoods
     println("----------")
+  }
+
+  def debugNodes: Unit = {
+    println(s"${nodes.length} node${plural(nodes.length)}")
+    for (node <- nodes) do {
+      node.debugNode
+    }
   }
 }
 
