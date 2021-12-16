@@ -29,14 +29,27 @@ class TestATMS extends AnyFlatSpec with Matchers {
   // F&dK Sec. 12.5
   "FdK simple example" `should` "all pass" in {
     val atms = new ATMS[Symbol, String]("atms-test0", debugging = true)
+
     val a = atms.createNode("A", isAssumption = true)
-    val c = atms.createNode("C", isAssumption = true)
-    val e = atms.createNode("E", isAssumption = true)
-    val h = atms.createNode("H")
-    atms.debugAtms
     a.label.length `should` be (1)
     atms.lookupEnv(List(a)).map(a.label.contains(_)).getOrElse(false)
       `should` be (true)
+
+    val c = atms.createNode("C", isAssumption = true)
+    c.label.length `should` be (1)
+    atms.lookupEnv(List(c)).map(c.label.contains(_)).getOrElse(false)
+      `should` be (true)
+
+    val e = atms.createNode("E", isAssumption = true)
+    e.label.length `should` be (1)
+    atms.lookupEnv(List(e)).map(e.label.contains(_)).getOrElse(false)
+      `should` be (true)
+
+    val h = atms.createNode("H")
+    h.label.length `should` be (1)
+    atms.lookupEnv(List(h)).map(h.label.contains(_)).getOrElse(false)
+      `should` be (true)
+    atms.debugAtms
 
     val j1 = atms.justifyNode("R1", h, ListBuffer(c, e))
     atms.debugAtms
@@ -48,11 +61,42 @@ class TestATMS extends AnyFlatSpec with Matchers {
       `should` be (true)
 
     val g = atms.createNode("G")
+    g.label.length `should` be (1)
+    atms.lookupEnv(List(g)).map(g.label.contains(_)).getOrElse(false)
+      `should` be (true)
+
     val j2 = atms.justifyNode("R2", g, ListBuffer(a, c))
+    g.label.length `should` be (2)
+    atms.lookupEnv(List(a, c)).map(g.label.contains(_)).getOrElse(false)
+      `should` be (true)
+    atms.lookupEnv(List(g)).map(g.label.contains(_)).getOrElse(false)
+      `should` be (true)
+
     val x = atms.createNode("X", isContradictory = true)
     val j3 = atms.justifyNode("R3", x, ListBuffer(g))
     atms.debugAtms
-    println(atms.interpretations)
+    g.label.length `should` be (1)
+    atms.lookupEnv(List(g)).map(g.label.contains(_)).getOrElse(false)
+      `should` be (true)
+    atms.lookupEnv(List(a, c)).map(_.isNogood).getOrElse(false)
+      `should` be (true)
+
+    val b = atms.createNode("B", isAssumption = true)
+    b.label.length `should` be (1)
+    atms.lookupEnv(List(b)).map(b.label.contains(_)).getOrElse(false)
+    `should` be (true)
+
+    val j4 = atms.justifyNode("R4", h, ListBuffer(b, c))
+    atms.debugAtms
+    h.label.length `should` be (3)
+    atms.lookupEnv(List(h)).map(h.label.contains(_)).getOrElse(false)
+      `should` be (true)
+    atms.lookupEnv(List(c, e)).map(h.label.contains(_)).getOrElse(false)
+      `should` be (true)
+    atms.lookupEnv(List(c, b)).map(h.label.contains(_)).getOrElse(false)
+      `should` be (true)
+
+    // println(atms.interpretations)
   }
 
   "FdK Test 1" `should` "all pass" in {

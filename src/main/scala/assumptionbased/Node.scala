@@ -86,7 +86,7 @@ class Node[D, I](
 
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -98,7 +98,7 @@ class Node[D, I](
   def nodeString: String = atms.nodeString(this)
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -109,7 +109,7 @@ class Node[D, I](
   def defaultNodeString: String = datum.toString
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -124,7 +124,7 @@ class Node[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -139,7 +139,7 @@ class Node[D, I](
   def isInNode: Boolean = !label.isEmpty
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -154,7 +154,7 @@ class Node[D, I](
   def isInNodeUnder(env: Env[D, I]): Boolean = label.exists(_.isSubsetEnv(env))
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -165,7 +165,7 @@ class Node[D, I](
   def isOutNode(env: Env[D, I]): Boolean = !isInNodeUnder(env)
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -283,7 +283,7 @@ class Node[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -301,7 +301,7 @@ class Node[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -320,7 +320,7 @@ class Node[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -369,7 +369,7 @@ class Node[D, I](
   // ;;; Printing
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -423,7 +423,7 @@ class Node[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>

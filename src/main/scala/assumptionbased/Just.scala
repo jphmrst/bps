@@ -64,7 +64,7 @@ class Just[D, I](
   override def toString: String = s"<${informant.toString} $index>"
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -77,7 +77,7 @@ class Just[D, I](
   def printJust: Unit = println(toString)
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>

@@ -26,10 +26,10 @@ import org.maraist.truthmaintenancesystems.assumptionbased.Blurb
 
 type ChoiceSets[D, I] = ListBuffer[ListBuffer[Node[D, I]]]
 
-/** Implementation of assmuption-based truth maintenance systems.
-    *
-    * **Arguments and `val` members translated from**:
-    * <pre>
+/** Implementation of assumption-based truth maintenance systems.
+  *
+  * **Arguments and `val` members translated from**:
+  * <pre>
 ; From atms.lisp
 (defstruct (atms (:PRINT-FUNCTION print-atms))
   (title nil)
@@ -130,8 +130,7 @@ class ATMS[D, I](
     createNode("The contradiction", isContradictory = true)
 
   /**
-    *
-    *
+    * Return a short string with the title of this ATMS.
     *
     * **Translated from**:
     * <pre>
@@ -144,8 +143,7 @@ class ATMS[D, I](
   override def toString: String = s"<ATMS $title>"
 
   /**
-    *
-    *
+    * Print a short tag with the title of this ATMS.
     *
     * **Translated from**:
     * <pre>
@@ -158,8 +156,7 @@ class ATMS[D, I](
   def printAtms: Unit = println(toString)
 
   /**
-    *
-    *
+    * Print a diagnostic message when in debugging mode.
     *
     * **Translated from**:
     * <pre>
@@ -206,16 +203,15 @@ class ATMS[D, I](
     val node = new Node[D, I](this, datum, isAssumption, isContradictory)
     nodes += node
     if isContradictory then contradictions += node
-    if isAssumption then {
-      assumptions += node
-      node.label += getEnv(List(node))
-    }
+    if isAssumption then assumptions += node
     // The `(push (create-env ...` call is now in the initialization
     // of the label field of the Node.
     node
   }
 
   /**
+    * Create a new [[Env][environment]] from a list of
+    * [[Node][assumption nodes]].
     *
     * **Translated from**:
     * <pre>
@@ -240,6 +236,7 @@ class ATMS[D, I](
   }
 
   /**
+    * Convert an existing node into a possible assumption.
     *
     * **Translated from**:
     * <pre>
@@ -267,6 +264,7 @@ class ATMS[D, I](
   }
 
   /**
+    * Designate a node as representing a contradiction.
     *
     * **Translated from**:
     * <pre>
@@ -296,7 +294,8 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Inform the ATMS that it should believe the `consequence` node
+    * whenever it believes all of the nodes in the `antecedents`.
     *
     * **Translated from**:
     * <pre>
@@ -337,7 +336,10 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Inform the ATMS that a certain group of nodes should not be
+    * considered together.  The ATMS will turn this list into the
+    * antecedents of a justification which concludes the built-in
+    * contradiction.
     *
     * **Translated from**:
     * <pre>
@@ -355,7 +357,7 @@ class ATMS[D, I](
     justifyNode(informant, contraNode, nodes)
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -367,7 +369,7 @@ class ATMS[D, I](
     *
     * @param just
     * @param antecedent
-    * @param envs FILLIN This list is not mutated: `weave` returns a
+    * @param envs This list is not mutated: `weave` returns a
     * non-shared copy of the list, so the mutations in `update` do not
     * impact the original argument.
     */
@@ -449,7 +451,7 @@ class ATMS[D, I](
   }
 
   /**
-    * TODO Mistranslated.  Add comments to Lisp and try again.
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -514,9 +516,11 @@ class ATMS[D, I](
     * (Comments by JM.)
     *
     * @param antecedent
-    * @param envs FILLIN Note that this list is duplicated at the
-    * start of the method, so no changes are made to the passed-in
-    * argument.
+    * @param envs TODO
+    *
+    * Note that this list is duplicated at the start of the method, so
+    * no changes are made to the passed-in argument.
+    *
     * @param antecedents
     * @return
     */
@@ -540,12 +544,13 @@ class ATMS[D, I](
             if newEnvs.exists(newEnv.isSupersetEnvOf(_))
             then {
               dbg("       * Found newEnvs element subset of newEnv")
-
             } else {
-              newEnvs --= (newEnvs.filter((n) => !n.isSupersetEnvOf(newEnv)))
-              dbg(s"       - Pruned newEnvs to ${Blurb.envLB(newEnvs)}")
+              val toRemove = newEnvs.filter((n) => !n.isSupersetEnvOf(newEnv))
+              newEnvs --= toRemove
+              dbg(s"       - Removed ${Blurb.envLB(toRemove)}")
               newEnvs += newEnv
-              dbg(s"       - Pruned newEnvs to ${Blurb.envLB(newEnvs)}")
+              dbg(s"       - Added ${Blurb.env(newEnv)}")
+              dbg(s"       - newEnvs now ${Blurb.envLB(newEnvs)}")
             }
           } else dbg("       * newEnv is nogood")
 
@@ -612,7 +617,14 @@ class ATMS[D, I](
   }
 
   /**
+    * Returns the [[Env][environment]] of the ATMS containing the
+    * given `assumes` nodes, if one exists.
     *
+    * This method is safe to use from outside this package, since will
+    * never mutate the ATMS, and just return `None` if no such
+    * environment currently exists.  However, this method is sensitive
+    * to the order of the nodes; it will only finds matches where the
+    * nodes are given in the same order as in the environment.
     *
     * **Translated from**:
     * <pre>
@@ -644,13 +656,15 @@ class ATMS[D, I](
     }
 
   /** Either lookup or create an [[Env]] for the given assumptions, if
-    * one does not already exists.
+    * one does not already exists.  This method should not be called
+    * as an API method on the ATMS, since it may create spurious
+    * records of unused environments.
     */
   def getEnv(assumes: List[Node[D, I]]): Env[D, I] =
     lookupEnv(assumes).getOrElse(createEnv(assumes))
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -700,7 +714,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -738,7 +752,7 @@ class ATMS[D, I](
     }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -765,7 +779,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -776,7 +790,7 @@ class ATMS[D, I](
   val solutions: ListBuffer[Env[D, I]] = ListBuffer.empty
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -826,7 +840,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -861,7 +875,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -895,7 +909,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Diagnostic method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -911,7 +925,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -929,7 +943,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Diagnostic method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -945,7 +959,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Diagnostic method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -960,7 +974,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Diagnostic method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -975,7 +989,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Diagnostic method TODO fill in description
     */
   inline def debugAtms: Unit = if debugging then {
     println("----------")
@@ -987,7 +1001,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Diagnostic method TODO fill in description
     */
   def debugNodes: Unit = {
     println(s"${nodes.length} node${plural(nodes.length)}")

@@ -25,7 +25,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -46,7 +46,7 @@ class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -114,7 +114,7 @@ class Env[D, I](
   //   (format stream "E-~D" (env-index env)))
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -133,7 +133,7 @@ class Env[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -147,7 +147,7 @@ class Env[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -174,7 +174,7 @@ class Env[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -192,7 +192,7 @@ class Env[D, I](
       Env.orderedInsert(assumption, assumptions, Env.assumptionOrder))
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -205,12 +205,14 @@ class Env[D, I](
                   (env-assumptions e2)))))
 </pre>
     */
-  def isSubsetEnv(e2: Env[D, I]): Boolean = {
-    ???
+  def isSubsetEnv(e2: Env[D, I]): Boolean = compareEnv(e2) match {
+    case EnvCompare.S12 => true
+    case EnvCompare.EQ => true
+    case _ => false
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -247,7 +249,7 @@ class Env[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -261,7 +263,7 @@ class Env[D, I](
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -277,7 +279,7 @@ class Env[D, I](
     println(s"${prefix}$envString")
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -292,10 +294,11 @@ class Env[D, I](
 </pre>
     */
   def envString: String = (
-    (if this.isNogood then "X " else "") +
+    (if this.isNogood then "[X] " else "") +
       (assumptions.length match {
         case 0 => "(empty)"
-        case _ => assumptions.map((a) => a.atms.nodeString(a)).toList.mkString(", ")
+        case _ =>
+          assumptions.map((a) => a.atms.nodeString(a)).toList.mkString(", ")
 
       })
   )
@@ -311,7 +314,7 @@ object Env {
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
@@ -339,7 +342,7 @@ object Env {
   }
 
   /**
-    *
+    * Internal method TODO fill in description
     *
     * **Translated from**:
     * <pre>
