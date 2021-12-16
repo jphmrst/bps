@@ -458,10 +458,10 @@ class ATMS[D, I](
   (setq envs (copy-list envs))
   (dolist (node antecedents)
     (unless (eq node antecedent)
-  //
+
       ;; We will update ENVS with the list built in NEW-ENVS.
       (setq new-envs nil)
-  //
+
       ;; We look at all pairs of
       ;;  - An Env from the passed-in ENVS, plus
       ;;  - An Env from the NODE's label.
@@ -473,13 +473,13 @@ class ATMS[D, I](
             (dolist (node-env (tms-node-label node))
               (setq new-env (union-env env node-env))
               (unless (env-nogood? new-env)
-  //
+
                 ;; If NEW-ENV is a superset of (or is equal to)
                 ;; anything already in NEW-ENVS, then NEW-ENV
                 ;; is redundant, and we abort the body of the
-                ;; double-loop without adding NEW-ENV to
-                ;; NEW-ENVS.
-  //
+                ;; inner match-searching loop without adding
+                ;; NEW-ENV to NEW-ENVS.
+
                 ;; Otherwise if anything already in NEW-ENVS is
                 ;; a superset of NEW-ENV, then (1) NEW-ENV
                 ;; makes that element redundant, and we strip
@@ -493,8 +493,13 @@ class ATMS[D, I](
                       (:S12 (rplaca nnew-envs nil))
                           ; Could also be NIL, for mutually
                           ; non-contained sets --- ignored.
-                     )))))))
-  //
+                     ))) ;; End of DO-macro.
+
+                ;; Note that at this point the exit condition of the
+                ;; DO will have added NEW-ENV to the NEW-ENVS list.
+
+                ))))
+
       ;; So we have nearly produced the refinement of ENVS for
       ;; this NODE in the ANTECEDENTS.  It might have spurious
       ;; NILs, so we strip those out and update ENVS.  If ever
@@ -502,10 +507,11 @@ class ATMS[D, I](
       ;; curcuit returning that empty list.
       (setq envs (delete nil new-envs :TEST #'eq))
       (unless envs (return-from weave nil))))
-  //
+
   ;; Finally, return the last refinemwnt of ENVS.
   envs)
 </pre>
+    * (Comments by JM.)
     *
     * @param antecedent
     * @param envs FILLIN Note that this list is duplicated at the
@@ -520,27 +526,32 @@ class ATMS[D, I](
     antecedents: ListBuffer[Node[D, I]]):
       ListBuffer[Env[D, I]] = {
     dbg(s"Calling weave with\n  antecedent ${Blurb.nodeOption(antecedent)}\n  origEnvs ${Blurb.envLB(origEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
-    val envs = origEnvs.clone
+    var envs = origEnvs.clone
     returning[Unit] {
       for (node <- antecedents; if node.differsFrom(antecedent)) do {
+        dbg(s" - For antecedent node ${Blurb.node(node)}")
         val newEnvs = ListBuffer.empty[Env[D, I]]
-        for (env <- envs) do {
-          for (nodeEnv <- node.label) do {
-            val newEnv = env.unionEnv(nodeEnv)
-            if !newEnv.isNogood
-            then returning[Unit] {
-              for (nnewEnv <- newEnvs) do {
-                newEnv.compareEnv(nnewEnv) match {
-                  case EnvCompare.S12 => newEnvs -= newEnv
-                  case EnvCompare.S21 => throwReturn(())
-                  case EnvCompare.EQ  => throwReturn(())
-                  case _ => { }
-                }
-              }
+
+        for (env <- envs; nodeEnv <- node.label) do {
+          dbg(s"    - For ${Blurb.env(env)} from env, ${Blurb.env(nodeEnv)} from node label")
+          val newEnv = env.unionEnv(nodeEnv)
+          dbg(s"      Union is ${Blurb.env(newEnv)}")
+          if !newEnv.isNogood then {
+            if newEnvs.exists(newEnv.isSupersetEnvOf(_))
+            then {
+              dbg("       * Found newEnvs element subset of newEnv")
+
+            } else {
+              newEnvs --= (newEnvs.filter((n) => !n.isSupersetEnvOf(newEnv)))
+              dbg(s"       - Pruned newEnvs to ${Blurb.envLB(newEnvs)}")
+              newEnvs += newEnv
+              dbg(s"       - Pruned newEnvs to ${Blurb.envLB(newEnvs)}")
             }
-          }
+          } else dbg("       * newEnv is nogood")
+
+          envs = newEnvs
+          if envs.isEmpty then throwReturn(())
         }
-        if envs.isEmpty then throwReturn(())
       }
     }
     dbg(s" --> result of weave is ${Blurb.envLB(envs)}")

@@ -27,11 +27,15 @@ object Blurb {
   def option[A](aa: (A) => String)(o: Option[A]): String =
     o.map(aa).getOrElse("[none]")
 
-  def listBuf[A](aa: (A) => String, sep: String)(lb: ListBuffer[A]): String =
-    lb.map(aa).mkString(sep)
+  def listBuf[A](aa: (A) => String, sep: String = "(empty)")
+    (lb: ListBuffer[A]):
+      String =
+    "{" + lb.map(aa).mkString(sep) + "}"
 
-  def list[A](aa: (A) => String, sep: String)(b: List[A]): String =
-    b.map(aa).mkString(sep)
+  def list[A](aa: (A) => String, sep: String = "(empty)")
+    (b: List[A]):
+      String =
+    "{" + b.map(aa).mkString(sep) + "}"
 
   def env[D, I](e: Env[D, I]): String = e.envString
 

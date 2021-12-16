@@ -240,6 +240,12 @@ class Env[D, I](
     }
   }
 
+  def isSupersetEnvOf(e2: Env[D, I]): Boolean = compareEnv(e2) match {
+    case EnvCompare.S21 => true
+    case EnvCompare.EQ  => true
+    case _ => false
+  }
+
   /**
     *
     *
