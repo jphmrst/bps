@@ -582,7 +582,7 @@ class ATMS[D, I](
   }
 
   /**
-    *
+    * Remove a node from the ATMS.
     *
     * **Translated from**:
     * <pre>
@@ -604,6 +604,8 @@ class ATMS[D, I](
 </pre>
     *
     * @param node
+    * @throws TmsError if the node is used as the consequence of any
+    * justifications.
     */
   def removeNode(node: Node[D, I]): Unit = {
     if !node.consequences.isEmpty

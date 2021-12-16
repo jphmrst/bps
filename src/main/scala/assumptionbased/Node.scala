@@ -124,7 +124,8 @@ class Node[D, I](
   }
 
   /**
-    * Internal method TODO fill in description
+    * This method returns `true` when there is some [[Env]]
+    * environment under which this node is believed.
     *
     * **Translated from**:
     * <pre>
@@ -139,7 +140,8 @@ class Node[D, I](
   def isInNode: Boolean = !label.isEmpty
 
   /**
-    * Internal method TODO fill in description
+    * This method returns `true` when node is believed under some
+    * subset of the given environment `env`.
     *
     * **Translated from**:
     * <pre>
@@ -154,7 +156,8 @@ class Node[D, I](
   def isInNodeUnder(env: Env[D, I]): Boolean = label.exists(_.isSubsetEnv(env))
 
   /**
-    * Internal method TODO fill in description
+    * This method returns `true` when there is no subset of the given
+    * environment `env` under which this node is believed.  .
     *
     * **Translated from**:
     * <pre>
@@ -165,7 +168,9 @@ class Node[D, I](
   def isOutNode(env: Env[D, I]): Boolean = !isInNodeUnder(env)
 
   /**
-    * Internal method TODO fill in description
+    * This method returns `true` if there is any environment `e` in
+    * which this node is believed such that `e` and `env` taken
+    * together do not lead to any contradictions.
     *
     * **Translated from**:
     * <pre>
@@ -179,7 +184,7 @@ class Node[D, I](
     label.exists((le) => !le.unionEnv(env).isNogood)
 
   /**
-    * TODO Fill in method purpose.
+    * Internal method TODO Fill in method purpose.
     *
     * Note that the original list returned its argument, since
     * destructive updates to Lisp's lists might result in a change to
@@ -301,7 +306,9 @@ class Node[D, I](
   }
 
   /**
-    * Internal method TODO fill in description
+    * "This returns a list of justifications which form a DAG for the
+    * derivation. This is quite complicated because this is really a
+    * simple consequent JTMS."
     *
     * **Translated from**:
     * <pre>
@@ -315,12 +322,12 @@ class Node[D, I](
 (defun explain-node (node env) (explain-node-1 env node nil nil))
 </pre>
     */
-  def explainNode(env: Env[D, I]): Env[D, I] = {
-    ???
+  def explainNode(env: Env[D, I]): List[Justification[D, I]] = {
+    explainNode1(env, this, List.empty, List.empty)
   }
 
   /**
-    * Internal method TODO fill in description
+    * Internal method for bulding an explanation.
     *
     * **Translated from**:
     * <pre>
@@ -353,13 +360,15 @@ class Node[D, I](
     env: Env[D, I],
     node: Node[D, I],
     queuedNodes: List[Node[D, I]],
-    explanation: Just[D, I]):
-      Env[D, I] = {
+    explanation: List[Justification[D, I]]):
+      List[Justification[D, I]] = {
     ???
   }
 
   /**
-    *
+    * Internal method: checks whether this node and another differ,
+    * accounting for the case that there is no other node.  In this
+    * latter case, the method returns `true`.
     */
   def differsFrom(that: Option[Node[D, I]]): Boolean = that match {
     case None => true
@@ -369,7 +378,8 @@ class Node[D, I](
   // ;;; Printing
 
   /**
-    * Internal method TODO fill in description
+    * Formatted display of the label environments under which this
+    * node is believed.
     *
     * **Translated from**:
     * <pre>
@@ -398,7 +408,8 @@ class Node[D, I](
   }
 
   /**
-    *
+    * Consolidated debugging method displaying details about this
+    * node.
     */
   def debugNode: Unit = {
     println(s"- $datum")
@@ -423,7 +434,8 @@ class Node[D, I](
   }
 
   /**
-    * Internal method TODO fill in description
+    * Prints details about the justifications associated with this
+    * node.
     *
     * **Translated from**:
     * <pre>
@@ -437,5 +449,4 @@ class Node[D, I](
   def nodeJustifications: Unit = {
     ???
   }
-
 }
