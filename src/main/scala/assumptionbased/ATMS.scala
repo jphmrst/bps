@@ -70,6 +70,27 @@ type ChoiceSets[D, I] = ListBuffer[ListBuffer[Node[D, I]]]
 </pre>
   *
   * @param title Name of this TMS, for output.
+  *
+  * @constructor The `title` argument is required; others are optional.
+  *
+  * @groupname construction Construction methods
+  * @groupdesc construction API methods for building and changing
+  * an ATMS from an external system.
+  * @groupprio construction 1
+  *
+  * @groupname query Query methods
+  * @groupdesc query API methods for querying the ATMS and its beliefs
+  * from an external system.
+  * @groupprio query 2
+  *
+  * @groupname diagnostic Diagnostic and debugging methods
+  * @groupdesc diagnostic Reporting the current JTMS state as text.
+  * @groupprio diagnostic 3
+  *
+  * @groupname internal Internal methods
+  * @groupdesc internal Implementation methods; not generally for use
+  * from outside this package.
+  * @groupprio internal 10
   */
 class ATMS[D, I](
   val title: String,
@@ -81,7 +102,10 @@ class ATMS[D, I](
 
   /** Unique namer for nodes. */
   var nodeCounter: Int = 0
-  /** Increment the node counter and return its value. */
+  /** Increment the node counter and return its value.
+    *
+    * @group internal
+    */
   def incrNodeCounter: Int = {
     val result = nodeCounter
     nodeCounter = nodeCounter + 1
@@ -90,7 +114,10 @@ class ATMS[D, I](
 
   /** Unique namer for justifications. */
   var justCounter: Int = 0
-  /** Increment the justifications counter and return its value. */
+  /** Increment the justifications counter and return its value.
+    *
+    * @group internal
+    */
   def incrJustCounter: Int = {
     val result = justCounter
     justCounter = justCounter + 1
@@ -99,7 +126,10 @@ class ATMS[D, I](
 
   /** Unique namer for environments. */
   var envCounter: Int = 0
-  /** Increment the environments counter and return its value. */
+  /** Increment the environments counter and return its value.
+    *
+    * @group internal
+    */
   def incrEnvCounter: Int = {
     val result = envCounter
     envCounter = envCounter + 1
@@ -139,6 +169,8 @@ class ATMS[D, I](
   (declare (ignore ignore))
   (format stream "#<ATMS: ~A>" (atms-title atms)))
 </pre>
+    *
+    * @group diagnostic
     */
   override def toString: String = s"<ATMS $title>"
 
@@ -152,6 +184,8 @@ class ATMS[D, I](
   (declare (ignore ignore))
   (format stream "#<ATMS: ~A>" (atms-title atms)))
 </pre>
+    *
+    * @group diagnostic
     */
   def printAtms: Unit = println(toString)
 
@@ -166,6 +200,8 @@ class ATMS[D, I](
      (format *trace-output*
              ,msg (if ,node (node-string ,node)) ,@args)))
 </pre>
+    *
+    * @group diagnostic
     */
   inline def dbg(msg: String): Unit = if debugging then println(msg)
 
@@ -195,6 +231,8 @@ class ATMS[D, I](
     * an assumption.
     * @param isContradictory If set to `true`, then this node
     * represents a contradiction.
+    *
+    * @group construction
     */
   def createNode(
     datum: D | String,
@@ -227,6 +265,8 @@ class ATMS[D, I](
 </pre>
     *
     * @param assumptions
+    *
+    * @group internal
     */
   def createEnv(assumptions: List[Node[D, I]]): Env[D, I] = {
     val e = new Env(incrEnvCounter, assumptions)
@@ -253,6 +293,8 @@ class ATMS[D, I](
 </pre>
     *
     * @param node
+    *
+    * @group construction
     */
   def assumeNode(node: Node[D, I]): Unit = {
     if !node.isAssumption then {
@@ -281,6 +323,8 @@ class ATMS[D, I](
 </pre>
     *
     * @param node
+    *
+    * @group construction
     */
   def makeContradiction(node: Node[D, I]): Unit = {
     if !node.isContradictory then {
@@ -321,6 +365,8 @@ class ATMS[D, I](
     * @param informant
     * @param consequence
     * @param antecedents
+    *
+    * @group construction
     */
   def justifyNode(
     informant: I, consequence: Node[D, I], antecedents: ListBuffer[Node[D, I]]):
@@ -352,6 +398,8 @@ class ATMS[D, I](
     *
     * @param informant
     * @param nodes
+    *
+    * @group construction
     */
   def nogoodNodes(informant: I, nodes: ListBuffer[Node[D, I]]): Unit =
     justifyNode(informant, contraNode, nodes)
@@ -372,6 +420,8 @@ class ATMS[D, I](
     * @param envs This list is not mutated: `weave` returns a
     * non-shared copy of the list, so the mutations in `update` do not
     * impact the original argument.
+    *
+    * @group internal
     */
   def propagate(
     just: Just[D, I],
@@ -413,6 +463,8 @@ class ATMS[D, I](
     * @param newEnvs This list may be mutated by this method.
     * @param consequence
     * @param just
+    *
+    * @group internal
     */
   def update(
     newEnvs: ListBuffer[Env[D, I]],
@@ -523,6 +575,8 @@ class ATMS[D, I](
     *
     * @param antecedents
     * @return
+    *
+    * @group internal
     */
   def weave(
     antecedent: Option[Node[D, I]],
@@ -576,6 +630,8 @@ class ATMS[D, I](
     *
     * @param nodes
     * @return
+    *
+    * @group internal
     */
   def isInAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
     nodes.isEmpty || emptyEnv.isWeave(nodes)
@@ -606,6 +662,8 @@ class ATMS[D, I](
     * @param node
     * @throws TmsError if the node is used as the consequence of any
     * justifications.
+    *
+    * @group construction
     */
   def removeNode(node: Node[D, I]): Unit = {
     if !node.consequences.isEmpty
@@ -642,6 +700,8 @@ class ATMS[D, I](
     *
     * @param assumes
     * @return
+    *
+    * @group internal
     */
   def lookupEnv(assumes: List[Node[D, I]]): Option[Env[D, I]] =
     returning {
@@ -661,6 +721,20 @@ class ATMS[D, I](
     * one does not already exists.  This method should not be called
     * as an API method on the ATMS, since it may create spurious
     * records of unused environments.
+    *
+    * **Translated from**:
+    * <pre>
+; From atms.lisp
+(defun find-or-make-env (assumptions atms)
+  (unless assumptions
+    (return-from find-or-make-env (atms-empty-env atms)))
+  ;; Presumes the list of assumptions is ordered properly
+  (or (lookup-env assumptions)
+      (create-env atms assumptions)))
+</pre>
+    * Note also the related method [[Node#findOrMakeEnv]].
+    *
+    * @group internal
     */
   def getEnv(assumes: List[Node[D, I]]): Env[D, I] =
     lookupEnv(assumes).getOrElse(createEnv(assumes))
@@ -694,6 +768,8 @@ class ATMS[D, I](
     *
     * @param cenv
     * @param just
+    *
+    * @group internal
     */
   def newNogood(cenv: Env[D, I], just: Justification[D, I]): Unit = {
     dbg(s"        * New minimal nogood ${cenv.envString}")
@@ -735,6 +811,8 @@ class ATMS[D, I](
 </pre>
     *
     * @param env
+    *
+    * @group internal
     */
   def setEnvContradictory(env: Env[D, I]): Unit =
     if (!env.isNogood) then {
@@ -770,6 +848,8 @@ class ATMS[D, I](
 </pre>
     *
     * @param env
+    *
+    * @group internal
     */
   def removeEnvFromLabels(env: Env[D, I]): Unit = {
     enqueueProcedure.map((enqueuef) => {
@@ -824,6 +904,10 @@ class ATMS[D, I](
     *
     * @param givenChoiceSets
     * @return
+    *
+    * @group query
+    *
+    * @group internal
     */
   def interpretations(
     givenChoiceSets: ChoiceSets[D, I]):
@@ -869,6 +953,8 @@ class ATMS[D, I](
     * @param solution
     * @param choiceSets
     * @return
+    *
+    * @group internal
     */
   def getDepthSolutions1(
     solution: Env[D, I], choiceSets: ChoiceSets[D, I]):
@@ -901,6 +987,8 @@ class ATMS[D, I](
     * @param solution
     * @param remaining
     * @param original
+    *
+    * @group internal
     */
   def extendViaDefaults(
     solution: Env[D, I],
@@ -919,6 +1007,8 @@ class ATMS[D, I](
 (defun why-nodes (atms &optional (stream t))
   (dolist (n (reverse (atms-nodes atms))) (why-node n stream)))
 </pre>
+    *
+    * @group diagnostic
     */
   def whyNodes: Unit = {
     for (node <- nodes) do {
@@ -939,6 +1029,8 @@ class ATMS[D, I](
 </pre>
     *
     * @param n
+    *
+    * @group internal
     */
   def e(n: Node[D, I]): Env[D, I] = {
     ???
@@ -953,6 +1045,8 @@ class ATMS[D, I](
 (defun print-nogoods (atms &optional (stream t))
   (print-env-table (atms-nogood-table atms) stream))
 </pre>
+    *
+    * @group diagnostic
     */
   def printNogoods: Unit = {
     val count = nogoodTable.envCount
@@ -969,6 +1063,8 @@ class ATMS[D, I](
 (defun print-envs (atms &optional (stream t))
   (print-env-table (atms-env-table atms) stream))
 </pre>
+    *
+    * @group diagnostic
     */
   def printEnvs: Unit = {
     println(s"${envTable.envCount} environment${plural(envTable.envCount)}")
@@ -985,6 +1081,8 @@ class ATMS[D, I](
   (print-table "~% For env table:" (atms-env-table atms))
   (print-table "~% For nogood table:" (atms-nogood-table atms)))
 </pre>
+    *
+    * @group diagnostic
     */
   def printAtmsStatistics: Unit = {
     ???
@@ -992,6 +1090,8 @@ class ATMS[D, I](
 
   /**
     * Diagnostic method TODO fill in description
+    *
+    * @group diagnostic
     */
   inline def debugAtms: Unit = if debugging then {
     println("----------")
@@ -1004,6 +1104,8 @@ class ATMS[D, I](
 
   /**
     * Diagnostic method TODO fill in description
+    *
+    * @group diagnostic
     */
   def debugNodes: Unit = {
     println(s"${nodes.length} node${plural(nodes.length)}")
@@ -1013,6 +1115,7 @@ class ATMS[D, I](
   }
 }
 
+/** Type of exceptions thrown from ATMS package classes. */
 class TmsError(msg: String) extends RuntimeException(msg)
 
 // ; From atms.lisp

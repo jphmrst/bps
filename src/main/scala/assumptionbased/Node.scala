@@ -61,6 +61,25 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * @param datum
   * @param isAssumption
   * @param isContradictory
+  *
+  * @groupname construction Construction methods
+  * @groupdesc construction API methods for building and changing
+  * an ATMS from an external system.
+  * @groupprio construction 1
+  *
+  * @groupname query Query methods
+  * @groupdesc query API methods for querying the ATMS and its beliefs
+  * from an external system.
+  * @groupprio query 2
+  *
+  * @groupname diagnostic Diagnostic and debugging methods
+  * @groupdesc diagnostic Reporting the current JTMS state as text.
+  * @groupprio diagnostic 3
+  *
+  * @groupname internal Internal methods
+  * @groupdesc internal Implementation methods; not generally for use
+  * from outside this package.
+  * @groupprio internal 10
   */
 class Node[D, I](
   val atms: ATMS[D, I],
@@ -94,6 +113,8 @@ class Node[D, I](
 (defun node-string (node)
   (funcall (atms-node-string (tms-node-atms node)) node))
 </pre>
+    *
+    * @group diagnostic
     */
   def nodeString: String = atms.nodeString(this)
 
@@ -105,6 +126,8 @@ class Node[D, I](
 ; From atms.lisp
 (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
 </pre>
+    *
+    * @group diagnostic
     */
   def defaultNodeString: String = datum.toString
 
@@ -118,10 +141,10 @@ class Node[D, I](
   (eq (car (tms-node-label node))
       (atms-empty-env (tms-node-atms node))))
 </pre>
+    *
+    * @group query
     */
-  def isTrueNode: Boolean = {
-    ???
-  }
+  def isTrueNode: Boolean = label.size == 1 && label(0).assumptions.isEmpty
 
   /**
     * This method returns `true` when there is some [[Env]]
@@ -136,6 +159,8 @@ class Node[D, I](
             (tms-node-label n))
       (not (null (tms-node-label n)))))
 </pre>
+    *
+    * @group query
     */
   def isInNode: Boolean = !label.isEmpty
 
@@ -152,6 +177,8 @@ class Node[D, I](
             (tms-node-label n))
       (not (null (tms-node-label n)))))
 </pre>
+    *
+    * @group query
     */
   def isInNodeUnder(env: Env[D, I]): Boolean = label.exists(_.isSubsetEnv(env))
 
@@ -164,6 +191,8 @@ class Node[D, I](
 ; From atms.lisp
 (defun out-node? (n env) (not (in-node? n env)))
 </pre>
+    *
+    * @group query
     */
   def isOutNode(env: Env[D, I]): Boolean = !isInNodeUnder(env)
 
@@ -179,6 +208,8 @@ class Node[D, I](
   (some #'(lambda (le) (not (env-nogood? (union-env le env))))
         (tms-node-label n)))
 </pre>
+    *
+    * @group query
     */
   def isNodeConsistentWith(env: Env[D, I]): Boolean =
     label.exists((le) => !le.unionEnv(env).isNogood)
@@ -258,6 +289,8 @@ class Node[D, I](
     *
     * @param newEnvs A list of environments to be mutated by this call.
     * @return
+    *
+    * @group internal
     */
   def updateLabel(newEnvs: ListBuffer[Env[D, I]]): Unit = {
     var toRemoveFromNewEnvs = HashSet.empty[Env[D, I]]
@@ -288,7 +321,8 @@ class Node[D, I](
   }
 
   /**
-    * Internal method TODO fill in description
+    * Either lookup or create an [[Env]] for the given assumptions, if
+    * one does not already exists.
     *
     * **Translated from**:
     * <pre>
@@ -300,10 +334,12 @@ class Node[D, I](
   (or (lookup-env assumptions)
       (create-env atms assumptions)))
 </pre>
+    * Note also the related method [[ATMS#getEnv]].
+    *
+    * @group internal
     */
-  def findOrMakeEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] = {
-    ???
-  }
+  def findOrMakeEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] =
+    atms.getEnv(assumptions.toList)
 
   /**
     * "This returns a list of justifications which form a DAG for the
@@ -321,6 +357,8 @@ class Node[D, I](
 ; From atms.lisp
 (defun explain-node (node env) (explain-node-1 env node nil nil))
 </pre>
+    *
+    * @group query
     */
   def explainNode(env: Env[D, I]): List[Justification[D, I]] = {
     explainNode1(env, this, List.empty, List.empty)
@@ -355,6 +393,8 @@ class Node[D, I](
                      (explain-node-1 env a queued-nodes new-explanation))
                (unless new-explanation (return nil)))))))))
 </pre>
+    *
+    * @group internal
     */
   def explainNode1(
     env: Env[D, I],
@@ -362,6 +402,14 @@ class Node[D, I](
     queuedNodes: List[Node[D, I]],
     explanation: List[Justification[D, I]]):
       List[Justification[D, I]] = {
+    if queuedNodes.contains(node) then return List.empty
+
+    if node.isAssumption && env.assumptions.contains(node)
+    then return ??? :: explanation
+
+    for (just <- explanation)
+      do ???
+
     ???
   }
 
@@ -369,6 +417,8 @@ class Node[D, I](
     * Internal method: checks whether this node and another differ,
     * accounting for the case that there is no other node.  In this
     * latter case, the method returns `true`.
+    *
+    * @group internal
     */
   def differsFrom(that: Option[Node[D, I]]): Boolean = that match {
     case None => true
@@ -390,6 +440,8 @@ class Node[D, I](
     (env-string e stream))
   (format stream "}>"))
 </pre>
+    *
+    * @group diagnostic
     */
   def whyNode(prefix: String = "", firstPrefix: String = ""): Unit = {
     println(s"$firstPrefix$datum")
@@ -410,6 +462,8 @@ class Node[D, I](
   /**
     * Consolidated debugging method displaying details about this
     * node.
+    *
+    * @group diagnostic
     */
   def debugNode: Unit = {
     println(s"- $datum")
@@ -445,8 +499,8 @@ class Node[D, I](
   (dolist (j (tms-node-justs node))
     (print-justification j stream)))
 </pre>
+    *
+    * @group diagnostic
     */
-  def nodeJustifications: Unit = {
-    ???
-  }
+  def nodeJustifications: Unit = justs.map(_.printJustification)
 }
