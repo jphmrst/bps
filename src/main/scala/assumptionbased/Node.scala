@@ -360,7 +360,7 @@ class Node[D, I](
     *
     * @group query
     */
-  def explainNode(env: Env[D, I]): List[Justification[D, I]] = {
+  def explainNode(env: Env[D, I]): List[Explanation[D, I]] = {
     explainNode1(env, this, List.empty, List.empty)
   }
 
@@ -400,17 +400,37 @@ class Node[D, I](
     env: Env[D, I],
     node: Node[D, I],
     queuedNodes: List[Node[D, I]],
-    explanation: List[Justification[D, I]]):
-      List[Justification[D, I]] = {
-    if queuedNodes.contains(node) then return List.empty
+    explanation: List[Explanation[D, I]]):
+      List[Explanation[D, I]] = returning {
+    if queuedNodes.contains(node) then throwReturn(List.empty)
 
     if node.isAssumption && env.assumptions.contains(node)
-    then return ??? :: explanation
+    then throwReturn(NodeAssumed(node) :: explanation)
 
     for (just <- explanation)
-      do ???
+      do if node == (just match {
+        case NodeAssumed(n) => n
+        case j: Just[D, I] => j.consequence
+      }) then throwReturn(explanation)
 
-    ???
+    val nextQueued = node :: queuedNodes
+    for (just <- node.justs) do {
+      if !just.antecedents.exists(!_.isInNodeUnder(env))
+      then {
+        var newExplanation = explanation
+        returning {
+          for (a <- just.antecedents) do {
+            newExplanation = explainNode1(env, a, nextQueued, newExplanation)
+            if newExplanation.isEmpty then throwReturn(())
+          }
+        }
+        throwReturn(just :: newExplanation)
+      }
+    }
+
+    throw new TmsNodeError(
+      "Node explanation generation internal error, should not reach this point",
+      this)
   }
 
   /**
@@ -504,3 +524,6 @@ class Node[D, I](
     */
   def nodeJustifications: Unit = justs.map(_.printJustification)
 }
+
+class TmsNodeError[D, I](msg: String, val node: Node[D, I])
+    extends TmsError(msg)

@@ -22,7 +22,14 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
-type Justification[D, I] = Just[D, I] | Symbol
+type Justification[D, I] =
+  Just[D, I] | NodeAssumed[D, I] | MakeContradiction[D, I]
+type Explanation[D, I] =
+  Just[D, I] | NodeAssumed[D, I]
+
+sealed trait Stipulated[D, I]
+case class NodeAssumed[D, I](node: Node[D, I]) extends Stipulated[D, I]
+case class MakeContradiction[D, I]() extends Stipulated[D, I]
 
 val justifyNodeAssumed: Symbol = Symbol("assume-node")
 val justifyMakeContradiction: Symbol = Symbol("make-contradiction")

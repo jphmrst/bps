@@ -42,7 +42,7 @@ object Blurb {
   def envLB[D, I]: (ListBuffer[Env[D, I]]) => String = listBuf(env, "; ")
 
   def justification[D, I](j: Justification[D, I]): String = j match {
-    case s: Symbol => s.toString
+    case s: Stipulated[D, I] => s.toString
     case j: Just[D, I] => j.blurb
   }
 

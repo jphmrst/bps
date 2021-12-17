@@ -159,6 +159,8 @@ class ATMS[D, I](
   val contraNode: Node[D, I] =
     createNode("The contradiction", isContradictory = true)
 
+  val makeContradictionStipulation = MakeContradiction[D, I]()
+
   /**
     * Return a short string with the title of this ATMS.
     *
@@ -301,7 +303,7 @@ class ATMS[D, I](
       dbg(s"Converting $node into an assumption")
       node.isAssumption = true
       assumptions += node
-      update(ListBuffer(getEnv(List(node))), node, justifyNodeAssumed)
+      update(ListBuffer(getEnv(List(node))), node, NodeAssumed(node))
     }
   }
 
@@ -331,7 +333,7 @@ class ATMS[D, I](
       node.isContradictory = true
       var nogood = node.label.headOption
       while (!nogood.isEmpty) {
-        newNogood(nogood.get, justifyMakeContradiction)
+        newNogood(nogood.get, makeContradictionStipulation)
         nogood = node.label.headOption
       }
     }
@@ -1116,7 +1118,7 @@ class ATMS[D, I](
 }
 
 /** Type of exceptions thrown from ATMS package classes. */
-class TmsError(msg: String) extends RuntimeException(msg)
+class TmsError(val msg: String) extends RuntimeException(msg)
 
 // ; From atms.lisp
 // (defmacro ordered-push (item list test)
