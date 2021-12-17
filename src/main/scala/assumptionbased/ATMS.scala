@@ -1034,8 +1034,11 @@ class ATMS[D, I](
     *
     * @group internal
     */
-  def e(n: Node[D, I]): Env[D, I] = {
-    ???
+  def e(n: Int): Env[D, I] = returning {
+    for ((length, envs) <- envTable)
+      do for (env <- envs)
+        do if env.count == n then throwReturn(env)
+    emptyEnv
   }
 
   /**
@@ -1087,7 +1090,8 @@ class ATMS[D, I](
     * @group diagnostic
     */
   def printAtmsStatistics: Unit = {
-    ???
+    envTable.printEnvTable("For env table: ")
+    nogoodTable.printEnvTable("For nogood table: ")
   }
 
   /**
