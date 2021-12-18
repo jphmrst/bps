@@ -96,14 +96,14 @@ class Just[D, I](
 
 
   /**
-    *
+    * TODO fill in description
     *
     * @group diagnostic
     */
   def blurb: String = s"[${informant.toString}.$index] ${consequence.datum.toString} <= ${antecedents.map(_.datum.toString).mkString(", ")}"
 
   /**
-    *
+    * TODO fill in description
     * @group diagnostic
     */
   override def toString: String = s"<${informant.toString} $index>"
