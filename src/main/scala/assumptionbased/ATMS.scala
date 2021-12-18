@@ -24,6 +24,9 @@ import org.maraist.truthmaintenancesystems.assumptionbased.Blurb
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
+/**
+  * TODO fill in
+  */
 type ChoiceSets[D, I] = ListBuffer[ListBuffer[Node[D, I]]]
 
 /** Implementation of assumption-based truth maintenance systems.

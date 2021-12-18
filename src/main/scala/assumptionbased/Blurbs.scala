@@ -22,36 +22,74 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
+/**
+  * Newer formatting functions for creating debugging output.
+  */
 object Blurb {
 
+  /**
+    * Wrapper for formatting functions for a type `A` which extend the
+    * behavior to `Option[A]`s.
+    */
   def option[A](aa: (A) => String)(o: Option[A]): String =
     o.map(aa).getOrElse("[none]")
 
+  /**
+    * Wrapper for formatting functions for a type `A` which extend the
+    * behavior to `ListBuffer[A]`s.
+    */
   def listBuf[A](aa: (A) => String, sep: String = "(empty)")
     (lb: ListBuffer[A]):
       String =
     "{" + lb.map(aa).mkString(sep) + "}"
 
+  /**
+    * Wrapper for formatting functions for a type `A` which extend the
+    * behavior to `List[A]`s.
+    */
   def list[A](aa: (A) => String, sep: String = "(empty)")
     (b: List[A]):
       String =
     "{" + b.map(aa).mkString(sep) + "}"
 
+  /**
+    * Formatting functions for [[Env]] arguments.
+    */
   def env[D, I](e: Env[D, I]): String = e.envString
 
+  /**
+    * Formatting functions for `ListBuffer[Env]` arguments.
+    */
   def envLB[D, I]: (ListBuffer[Env[D, I]]) => String = listBuf(env, "; ")
 
+  /**
+    * Formatting functions for [[Justification]] arguments.
+    */
   def justification[D, I](j: Justification[D, I]): String = j match {
-    case s: Stipulated[D, I] => s.toString
+    case NodeAssumed(n) => s"Node \"${n.datum.toString}\" assumed"
+    case MakeContradiction() => "Stipulated as contradictory"
     case j: Just[D, I] => j.blurb
   }
 
+  /**
+    * Formatting functions for [[Node]] arguments.
+    */
   def bareNode[D, I](n: Node[D, I]): String = n.datum.toString
 
+  /**
+    * Formatting functions for [[Node]] arguments which include a note
+    * of whether the node is contradictory.
+    */
   def node[D, I](n: Node[D, I]): String =
     s"${bareNode(n)} (${if n.isContradictory then "" else "not "}contradictory)"
 
+  /**
+    * Formatting functions for `Option[Node]` arguments.
+    */
   def nodeOption[D, I] = option(bareNode[D, I])
 
+  /**
+    * Formatting functions for `ListBuffer[Node]` arguments.
+    */
   def nodeLB[D, I] = listBuf(bareNode[D, I], ",")
 }

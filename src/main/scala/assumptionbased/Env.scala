@@ -22,6 +22,18 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
+/**
+  * TODO fill in description
+  *
+  * @groupname diagnostic Diagnostic and debugging methods
+  * @groupdesc diagnostic Reporting the current JTMS state as text.
+  * @groupprio diagnostic 3
+  *
+  * @groupname internal Internal methods
+  * @groupdesc internal Implementation methods; not generally for use
+  * from outside this package.
+  * @groupprio internal 10
+  */
 class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
 
   /**
@@ -35,6 +47,8 @@ class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
     (dolist (env (cdr bucket))
       (print-env env stream))))
 </pre>
+    *
+    * @group diagnostic
     */
   def printEnvTable(prefix: String): Unit = {
     var e = 0
@@ -60,6 +74,8 @@ class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
              #'(lambda (entry1 entry2)
                  (< (car entry1) (car entry2)))))))
 </pre>
+    *
+    * @group internal
     */
   def insertInTable(env: Env[D, I]): Unit = {
     val count = env.count
@@ -70,11 +86,16 @@ class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
   }
 
   /**
+    * Return the number of environments in this table.
     *
+    * @group internal
     */
   def envCount: Int = map((n,es) => es.length).foldRight(0)(_ + _)
 }
 
+/**
+  * TODO fill in description
+  */
 enum EnvCompare {
   case S12 extends EnvCompare
   case S21 extends EnvCompare
@@ -82,6 +103,23 @@ enum EnvCompare {
   case Disjoint extends EnvCompare
 }
 
+/**
+  * TODO fill in documentation
+  *
+  * @param index Internal identifier for this environment, distinct
+  * among the environments of this [[ATMS]].
+  * @param assumptions The assumption nodes associated with this
+  * environment.
+  *
+  * @groupname diagnostic Diagnostic and debugging methods
+  * @groupdesc diagnostic Reporting the current JTMS state as text.
+  * @groupprio diagnostic 3
+  *
+  * @groupname internal Internal methods
+  * @groupdesc internal Implementation methods; not generally for use
+  * from outside this package.
+  * @groupprio internal 10
+  */
 class Env[D, I](
   val index: Int,
   val assumptions: List[Node[D, I]]
@@ -92,7 +130,12 @@ class Env[D, I](
 
   /** If this node is nogood, stores the evidence. */
   var nogoodEvidence: Option[Justification[D, I] | Env[D, I]] = None
-  inline def isNogood = !nogoodEvidence.isEmpty
+
+  /** Returns `true` when there is evidence that this environment is nogood.
+    *
+    * @group query
+    */
+  inline def isNogood: Boolean = !nogoodEvidence.isEmpty
 
   val nodes: ListBuffer[Node[D, I]] = ListBuffer.empty
 
@@ -127,6 +170,8 @@ class Env[D, I](
                (if (weave? new-env (cdr nodes))
                    (return T)))))))
 </pre>
+    *
+    * @group internal
     */
   def isWeave(nodes: Iterable[Node[D, I]]): Boolean = {
     ???
@@ -141,13 +186,20 @@ class Env[D, I](
 (defun env-order (e1 e2)
   (< (env-index e1) (env-index e2)))
 </pre>
+    *
+    * @group internal
     */
   def envOrder(e2: Env[D, I]): Boolean = {
     ???
   }
 
   /**
-    * Internal method TODO fill in description
+    * Internal method returning the minimum environment entailing both
+    * `this` and `that` environments.
+    *
+    * @returns If `this` and `that` are not mutually consistent, then
+    * the result is the union of `that` with the assumptions of `this`
+    * up to the inconsistency.
     *
     * **Translated from**:
     * <pre>
@@ -161,6 +213,8 @@ class Env[D, I](
     (if (env-nogood? e2) (return nil)))
   e2)
 </pre>
+    *
+    * @group internal
     */
   def unionEnv(that: Env[D, I]): Env[D, I] = returning[Env[D, I]]{
     val disordered = count > that.count
@@ -186,6 +240,8 @@ class Env[D, I](
   (or (lookup-env nassumes)
       (create-env (tms-node-atms assumption) nassumes)))
 </pre>
+    *
+    * @group internal
     */
   def consEnv(assumption: Node[D, I]): Env[D, I] =
     assumption.atms.getEnv(
@@ -204,6 +260,8 @@ class Env[D, I](
         ((subsetp (env-assumptions e1)
                   (env-assumptions e2)))))
 </pre>
+    *
+    * @group internal
     */
   def isSubsetEnv(e2: Env[D, I]): Boolean = compareEnv(e2) match {
     case EnvCompare.S12 => true
@@ -226,6 +284,8 @@ class Env[D, I](
         ((subsetp (env-assumptions e2) (env-assumptions e1))
          :S21)))
 </pre>
+    *
+    * @group internal
     */
   def compareEnv(e2: Env[D, I]): EnvCompare = {
     if this == e2
@@ -257,6 +317,8 @@ class Env[D, I](
 (defun supporting-antecedent? (nodes env)
   (dolist (node nodes t) (unless (in-node? node env) (return nil))))
 </pre>
+    *
+    * @group internal
     */
   def isSupportingAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
     ???
@@ -274,6 +336,8 @@ class Env[D, I](
                 "* " " "))
   (env-string e stream))
 </pre>
+    *
+    * @group diagnostic
     */
   def printEnv(prefix: String): Unit =
     println(s"${prefix}$envString")
@@ -292,6 +356,8 @@ class Env[D, I](
   (dolist (a assumptions) (push (funcall printer a) strings))
   (format stream "{~{~A~^,~}}" (sort strings #'string-lessp)))
 </pre>
+    *
+    * @group diagnostic
     */
   def envString: String = (
     (if this.isNogood then "[X] " else "") +
@@ -304,6 +370,9 @@ class Env[D, I](
   )
 }
 
+/**
+  * Internal helper functions on [[Env][environments]].
+  */
 object Env {
   /**
     * For Lisp calls to `subsetp`.

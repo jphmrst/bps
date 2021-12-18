@@ -22,35 +22,70 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
+/**
+  * TODO fill in
+  */
 type Justification[D, I] =
   Just[D, I] | NodeAssumed[D, I] | MakeContradiction[D, I]
+
+/**
+  * TODO fill in
+  */
 type Explanation[D, I] =
   Just[D, I] | NodeAssumed[D, I]
 
+/**
+  * TODO fill in
+  */
 sealed trait Stipulated[D, I]
-case class NodeAssumed[D, I](node: Node[D, I]) extends Stipulated[D, I]
-case class MakeContradiction[D, I]() extends Stipulated[D, I]
-
-val justifyNodeAssumed: Symbol = Symbol("assume-node")
-val justifyMakeContradiction: Symbol = Symbol("make-contradiction")
 
 /**
+  * TODO fill in
   *
-  *
+  * @param node
+  */
+case class NodeAssumed[D, I](node: Node[D, I]) extends Stipulated[D, I]
+
+/**
+  * TODO fill in
+  */
+case class MakeContradiction[D, I]() extends Stipulated[D, I]
+
+/**
+  * TODO fill in
   *
   * **Arguments and value members translated from**:
   * <pre>
-  // ; From atms.lisp
-  // (defstruct (just (:PRINT-FUNCTION print-just))
-  //            (index 0)
-  //            (informant nil)
-  //            (consequence nil)
-  //            (antecedents nil))
+; From atms.lisp
+(defstruct (just (:PRINT-FUNCTION print-just))
+           (index 0)
+           (informant nil)
+           (consequence nil)
+           (antecedents nil))
 </pre>
   * @param index
   * @param informant
   * @param consequence
   * @param antecedents
+  *
+  * @groupname construction Construction methods
+  * @groupdesc construction API methods for building and changing
+  * an ATMS from an external system.
+  * @groupprio construction 1
+  *
+  * @groupname query Query methods
+  * @groupdesc query API methods for querying the ATMS and its beliefs
+  * from an external system.
+  * @groupprio query 2
+  *
+  * @groupname diagnostic Diagnostic and debugging methods
+  * @groupdesc diagnostic Reporting the current JTMS state as text.
+  * @groupprio diagnostic 3
+  *
+  * @groupname internal Internal methods
+  * @groupdesc internal Implementation methods; not generally for use
+  * from outside this package.
+  * @groupprio internal 10
   */
 class Just[D, I](
   val index: Int,
@@ -62,11 +97,14 @@ class Just[D, I](
 
   /**
     *
+    *
+    * @group diagnostic
     */
   def blurb: String = s"[${informant.toString}.$index] ${consequence.datum.toString} <= ${antecedents.map(_.datum.toString).mkString(", ")}"
 
   /**
     *
+    * @group diagnostic
     */
   override def toString: String = s"<${informant.toString} $index>"
 
@@ -80,6 +118,8 @@ class Just[D, I](
   (format stream "<~A ~D>" (just-informant just)
           (just-index just)))
 </pre>
+    *
+    * @group diagnostic
     */
   def printJust: Unit = println(toString)
 
@@ -94,6 +134,8 @@ class Just[D, I](
   (dolist (a (just-antecedents j))
     (why-node a stream "     ")))
 </pre>
+    *
+    * @group diagnostic
     */
   def printJustification: Unit = {
     println(s"  $informant $index")
