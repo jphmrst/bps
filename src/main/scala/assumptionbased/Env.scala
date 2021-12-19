@@ -106,6 +106,33 @@ enum EnvCompare {
 /**
   * TODO fill in documentation
   *
+  * **Arguments and `val` members translated from**:
+  *
+  * <pre>
+  // ; From atms.lisp
+  // (defstruct (env (:PREDICATE env?)
+  //                 (:PRINT-FUNCTION print-env-structure))
+  //            (index 0)
+  //            (count 0)                    ; Number of assumptions.
+  //            (assumptions nil)
+  //            (nodes nil)
+  //            (nogood? nil)
+  //            (rules nil))                 ; Call this if becomes nogood.
+  //
+  // (defun print-env-structure (env stream ignore)
+  //   (declare (ignore ignore))
+  //   (format stream "E-~D" (env-index env)))
+</pre>
+  *
+  * **Untranslated.** These Lisp functions are not used in the rest of
+  * F&dK's code, and are omitted from the Scala translation.
+  *
+  * <pre>
+; From ainter.lisp
+(defun env-order (e1 e2)
+  (< (env-index e1) (env-index e2)))
+</pre>
+  *
   * @param index Internal identifier for this environment, distinct
   * among the environments of this [[ATMS]].
   * @param assumptions The assumption nodes associated with this
@@ -142,20 +169,6 @@ class Env[D, I](
   /** Call this if becomes nogood */
   val rules: ListBuffer[Rule[I]] = ListBuffer.empty
 
-  // ; From atms.lisp
-  // (defstruct (env (:PREDICATE env?)
-  //                 (:PRINT-FUNCTION print-env-structure))
-  //            (index 0)
-  //            (count 0)                    ; Number of assumptions.
-  //            (assumptions nil)
-  //            (nodes nil)
-  //            (nogood? nil)
-  //            (rules nil))                 ; Call this if becomes nogood.
-  //
-  // (defun print-env-structure (env stream ignore)
-  //   (declare (ignore ignore))
-  //   (format stream "E-~D" (env-index env)))
-
   /**
     * Internal method TODO fill in description
     *
@@ -174,22 +187,6 @@ class Env[D, I](
     * @group internal
     */
   def isWeave(nodes: Iterable[Node[D, I]]): Boolean = {
-    ???
-  }
-
-  /**
-    * Internal method TODO fill in description
-    *
-    * **Translated from**:
-    * <pre>
-; From ainter.lisp
-(defun env-order (e1 e2)
-  (< (env-index e1) (env-index e2)))
-</pre>
-    *
-    * @group internal
-    */
-  def envOrder(e2: Env[D, I]): Boolean = {
     ???
   }
 
@@ -320,9 +317,9 @@ class Env[D, I](
     *
     * @group internal
     */
-  def isSupportingAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
-    ???
-  }
+  def isSupportingAntecedent(nodes: Iterable[Node[D, I]], env: Env[D, I]):
+      Boolean =
+    !nodes.exists(!_.isInNodeUnder(env))
 
   /**
     * Internal method TODO fill in description
