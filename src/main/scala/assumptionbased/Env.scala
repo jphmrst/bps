@@ -181,13 +181,24 @@ class Env[D, I](
              (setq new-env (union-env e env))
              (unless (env-nogood? new-env)
                (if (weave? new-env (cdr nodes))
+                   ;; Strictly speaking, this return exits the
+                   ;; DOLIST only.  But that result will also
+                   ;; be the overall result of the function.
                    (return T)))))))
 </pre>
     *
     * @group internal
     */
-  def isWeave(nodes: Iterable[Node[D, I]]): Boolean = {
-    ???
+  def isWeave(nodes: List[Node[D, I]]): Boolean = returning {
+    if nodes.isEmpty then true
+    else {
+      for (e <- nodes.head.label) do {
+        val newEnv = e.unionEnv(this)
+        if !newEnv.isNogood && newEnv.isWeave(nodes.tail)
+        then throwReturn(true)
+      }
+      false
+    }
   }
 
   /**

@@ -639,7 +639,7 @@ class ATMS[D, I](
     * @group internal
     */
   def isInAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
-    nodes.isEmpty || emptyEnv.isWeave(nodes)
+    nodes.isEmpty || emptyEnv.isWeave(nodes.toList)
   }
 
   /**
