@@ -23,7 +23,8 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // version 61 of 7/21/92.
 
 /**
-  * TODO fill in description
+  * Table storing [[Env][environments]] in buckets corresponding to
+  * [[Env]] assumption list length.
   *
   * @groupname diagnostic Diagnostic and debugging methods
   * @groupdesc diagnostic Reporting the current JTMS state as text.
@@ -37,7 +38,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 class EnvTable[D, I, R] extends HashMap[Int, ListBuffer[Env[D, I, R]]] {
 
   /**
-    * Internal method TODO fill in description
+    * Print the environments stored in this table.
     *
     * **Translated from**:
     * <pre>
@@ -46,6 +47,12 @@ class EnvTable[D, I, R] extends HashMap[Int, ListBuffer[Env[D, I, R]]] {
   (dolist (bucket table)
     (dolist (env (cdr bucket))
       (print-env env stream))))
+
+(defun print-table (msg table)
+  (format t msg)
+  (dolist (entry table)
+    (format t "~%   Length ~D, ~D" (car entry)
+            (length (cdr entry)))))
 </pre>
     *
     * @group diagnostic
@@ -60,7 +67,7 @@ class EnvTable[D, I, R] extends HashMap[Int, ListBuffer[Env[D, I, R]]] {
   }
 
   /**
-    * Internal method TODO fill in description
+    * Update this table to store a new environment.
     *
     * **Translated from**:
     * <pre>
@@ -94,17 +101,35 @@ class EnvTable[D, I, R] extends HashMap[Int, ListBuffer[Env[D, I, R]]] {
 }
 
 /**
-  * TODO fill in description
+  * Internal class representing the outcomes of comparing two
+  * environments.
   */
 enum EnvCompare {
+  /**
+    * Represents the case that the first environment is a proper
+    * subset of the second.
+    */
   case S12 extends EnvCompare
+  /**
+    * Represents the case that the first environment is a proper
+    * superset of the second.
+    */
   case S21 extends EnvCompare
+  /**
+    * Represents the case that the two environments contain the same
+    * assumptions.
+    */
   case EQ extends EnvCompare
+  /**
+    * Represents the case that neither environment is a proper subset
+    * of the other.
+    */
   case Disjoint extends EnvCompare
 }
 
 /**
-  * TODO fill in documentation
+  * Representation of a set of beliefs in some subset of the nodes of
+  * an ATMS.
   *
   * **Arguments and `val` members translated from**:
   *
@@ -236,7 +261,9 @@ class Env[D, I, R](
   }
 
   /**
-    * Internal method TODO fill in description
+    * Returns the result of extending this `Env` with
+    * an additional [[Node]].  Note that by using [[#orderedInsert]],
+    * this method will drop duplicate [[Node]]s.
     *
     * **Translated from**:
     * <pre>
@@ -256,7 +283,8 @@ class Env[D, I, R](
       Env.orderedInsert(assumption, assumptions, Env.assumptionOrder))
 
   /**
-    * Internal method TODO fill in description
+    * Test whether one `Env`'s assumptions are a subset of another
+    * `Env`'s assumptions.
     *
     * **Translated from**:
     * <pre>
@@ -278,7 +306,8 @@ class Env[D, I, R](
   }
 
   /**
-    * Internal method TODO fill in description
+    * Compare the assumption lists of two `Env`s, returning one of the
+    * four cases of [[EnvCompare]].
     *
     * **Translated from**:
     * <pre>
@@ -328,12 +357,13 @@ class Env[D, I, R](
     *
     * @group internal
     */
-  def isSupportingAntecedent(nodes: Iterable[Node[D, I, R]], env: Env[D, I, R]):
+  def isSupportingAntecedent(
+    nodes: Iterable[Node[D, I, R]], env: Env[D, I, R]):
       Boolean =
     !nodes.exists(!_.isInNodeUnder(env))
 
   /**
-    * Internal method TODO fill in description
+    * Print the assumptions of this `Env` on one line.
     *
     * **Translated from**:
     * <pre>
@@ -351,7 +381,8 @@ class Env[D, I, R](
     println(s"${prefix}$envString")
 
   /**
-    * Internal method TODO fill in description
+    * Return a single-line string detailing the assumptions in this
+    * `Env`.
     *
     * **Translated from**:
     * <pre>
@@ -391,7 +422,9 @@ object Env {
   }
 
   /**
-    * Internal method TODO fill in description
+    * Return the result of inserting a [[Node]] into the given ordered
+    * (by internal index) list of [[Node]]s, inserting nothing if the
+    * new [[Node]] is already present.
     *
     * **Translated from**:
     * <pre>
@@ -419,7 +452,7 @@ object Env {
   }
 
   /**
-    * Internal method TODO fill in description
+    * Comparison function on the internal index of two nodes.
     *
     * **Translated from**:
     * <pre>
@@ -431,10 +464,3 @@ object Env {
   def assumptionOrder[D, I, R](a1: Node[D, I, R], a2: Node[D, I, R]): Boolean =
     a1.index < a2.index
 }
-
-// ; From ainter.lisp
-// (defun print-table (msg table)
-//   (format t msg)
-//   (dolist (entry table)
-//     (format t "~%   Length ~D, ~D" (car entry)
-//             (length (cdr entry)))))
