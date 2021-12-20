@@ -741,7 +741,9 @@ class ATMS[D, I, R](
     lookupEnv(assumes).getOrElse(createEnv(assumes))
 
   /**
-    * Internal method TODO fill in description
+    * Internal method to update nodes and tables corresponding to a
+    * newly discovered *nogood*, a list of nodes which should not all
+    * be believed.
     *
     * **Translated from**:
     * <pre>
@@ -797,7 +799,8 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Internal method TODO fill in description
+    * Internal method to update environments and tables when an
+    * environment is discovered to be inconsistent.
     *
     * **Translated from**:
     * <pre>
@@ -837,7 +840,8 @@ class ATMS[D, I, R](
     }
 
   /**
-    * Internal method TODO fill in description
+    * Internal method for updating node labels when an environment has
+    * been discovered to be nogood.
     *
     * **Translated from**:
     * <pre>
@@ -1074,7 +1078,7 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Diagnostic method TODO fill in description
+    * Diagnostic method to explain why the ATMS believes a node.
     *
     * **Translated from**:
     * <pre>
@@ -1115,7 +1119,7 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Diagnostic method TODO fill in description
+    * Diagnostic method printing the nogoods of the ATMS.
     *
     * **Translated from**:
     * <pre>
@@ -1133,7 +1137,8 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Diagnostic method TODO fill in description
+    * Diagnostic method printing the justification structures of the
+    * ATMS.
     *
     * **Translated from**:
     * <pre>
@@ -1150,7 +1155,7 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Diagnostic method TODO fill in description
+    * Diagnostic method printing the environments of the ATMS.
     *
     * **Translated from**:
     * <pre>
@@ -1167,7 +1172,7 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Diagnostic method TODO fill in description
+    * Diagnostic method printing various statistics about this ATMS.
     *
     * **Translated from**:
     * <pre>
@@ -1185,7 +1190,8 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Diagnostic method TODO fill in description
+    * Debugging method printing out full details of the current AMTS
+    * structure.
     *
     * @group diagnostic
     */
@@ -1200,7 +1206,7 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Diagnostic method TODO fill in description
+    * Debugging method printing the node section of the ATMS.
     *
     * @group diagnostic
     */

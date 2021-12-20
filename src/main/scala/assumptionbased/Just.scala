@@ -23,36 +23,41 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // version 61 of 7/21/92.
 
 /**
-  * TODO fill in
+  * All possible justifications for a belief which the TMS might
+  * record.
   */
 type Justification[D, I, R] =
   Just[D, I, R] | NodeAssumed[D, I, R] | MakeContradiction[D, I, R]
 
 /**
-  * TODO fill in
+  * Justifications for a belief which the TMS might report as part of
+  * an explanation for why a node might be believed.
   */
 type Explanation[D, I, R] =
   Just[D, I, R] | NodeAssumed[D, I, R]
 
 /**
-  * TODO fill in
+  * Common supertype for belief justifications stipulated from outside
+  * of the ATMS.
   */
 sealed trait Stipulated[D, I, R]
 
 /**
-  * TODO fill in
+  * Stipulation that a node should be assumed believable by the ATMS.
   *
   * @param node
   */
 case class NodeAssumed[D, I, R](node: Node[D, I, R]) extends Stipulated[D, I, R]
 
 /**
-  * TODO fill in
+  * Stipulation that an environment or a list of nodes should be taken
+  * as contradictory by the ATMS.
   */
 case class MakeContradiction[D, I, R]() extends Stipulated[D, I, R]
 
 /**
-  * TODO fill in
+  * Representation of the inference of one node from belief in all of
+  * a set other nodes.
   *
   * **Arguments and value members translated from**:
   * <pre>
@@ -63,10 +68,13 @@ case class MakeContradiction[D, I, R]() extends Stipulated[D, I, R]
            (consequence nil)
            (antecedents nil))
 </pre>
-  * @param index
-  * @param informant
-  * @param consequence
-  * @param antecedents
+  *
+  * @param index Internal assigned index for this structure.
+  * @param informant Value associated with this inference rule by the
+  * external system.
+  * @param consequence Node whose belief is supported by this rule.
+  * @param antecedents Nodes whose belief is required for this rule
+  * to apply.
   *
   * @groupname construction Construction methods
   * @groupdesc construction API methods for building and changing
@@ -96,20 +104,20 @@ class Just[D, I, R](
 
 
   /**
-    * TODO fill in description
+    * Returns the single-line representation of this rule.
     *
     * @group diagnostic
     */
   def blurb: String = s"[${informant.toString}.$index] ${consequence.datum.toString} <= ${antecedents.map(_.datum.toString).mkString(", ")}"
 
   /**
-    * TODO fill in description
+    * Returns a short tag for this rule.
     * @group diagnostic
     */
   override def toString: String = s"<${informant.toString} $index>"
 
   /**
-    * Internal method TODO fill in description
+    * Prints a short tag for this rule.
     *
     * **Translated from**:
     * <pre>
@@ -124,7 +132,8 @@ class Just[D, I, R](
   def printJust: Unit = println(toString)
 
   /**
-    * Internal method TODO fill in description
+    * Prints verbose details about this rule, including why each
+    * antecedent might be believed.
     *
     * **Translated from**:
     * <pre>
