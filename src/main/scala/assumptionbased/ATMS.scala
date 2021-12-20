@@ -867,21 +867,29 @@ class ATMS[D, I](
 
   /**
     * Internal method TODO fill in description
+    *
+    * The original Lisp uses side-effects to a global variable across
+    * this and two other functions for its calculation; see the
+    * documentation of class [[InterpretationsBuilder]] for
+    * notes on the translation to an object structure.
     */
   def interpretations(
     choiceSets: ChoiceSets[D, I]):
       List[Env[D, I]] =
     new InterpretationsBuilder(choiceSets).getSolutions
 
-  // object InterpretationsBuilder {
-  //   def mapcanfn(alt: Node[D, I]): List[Env[D, I]] = alt.label.toList
-  //   def mapcan[A, B](fn: (A) => List[B], list: List[A]): List[B] =
-  //     list.map(fn).flatten
-  // }
-
   /**
     * Helper class for the translation of the `interpretations`
     * function.
+    *
+    * The original Lisp uses side-effects to the global variable
+    * `*solutions*` across three functions to calculate the result of
+    * `interpretations`; this class wraps up that process.  The global
+    * variable `solutionsBuffer` replaces `*solutions*`.  The
+    * `interpretations` functions is the top-level of the three Lisp
+    * functions, and we have translated it as the initialization steps
+    * of this class.  The other two functions correspond to the two
+    * methods.
     *
     * **Value fields and initialization translated from**:
     * <pre>
@@ -914,7 +922,9 @@ class ATMS[D, I](
     (delete nil *solutions* :TEST #'eq)))
 </pre>
     */
-  class InterpretationsBuilder(val givenChoiceSets: ChoiceSets[D, I]) {
+  class InterpretationsBuilder(
+    val givenChoiceSets: ChoiceSets[D, I],
+    val defaults: List[Node[D, I]] = List.empty) {
 
     val solutionsBuffer: ListBuffer[Env[D, I]] = ListBuffer.empty
 
@@ -922,16 +932,28 @@ class ATMS[D, I](
 
     dbg(s"Constructing interpretations depth-first...")
 
-    // val choiceSets2: List[List[Node[D, I]]] =
-    //   givenChoiceSets.map((altSet) =>
-    //     altSet.map((alt: Node[D, I]) =>
-    //       alt.label.toList.map((e: Env[D, I]) => e.assumptions)
-    //     ).flatten((x) => x))
-    //
-    // for (choice <- choiceSets.head)
-    //   do getDepthSolutions1(choice, choiceSets.tail)
+    val choiceSets: List[List[Env[D, I]]] =
+      givenChoiceSets.map(
+        (altSet) => altSet.map(
+          (alt: Node[D, I]) => alt.label.toList
+        ).flatten)
 
-    ???
+    for (choice <- choiceSets.head)
+      do getDepthSolutions1(choice, choiceSets.tail)
+
+    if !solutionsBuffer.isEmpty || choiceSets.isEmpty then {
+      if solutionsBuffer.isEmpty && choiceSets.isEmpty
+      then solutionsBuffer += emptyEnv
+
+      if !defaults.isEmpty
+      then {
+        val solutions = ListBuffer.empty[Env[D, I]]
+        solutions ++= solutionsBuffer
+        solutionsBuffer.clear
+        for (solution <- solutions)
+          do extendViaDefaults(solution, defaults, defaults)
+      }
+    }
 
     /**
       * Internal method TODO fill in description
@@ -965,10 +987,31 @@ class ATMS[D, I](
       * @group internal
       */
     def getDepthSolutions1(
-      solution: List[Node[D, I]], choiceSets: ChoiceSets[D, I]):
-        Unit = {
-      ???
-    }
+      solution: Env[D, I],
+      choiceSets: List[List[Env[D, I]]]):
+        Unit =
+      returning {
+        if choiceSets.isEmpty
+        then {
+          val removedSolutions = ListBuffer.empty[Env[D, I]]
+          for (oldSolution <- solutionsBuffer)
+            do oldSolution.compareEnv(solution) match {
+              case EnvCompare.EQ  => throwReturn(())
+              case EnvCompare.S12 => throwReturn(())
+              case EnvCompare.S21 => removedSolutions += oldSolution
+              case _ => { }
+            }
+          solutionsBuffer --= removedSolutions
+          solutionsBuffer += solution
+        } else if solution.isNogood
+        then throw new TmsError(
+          "Nogood solution: got the \"something died\" case")
+        else for (choice <- choiceSets.head) do {
+          val newSolution = solution.unionEnv(choice)
+          if !newSolution.isNogood
+          then getDepthSolutions1(newSolution, choiceSets.tail)
+        }
+      }
 
     /**
       * Internal method TODO fill in description
