@@ -24,11 +24,6 @@ import org.maraist.truthmaintenancesystems.assumptionbased.Blurb
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
 
-/**
-  * TODO fill in
-  */
-type ChoiceSets[D, I, R] = List[List[Node[D, I, R]]]
-
 /** Implementation of assumption-based truth maintenance systems.
   *
   * **Arguments and `val` members translated from**:
@@ -874,7 +869,7 @@ class ATMS[D, I, R](
     * notes on the translation to an object structure.
     */
   def interpretations(
-    choiceSets: ChoiceSets[D, I, R]):
+    choiceSets: List[List[Node[D, I, R]]]):
       List[Env[D, I, R]] =
     new InterpretationsBuilder(choiceSets).getSolutions
 
@@ -923,7 +918,7 @@ class ATMS[D, I, R](
 </pre>
     */
   class InterpretationsBuilder(
-    val givenChoiceSets: ChoiceSets[D, I, R],
+    val givenChoiceSets: List[List[Node[D, I, R]]],
     val defaults: List[Node[D, I, R]] = List.empty) {
 
     val solutionsBuffer: ListBuffer[Env[D, I, R]] = ListBuffer.empty
