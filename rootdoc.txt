@@ -3,9 +3,11 @@ Scala translations of Forbus and de Kleer's implementations of
 truth-maintenance systems and other code from their *Building Problem
 Solvers* book.
 
-Curently there is only one working translation:
+Curently there are two working translations:
 
  - Standalone justification-based truth maintenence systems.
+
+ - Standalone assumption-based truth maintenence systems.
 
 There are partial/in-progress translations of
 
