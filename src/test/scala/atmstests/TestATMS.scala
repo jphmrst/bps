@@ -23,10 +23,11 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.assumptionbased.{ATMS, Node}
+import org.maraist.truthmaintenancesystems.assumptionbased.Blurb.*
 
 class TestATMS extends AnyFlatSpec with Matchers {
 
-  // F&dK Sec. 12.5
+  // Extension of F&dK Sec. 12.5
   "FdK simple example" `should` "all pass" in {
     val atms = new ATMS[Symbol, String, Nothing]("atms-test0", debugging = true)
 
@@ -95,6 +96,30 @@ class TestATMS extends AnyFlatSpec with Matchers {
       `should` be (true)
     atms.lookupEnv(List(c, b)).map(h.label.contains(_)).getOrElse(false)
       `should` be (true)
+
+    atms.dbg("Testing ATMS.isTrueNode")
+    a.isTrueNode `should` be (false)
+    c.isTrueNode `should` be (false)
+    e.isTrueNode `should` be (false)
+    g.isTrueNode `should` be (false)
+    h.isTrueNode `should` be (false)
+    b.isTrueNode `should` be (false)
+    x.isTrueNode `should` be (false)
+    val j5 = atms.justifyNode("R5", b, ListBuffer())
+    b.isTrueNode `should` be (true)
+    c.isTrueNode `should` be (false)
+    h.isTrueNode `should` be (false)
+    val j6 = atms.justifyNode("R6", c, ListBuffer())
+    b.isTrueNode `should` be (true)
+    c.isTrueNode `should` be (true)
+    h.isTrueNode `should` be (true)
+    atms.debugAtms
+
+    val i1_hORg = atms.interpretations(List(List(h, g)))
+    atms.dbg(envL(i1_hORg))
+
+    val i1_hANDg = atms.interpretations(List(List(h), List(g)))
+    atms.dbg(envL(i1_hANDg))
 
     // println(atms.interpretations)
   }
