@@ -17,7 +17,7 @@
 
 package org.maraist.truthmaintenancesystems.assumptionbased
 import scala.util.control.NonLocalReturns.*
-import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
+import scala.collection.mutable.{ListBuffer, HashSet}
 
 // Assumption-based truth maintenance system, translated from F/dK
 // version 61 of 7/21/92.
@@ -105,7 +105,8 @@ class Node[D, I, R](
 
 
   /**
-    * Internal method TODO fill in description
+    * Representation of this node using the ATMS's standard node
+    * display function.
     *
     * **Translated from**:
     * <pre>
@@ -119,7 +120,8 @@ class Node[D, I, R](
   def nodeString: String = atms.nodeString(this)
 
   /**
-    * Internal method TODO fill in description
+    * The default printed representation of this node is as the
+    * standard representation of its associated datum.
     *
     * **Translated from**:
     * <pre>
@@ -132,7 +134,8 @@ class Node[D, I, R](
   def defaultNodeString: String = datum.toString
 
   /**
-    * Internal method TODO fill in description
+    * Returns `true` if this node is always believed, that is, if its
+    * label contains only the empty environment.
     *
     * **Translated from**:
     * <pre>
@@ -215,7 +218,11 @@ class Node[D, I, R](
     label.exists((le) => !le.unionEnv(env).isNogood)
 
   /**
-    * Internal method TODO Fill in method purpose.
+    * Internal method to update the label of this node to include the
+    * given environments.  The inclusion is not simply list extension;
+    * new environments subsumed by an existing label environment will
+    * be omitted, and existing label environments subsumed by a new
+    * environment will be removed.
     *
     * Note that the original list returned its argument, since
     * destructive updates to Lisp's lists might result in a change to
@@ -525,5 +532,11 @@ class Node[D, I, R](
   def nodeJustifications: Unit = justs.map(_.printJustification)
 }
 
+/**
+  * Type of exceptions pertaining to a particular TMS node.
+  *
+  * @param msg Exception message.
+  * @param node Relevant [[Node]].
+  */
 class TmsNodeError[D, I, R](msg: String, val node: Node[D, I, R])
     extends TmsError(msg)
