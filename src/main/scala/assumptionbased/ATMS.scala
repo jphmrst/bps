@@ -27,7 +27,7 @@ import org.maraist.truthmaintenancesystems.assumptionbased.Blurb
 /**
   * TODO fill in
   */
-type ChoiceSets[D, I] = ListBuffer[ListBuffer[Node[D, I]]]
+type ChoiceSets[D, I] = List[List[Node[D, I]]]
 
 /** Implementation of assumption-based truth maintenance systems.
   *
@@ -867,21 +867,27 @@ class ATMS[D, I](
 
   /**
     * Internal method TODO fill in description
+    */
+  def interpretations(
+    choiceSets: ChoiceSets[D, I]):
+      List[Env[D, I]] =
+    new InterpretationsBuilder(choiceSets).getSolutions
+
+  // object InterpretationsBuilder {
+  //   def mapcanfn(alt: Node[D, I]): List[Env[D, I]] = alt.label.toList
+  //   def mapcan[A, B](fn: (A) => List[B], list: List[A]): List[B] =
+  //     list.map(fn).flatten
+  // }
+
+  /**
+    * Helper class for the translation of the `interpretations`
+    * function.
     *
-    * **Translated from**:
+    * **Value fields and initialization translated from**:
     * <pre>
 ; From atms.lisp
 (proclaim '(special *solutions*))
-</pre>
-    */
-  val solutions: ListBuffer[Env[D, I]] = ListBuffer.empty
 
-  /**
-    * Internal method TODO fill in description
-    *
-    * **Translated from**:
-    * <pre>
-; From atms.lisp
 (defun interpretations (atms choice-sets
                         &optional defaults &aux solutions)
   (if (atms-debugging atms)
@@ -890,6 +896,7 @@ class ATMS[D, I](
   (let ((*solutions* nil)
         (choice-sets
           (mapcar #'(lambda (alt-set)
+                      ;; Like MAPCAR, but passing the result to NCONC.
                       (mapcan #'(lambda (alt)
                                   (copy-list (tms-node-label alt)))
                               alt-set))
@@ -906,35 +913,31 @@ class ATMS[D, I](
         (extend-via-defaults solution defaults defaults)))
     (delete nil *solutions* :TEST #'eq)))
 </pre>
-    *
-    * @param givenChoiceSets
-    * @return
-    *
-    * @group query
-    *
-    * @group internal
     */
-  def interpretations(
-    givenChoiceSets: ChoiceSets[D, I]):
-      ListBuffer[Env[D, I]] = {
-    dbg(s"Constructing interpretations depth-first...")
-    solutions.clear
-    val choiceSets =
-      givenChoiceSets.map((altSet) => altSet.map(_.label.clone).concat)
+  class InterpretationsBuilder(val givenChoiceSets: ChoiceSets[D, I]) {
 
-    // for (choice <- choiceSets)
-    //   do getDepthSolution1(choice, )
+    val solutionsBuffer: ListBuffer[Env[D, I]] = ListBuffer.empty
+
+    def getSolutions: List[Env[D, I]] = solutionsBuffer.toList
+
+    dbg(s"Constructing interpretations depth-first...")
+
+    // val choiceSets2: List[List[Node[D, I]]] =
+    //   givenChoiceSets.map((altSet) =>
+    //     altSet.map((alt: Node[D, I]) =>
+    //       alt.label.toList.map((e: Env[D, I]) => e.assumptions)
+    //     ).flatten((x) => x))
+    //
+    // for (choice <- choiceSets.head)
+    //   do getDepthSolutions1(choice, choiceSets.tail)
 
     ???
 
-    solutions
-  }
-
-  /**
-    * Internal method TODO fill in description
-    *
-    * **Translated from**:
-    * <pre>
+    /**
+      * Internal method TODO fill in description
+      *
+      * **Translated from**:
+      * <pre>
 ; From atms.lisp
 (defun get-depth-solutions1 (solution choice-sets
                                       &aux new-solution)
@@ -954,53 +957,75 @@ class ATMS[D, I](
            (get-depth-solutions1 new-solution
                                  (cdr choice-sets)))))))
 </pre>
-    *
-    * @param solution
-    * @param choiceSets
-    * @return
-    *
-    * @group internal
-    */
-  def getDepthSolutions1(
-    solution: Env[D, I], choiceSets: ChoiceSets[D, I]):
-      ListBuffer[Env[D, I]] = {
-    ???
-  }
+      *
+      * @param solution
+      * @param choiceSets
+      * @return
+      *
+      * @group internal
+      */
+    def getDepthSolutions1(
+      solution: List[Node[D, I]], choiceSets: ChoiceSets[D, I]):
+        Unit = {
+      ???
+    }
 
-  /**
-    * Internal method TODO fill in description
-    *
-    * **Translated from**:
-    * <pre>
+    /**
+      * Internal method TODO fill in description
+      *
+      * **Translated from**:
+      * <pre>
 ; From atms.lisp
 (defun extend-via-defaults (solution remaining original)
-  (do ((new-solution)
+  (do ((new-solution) ;; Set at the start of the body of the loop.
+                      ;; So the value does not communicate from one
+                      ;; iteration to another, and note that it is
+                      ;; not used in the result expression.
        (defaults remaining (cdr defaults)))
       ((null defaults)
+       ;; This big expression is the result value from the loop,
+       ;; given the final values for the above loop variables.
        (or (member solution *solutions* :TEST #'eq)
            (dolist (default original)
              (or (member default (env-assumptions solution)
                          :TEST #'eq)
                  (env-nogood? (cons-env default solution))
+                 ;; RETURN here exits the DOLIST.
                  (return t)))
            (push solution *solutions*)))
     (setq new-solution (cons-env (car defaults) solution))
     (unless (env-nogood? new-solution)
       (extend-via-defaults new-solution (cdr defaults) original))))
 </pre>
-    *
-    * @param solution
-    * @param remaining
-    * @param original
-    *
-    * @group internal
-    */
-  def extendViaDefaults(
-    solution: Env[D, I],
-    remaining: ListBuffer[Node[D, I]],
-    original: ListBuffer[Node[D, I]]):
-      Unit = {
-    ???
+      *
+      * @param solution
+      * @param remaining
+      * @param original
+      *
+      * @group internal
+      */
+    def extendViaDefaults(
+      solution: Env[D, I],
+      remaining: List[Node[D, I]],
+      original: List[Node[D, I]]):
+        Unit = {
+      var defaults = remaining
+      while !defaults.isEmpty do {
+        val newSolution = solution.consEnv(defaults.head)
+        if !newSolution.isNogood
+        then extendViaDefaults(newSolution, defaults.tail, original)
+      }
+
+      if (!solutionsBuffer.contains(solution)
+        && !(returning[Boolean] {
+          for (default <- original)
+            do if (!solution.assumptions.contains(default)
+              && !solution.consEnv(default).isNogood)
+              then throwReturn(true)
+          false
+        }))
+        then solutionsBuffer += solution
+    }
   }
 
   /**
