@@ -346,7 +346,8 @@ class Env[D, I, R](
   }
 
   /**
-    * Internal method TODO fill in description
+    * Returns `true` if every given node is believed under the given
+    * environment.
     *
     * **Translated from**:
     * <pre>
