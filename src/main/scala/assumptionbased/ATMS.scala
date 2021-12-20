@@ -1096,7 +1096,11 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Internal method TODO fill in description
+    * Internal method finding the environment with a particular
+    * internal index.
+    *
+    * @return The ATMS's empty environment, if no such internal index
+    * is in use.
     *
     * **Translated from**:
     * <pre>

@@ -261,9 +261,9 @@ class Env[D, I, R](
   }
 
   /**
-    * Returns the result of extending this `Env` with
-    * an additional [[Node]].  Note that by using [[#orderedInsert]],
-    * this method will drop duplicate [[Node]]s.
+    * Returns the result of extending this `Env` with an additional
+    * [[Node]].  Note that by using [[Env#orderedInsert]], this method
+    * will drop duplicate [[Node]]s.
     *
     * **Translated from**:
     * <pre>
