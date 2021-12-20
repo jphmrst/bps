@@ -568,8 +568,9 @@ class ATMS[D, I, R](
 </pre>
     * (Comments by JM.)
     *
-    * @param antecedent
-    * @param envs TODO
+    * @param antecedent TODO
+    * @param origEnvs TODO
+    * @param antecedents TODO
     *
     * Note that this list is duplicated at the start of the method, so
     * no changes are made to the passed-in argument.
