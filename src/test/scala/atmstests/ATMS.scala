@@ -28,7 +28,7 @@ class TestATMS extends AnyFlatSpec with Matchers {
 
   // F&dK Sec. 12.5
   "FdK simple example" `should` "all pass" in {
-    val atms = new ATMS[Symbol, String]("atms-test0", debugging = true)
+    val atms = new ATMS[Symbol, String, Nothing]("atms-test0", debugging = true)
 
     val a = atms.createNode("A", isAssumption = true)
     a.label.length `should` be (1)
@@ -100,7 +100,7 @@ class TestATMS extends AnyFlatSpec with Matchers {
   }
 
   "FdK Test 1" `should` "all pass" in {
-    val atms = new ATMS[Symbol, String]("atms-test1", debugging = false)
+    val atms = new ATMS[Symbol, String, Nothing]("atms-test1", debugging = false)
     val a = atms.createNode("A")
     val b = atms.createNode("B")
     val c = atms.createNode("C")
