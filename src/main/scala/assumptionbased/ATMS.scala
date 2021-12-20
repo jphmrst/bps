@@ -27,7 +27,7 @@ import org.maraist.truthmaintenancesystems.assumptionbased.Blurb
 /**
   * TODO fill in
   */
-type ChoiceSets[D, I] = List[List[Node[D, I]]]
+type ChoiceSets[D, I, R] = List[List[Node[D, I, R]]]
 
 /** Implementation of assumption-based truth maintenance systems.
   *
@@ -95,12 +95,12 @@ type ChoiceSets[D, I] = List[List[Node[D, I]]]
   * from outside this package.
   * @groupprio internal 10
   */
-class ATMS[D, I](
+class ATMS[D, I, R](
   val title: String,
-  var nodeString: (Node[D, I]) => String =
-    (n: Node[D, I]) => s"${n.datum.toString()}",
+  var nodeString: (Node[D, I, R]) => String =
+    (n: Node[D, I, R]) => s"${n.datum.toString()}",
   var debugging: Boolean = false,
-  var enqueueProcedure: Option[(Rule[I]) => Unit] = None
+  var enqueueProcedure: Option[(R) => Unit] = None
 ) {
 
   /** Unique namer for nodes. */
@@ -140,29 +140,29 @@ class ATMS[D, I](
   }
 
   /** List of all tms nodes. */
-  var nodes: ListBuffer[Node[D, I]] = ListBuffer.empty
+  var nodes: ListBuffer[Node[D, I, R]] = ListBuffer.empty
 
   /** List of all justifications. */
-  var justs: ListBuffer[Just[D, I]] = ListBuffer.empty
+  var justs: ListBuffer[Just[D, I, R]] = ListBuffer.empty
 
   /** List of contradiction nodes. */
-  var contradictions: ListBuffer[Node[D, I]] = ListBuffer.empty
+  var contradictions: ListBuffer[Node[D, I, R]] = ListBuffer.empty
 
   /** List of assumption nodes. */
-  var assumptions: ListBuffer[Node[D, I]] = ListBuffer.empty
+  var assumptions: ListBuffer[Node[D, I, R]] = ListBuffer.empty
 
-  val envTable = new EnvTable[D, I]
+  val envTable = new EnvTable[D, I, R]
 
-  val nogoodTable = new EnvTable[D, I]
+  val nogoodTable = new EnvTable[D, I, R]
 
   /** Empty environment. */
-  val emptyEnv: Env[D, I] = createEnv(List.empty)
+  val emptyEnv: Env[D, I, R] = createEnv(List.empty)
 
   /** Dummy contradiction node. */
-  val contraNode: Node[D, I] =
+  val contraNode: Node[D, I, R] =
     createNode("The contradiction", isContradictory = true)
 
-  val makeContradictionStipulation = MakeContradiction[D, I]()
+  val makeContradictionStipulation = MakeContradiction[D, I, R]()
 
   /**
     * Return a short string with the title of this ATMS.
@@ -242,8 +242,8 @@ class ATMS[D, I](
   def createNode(
     datum: D | String,
     isAssumption: Boolean = false, isContradictory: Boolean = false):
-      Node[D, I] = {
-    val node = new Node[D, I](this, datum, isAssumption, isContradictory)
+      Node[D, I, R] = {
+    val node = new Node[D, I, R](this, datum, isAssumption, isContradictory)
     nodes += node
     if isContradictory then contradictions += node
     if isAssumption then assumptions += node
@@ -273,7 +273,7 @@ class ATMS[D, I](
     *
     * @group internal
     */
-  def createEnv(assumptions: List[Node[D, I]]): Env[D, I] = {
+  def createEnv(assumptions: List[Node[D, I, R]]): Env[D, I, R] = {
     val e = new Env(incrEnvCounter, assumptions)
     envTable.insertInTable(e)
     setEnvContradictory(e)
@@ -301,7 +301,7 @@ class ATMS[D, I](
     *
     * @group construction
     */
-  def assumeNode(node: Node[D, I]): Unit = {
+  def assumeNode(node: Node[D, I, R]): Unit = {
     if !node.isAssumption then {
       dbg(s"Converting $node into an assumption")
       node.isAssumption = true
@@ -331,7 +331,7 @@ class ATMS[D, I](
     *
     * @group construction
     */
-  def makeContradiction(node: Node[D, I]): Unit = {
+  def makeContradiction(node: Node[D, I, R]): Unit = {
     if !node.isContradictory then {
       node.isContradictory = true
       var nogood = node.label.headOption
@@ -374,8 +374,8 @@ class ATMS[D, I](
     * @group construction
     */
   def justifyNode(
-    informant: I, consequence: Node[D, I], antecedents: ListBuffer[Node[D, I]]):
-      Just[D, I] = {
+    informant: I, consequence: Node[D, I, R], antecedents: ListBuffer[Node[D, I, R]]):
+      Just[D, I, R] = {
     val just = new Just(incrJustCounter, informant, consequence, antecedents)
     dbg(s"Adding justification ${just.blurb}")
     consequence.justs += just
@@ -406,7 +406,7 @@ class ATMS[D, I](
     *
     * @group construction
     */
-  def nogoodNodes(informant: I, nodes: ListBuffer[Node[D, I]]): Unit =
+  def nogoodNodes(informant: I, nodes: ListBuffer[Node[D, I, R]]): Unit =
     justifyNode(informant, contraNode, nodes)
 
   /**
@@ -429,9 +429,9 @@ class ATMS[D, I](
     * @group internal
     */
   def propagate(
-    just: Just[D, I],
-    antecedent: Option[Node[D, I]],
-    envs: ListBuffer[Env[D, I]]):
+    just: Just[D, I, R],
+    antecedent: Option[Node[D, I, R]],
+    envs: ListBuffer[Env[D, I, R]]):
       Unit = {
     dbg(s"Calling propagate with\n  just ${Blurb.justification(just)}\n  antecedent ${Blurb.nodeOption(antecedent)}\n  ${Blurb.envLB(envs)}")
     val newEnvs = weave(antecedent, envs, just.antecedents)
@@ -472,9 +472,9 @@ class ATMS[D, I](
     * @group internal
     */
   def update(
-    newEnvs: ListBuffer[Env[D, I]],
-    consequence: Node[D, I],
-    just: Justification[D, I]):
+    newEnvs: ListBuffer[Env[D, I, R]],
+    consequence: Node[D, I, R],
+    just: Justification[D, I, R]):
       Unit = {
     dbg(s"Calling update with\n  ${Blurb.envLB(newEnvs)}\n  consequence ${Blurb.node(consequence)}\n  just ${Blurb.justification(just)}")
 
@@ -497,7 +497,7 @@ class ATMS[D, I](
       for (supportedJust <- consequence.consequences) do {
         dbg("  Relaying to propagate for ${supportedJust.toString}")
         propagate(supportedJust, Some(consequence), newEnvs)
-        val envsToRemove = ListBuffer.empty[Env[D, I]]
+        val envsToRemove = ListBuffer.empty[Env[D, I, R]]
         for (newEnv <- newEnvs) {
           if !consequence.label.contains(newEnv) then envsToRemove += newEnv
         }
@@ -584,16 +584,16 @@ class ATMS[D, I](
     * @group internal
     */
   def weave(
-    antecedent: Option[Node[D, I]],
-    origEnvs: ListBuffer[Env[D, I]],
-    antecedents: ListBuffer[Node[D, I]]):
-      ListBuffer[Env[D, I]] = {
+    antecedent: Option[Node[D, I, R]],
+    origEnvs: ListBuffer[Env[D, I, R]],
+    antecedents: ListBuffer[Node[D, I, R]]):
+      ListBuffer[Env[D, I, R]] = {
     dbg(s"Calling weave with\n  antecedent ${Blurb.nodeOption(antecedent)}\n  origEnvs ${Blurb.envLB(origEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
     var envs = origEnvs.clone
     returning[Unit] {
       for (node <- antecedents; if node.differsFrom(antecedent)) do {
         dbg(s" - For antecedent node ${Blurb.node(node)}")
-        val newEnvs = ListBuffer.empty[Env[D, I]]
+        val newEnvs = ListBuffer.empty[Env[D, I, R]]
 
         for (env <- envs; nodeEnv <- node.label) do {
           dbg(s"    - For ${Blurb.env(env)} from env, ${Blurb.env(nodeEnv)} from node label")
@@ -638,7 +638,7 @@ class ATMS[D, I](
     *
     * @group internal
     */
-  def isInAntecedent(nodes: Iterable[Node[D, I]]): Boolean = {
+  def isInAntecedent(nodes: Iterable[Node[D, I, R]]): Boolean = {
     nodes.isEmpty || emptyEnv.isWeave(nodes.toList)
   }
 
@@ -670,7 +670,7 @@ class ATMS[D, I](
     *
     * @group construction
     */
-  def removeNode(node: Node[D, I]): Unit = {
+  def removeNode(node: Node[D, I, R]): Unit = {
     if !node.consequences.isEmpty
     then throw new TmsError("Can't remove node with consequences")
 
@@ -708,13 +708,13 @@ class ATMS[D, I](
     *
     * @group internal
     */
-  def lookupEnv(assumes: List[Node[D, I]]): Option[Env[D, I]] =
+  def lookupEnv(assumes: List[Node[D, I, R]]): Option[Env[D, I, R]] =
     returning {
       envTable.get(assumes.length) match {
         case Some(envs) => {
           for (env <- envs)
             do if env.assumptions.corresponds(assumes)((x,y) => x == y) then {
-              throwReturn[Option[Env[D, I]]](Some(env))
+              throwReturn[Option[Env[D, I, R]]](Some(env))
             }
           None
         }
@@ -741,7 +741,7 @@ class ATMS[D, I](
     *
     * @group internal
     */
-  def getEnv(assumes: List[Node[D, I]]): Env[D, I] =
+  def getEnv(assumes: List[Node[D, I, R]]): Env[D, I, R] =
     lookupEnv(assumes).getOrElse(createEnv(assumes))
 
   /**
@@ -776,7 +776,7 @@ class ATMS[D, I](
     *
     * @group internal
     */
-  def newNogood(cenv: Env[D, I], just: Justification[D, I]): Unit = {
+  def newNogood(cenv: Env[D, I, R], just: Justification[D, I, R]): Unit = {
     dbg(s"        * New minimal nogood ${cenv.envString}")
     cenv.nogoodEvidence = Some(just)
     removeEnvFromLabels(cenv)
@@ -819,7 +819,7 @@ class ATMS[D, I](
     *
     * @group internal
     */
-  def setEnvContradictory(env: Env[D, I]): Unit =
+  def setEnvContradictory(env: Env[D, I, R]): Unit =
     if (!env.isNogood) then {
       val count = env.count
       returning {
@@ -856,7 +856,7 @@ class ATMS[D, I](
     *
     * @group internal
     */
-  def removeEnvFromLabels(env: Env[D, I]): Unit = {
+  def removeEnvFromLabels(env: Env[D, I, R]): Unit = {
     enqueueProcedure.map((enqueuef) => {
       for (rule <- env.rules) do enqueuef(rule)
       env.rules.clear
@@ -874,8 +874,8 @@ class ATMS[D, I](
     * notes on the translation to an object structure.
     */
   def interpretations(
-    choiceSets: ChoiceSets[D, I]):
-      List[Env[D, I]] =
+    choiceSets: ChoiceSets[D, I, R]):
+      List[Env[D, I, R]] =
     new InterpretationsBuilder(choiceSets).getSolutions
 
   /**
@@ -923,19 +923,19 @@ class ATMS[D, I](
 </pre>
     */
   class InterpretationsBuilder(
-    val givenChoiceSets: ChoiceSets[D, I],
-    val defaults: List[Node[D, I]] = List.empty) {
+    val givenChoiceSets: ChoiceSets[D, I, R],
+    val defaults: List[Node[D, I, R]] = List.empty) {
 
-    val solutionsBuffer: ListBuffer[Env[D, I]] = ListBuffer.empty
+    val solutionsBuffer: ListBuffer[Env[D, I, R]] = ListBuffer.empty
 
-    def getSolutions: List[Env[D, I]] = solutionsBuffer.toList
+    def getSolutions: List[Env[D, I, R]] = solutionsBuffer.toList
 
     dbg(s"Constructing interpretations depth-first...")
 
-    val choiceSets: List[List[Env[D, I]]] =
+    val choiceSets: List[List[Env[D, I, R]]] =
       givenChoiceSets.map(
         (altSet) => altSet.map(
-          (alt: Node[D, I]) => alt.label.toList
+          (alt: Node[D, I, R]) => alt.label.toList
         ).flatten)
 
     for (choice <- choiceSets.head)
@@ -947,7 +947,7 @@ class ATMS[D, I](
 
       if !defaults.isEmpty
       then {
-        val solutions = ListBuffer.empty[Env[D, I]]
+        val solutions = ListBuffer.empty[Env[D, I, R]]
         solutions ++= solutionsBuffer
         solutionsBuffer.clear
         for (solution <- solutions)
@@ -987,13 +987,13 @@ class ATMS[D, I](
       * @group internal
       */
     def getDepthSolutions1(
-      solution: Env[D, I],
-      choiceSets: List[List[Env[D, I]]]):
+      solution: Env[D, I, R],
+      choiceSets: List[List[Env[D, I, R]]]):
         Unit =
       returning {
         if choiceSets.isEmpty
         then {
-          val removedSolutions = ListBuffer.empty[Env[D, I]]
+          val removedSolutions = ListBuffer.empty[Env[D, I, R]]
           for (oldSolution <- solutionsBuffer)
             do oldSolution.compareEnv(solution) match {
               case EnvCompare.EQ  => throwReturn(())
@@ -1048,9 +1048,9 @@ class ATMS[D, I](
       * @group internal
       */
     def extendViaDefaults(
-      solution: Env[D, I],
-      remaining: List[Node[D, I]],
-      original: List[Node[D, I]]):
+      solution: Env[D, I, R],
+      remaining: List[Node[D, I, R]],
+      original: List[Node[D, I, R]]):
         Unit = {
       var defaults = remaining
       while !defaults.isEmpty do {
@@ -1105,7 +1105,7 @@ class ATMS[D, I](
     *
     * @group internal
     */
-  def e(n: Int): Env[D, I] = returning {
+  def e(n: Int): Env[D, I, R] = returning {
     for ((length, envs) <- envTable)
       do for (env <- envs)
         do if env.count == n then throwReturn(env)

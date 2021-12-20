@@ -34,7 +34,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * from outside this package.
   * @groupprio internal 10
   */
-class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
+class EnvTable[D, I, R] extends HashMap[Int, ListBuffer[Env[D, I, R]]] {
 
   /**
     * Internal method TODO fill in description
@@ -77,7 +77,7 @@ class EnvTable[D, I] extends HashMap[Int, ListBuffer[Env[D, I]]] {
     *
     * @group internal
     */
-  def insertInTable(env: Env[D, I]): Unit = {
+  def insertInTable(env: Env[D, I, R]): Unit = {
     val count = env.count
     this.get(count) match {
       case None => this(count) = ListBuffer(env)
@@ -147,16 +147,16 @@ enum EnvCompare {
   * from outside this package.
   * @groupprio internal 10
   */
-class Env[D, I](
+class Env[D, I, R](
   val index: Int,
-  val assumptions: List[Node[D, I]]
+  val assumptions: List[Node[D, I, R]]
 ) {
 
   /** Number of assumptions. */
   val count = assumptions.length
 
   /** If this node is nogood, stores the evidence. */
-  var nogoodEvidence: Option[Justification[D, I] | Env[D, I]] = None
+  var nogoodEvidence: Option[Justification[D, I, R] | Env[D, I, R]] = None
 
   /** Returns `true` when there is evidence that this environment is nogood.
     *
@@ -164,10 +164,10 @@ class Env[D, I](
     */
   inline def isNogood: Boolean = !nogoodEvidence.isEmpty
 
-  val nodes: ListBuffer[Node[D, I]] = ListBuffer.empty
+  val nodes: ListBuffer[Node[D, I, R]] = ListBuffer.empty
 
   /** Call this if becomes nogood */
-  val rules: ListBuffer[Rule[I]] = ListBuffer.empty
+  val rules: ListBuffer[R] = ListBuffer.empty
 
   /**
     * Internal method TODO fill in description
@@ -189,7 +189,7 @@ class Env[D, I](
     *
     * @group internal
     */
-  def isWeave(nodes: List[Node[D, I]]): Boolean = returning {
+  def isWeave(nodes: List[Node[D, I, R]]): Boolean = returning {
     if nodes.isEmpty then true
     else {
       for (e <- nodes.head.label) do {
@@ -224,10 +224,10 @@ class Env[D, I](
     *
     * @group internal
     */
-  def unionEnv(that: Env[D, I]): Env[D, I] = returning[Env[D, I]]{
+  def unionEnv(that: Env[D, I, R]): Env[D, I, R] = returning[Env[D, I, R]]{
     val disordered = count > that.count
     val e1 = if disordered then that else this
-    var e2: Env[D, I] = if disordered then this else that
+    var e2: Env[D, I, R] = if disordered then this else that
     for (assume <- e1.assumptions) do {
       e2 = e2.consEnv(assume)
       if e2.isNogood then throwReturn(e2)
@@ -251,7 +251,7 @@ class Env[D, I](
     *
     * @group internal
     */
-  def consEnv(assumption: Node[D, I]): Env[D, I] =
+  def consEnv(assumption: Node[D, I, R]): Env[D, I, R] =
     assumption.atms.getEnv(
       Env.orderedInsert(assumption, assumptions, Env.assumptionOrder))
 
@@ -271,7 +271,7 @@ class Env[D, I](
     *
     * @group internal
     */
-  def isSubsetEnv(e2: Env[D, I]): Boolean = compareEnv(e2) match {
+  def isSubsetEnv(e2: Env[D, I, R]): Boolean = compareEnv(e2) match {
     case EnvCompare.S12 => true
     case EnvCompare.EQ => true
     case _ => false
@@ -295,7 +295,7 @@ class Env[D, I](
     *
     * @group internal
     */
-  def compareEnv(e2: Env[D, I]): EnvCompare = {
+  def compareEnv(e2: Env[D, I, R]): EnvCompare = {
     if this == e2
     then EnvCompare.EQ
     else if count < e2.count
@@ -310,7 +310,7 @@ class Env[D, I](
     }
   }
 
-  def isSupersetEnvOf(e2: Env[D, I]): Boolean = compareEnv(e2) match {
+  def isSupersetEnvOf(e2: Env[D, I, R]): Boolean = compareEnv(e2) match {
     case EnvCompare.S21 => true
     case EnvCompare.EQ  => true
     case _ => false
@@ -328,7 +328,7 @@ class Env[D, I](
     *
     * @group internal
     */
-  def isSupportingAntecedent(nodes: Iterable[Node[D, I]], env: Env[D, I]):
+  def isSupportingAntecedent(nodes: Iterable[Node[D, I, R]], env: Env[D, I, R]):
       Boolean =
     !nodes.exists(!_.isInNodeUnder(env))
 
@@ -403,11 +403,11 @@ object Env {
         (t (cons (car list) (ordered-insert item (cdr list) test)))))
 </pre>
     */
-  def orderedInsert[D, I](
-    item: Node[D, I],
-    list: List[Node[D, I]],
-    test: (Node[D, I], Node[D, I]) => Boolean):
-      List[Node[D, I]] = list match {
+  def orderedInsert[D, I, R](
+    item: Node[D, I, R],
+    list: List[Node[D, I, R]],
+    test: (Node[D, I, R], Node[D, I, R]) => Boolean):
+      List[Node[D, I, R]] = list match {
     case Nil => List(item)
     case (car :: cdr) => {
       if test(item, car)
@@ -428,7 +428,7 @@ object Env {
   (< (tms-node-index a1) (tms-node-index a2)))
 </pre>
     */
-  def assumptionOrder[D, I](a1: Node[D, I], a2: Node[D, I]): Boolean =
+  def assumptionOrder[D, I, R](a1: Node[D, I, R], a2: Node[D, I, R]): Boolean =
     a1.index < a2.index
 }
 

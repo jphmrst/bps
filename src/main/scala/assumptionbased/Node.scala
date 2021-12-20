@@ -81,8 +81,8 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * from outside this package.
   * @groupprio internal 10
   */
-class Node[D, I](
-  val atms: ATMS[D, I],
+class Node[D, I, R](
+  val atms: ATMS[D, I, R],
   val datum: D | String,
   var isAssumption: Boolean = false,
   var isContradictory: Boolean = false
@@ -91,17 +91,17 @@ class Node[D, I](
   val index: Int = atms.incrNodeCounter
 
   /** The minimal envs under which this node is believed. */
-  val label: ListBuffer[Env[D, I]] =
+  val label: ListBuffer[Env[D, I, R]] =
     ListBuffer(atms.createEnv(List(this)))
 
   /** What this node provides support for. */
-  val consequences: ListBuffer[Just[D, I]] = ListBuffer.empty
+  val consequences: ListBuffer[Just[D, I, R]] = ListBuffer.empty
 
   /** Providers of support. */
-  val justs: ListBuffer[Just[D, I]] = ListBuffer.empty
+  val justs: ListBuffer[Just[D, I, R]] = ListBuffer.empty
 
   /** Run when label non-empty. */
-  val rules: ListBuffer[Rule[I]] = ListBuffer.empty
+  val rules: ListBuffer[R] = ListBuffer.empty
 
 
   /**
@@ -180,7 +180,7 @@ class Node[D, I](
     *
     * @group query
     */
-  def isInNodeUnder(env: Env[D, I]): Boolean = label.exists(_.isSubsetEnv(env))
+  def isInNodeUnder(env: Env[D, I, R]): Boolean = label.exists(_.isSubsetEnv(env))
 
   /**
     * This method returns `true` when there is no subset of the given
@@ -194,7 +194,7 @@ class Node[D, I](
     *
     * @group query
     */
-  def isOutNode(env: Env[D, I]): Boolean = !isInNodeUnder(env)
+  def isOutNode(env: Env[D, I, R]): Boolean = !isInNodeUnder(env)
 
   /**
     * This method returns `true` if there is any environment `e` in
@@ -211,7 +211,7 @@ class Node[D, I](
     *
     * @group query
     */
-  def isNodeConsistentWith(env: Env[D, I]): Boolean =
+  def isNodeConsistentWith(env: Env[D, I, R]): Boolean =
     label.exists((le) => !le.unionEnv(env).isNogood)
 
   /**
@@ -292,11 +292,11 @@ class Node[D, I](
     *
     * @group internal
     */
-  def updateLabel(newEnvs: ListBuffer[Env[D, I]]): Unit = {
-    var toRemoveFromNewEnvs = HashSet.empty[Env[D, I]]
+  def updateLabel(newEnvs: ListBuffer[Env[D, I, R]]): Unit = {
+    var toRemoveFromNewEnvs = HashSet.empty[Env[D, I, R]]
     for (newEnv <- newEnvs) do {
       var addThisNewEnvToLabel = true
-      var toRemoveFromLabel = HashSet.empty[Env[D, I]]
+      var toRemoveFromLabel = HashSet.empty[Env[D, I, R]]
       for (labelEnv <- label) do {
         newEnv.compareEnv(labelEnv) match {
           case EnvCompare.Disjoint => { }
@@ -338,7 +338,7 @@ class Node[D, I](
     *
     * @group internal
     */
-  def findOrMakeEnv(assumptions: ListBuffer[Node[D, I]]): Env[D, I] =
+  def findOrMakeEnv(assumptions: ListBuffer[Node[D, I, R]]): Env[D, I, R] =
     atms.getEnv(assumptions.toList)
 
   /**
@@ -360,7 +360,7 @@ class Node[D, I](
     *
     * @group query
     */
-  def explainNode(env: Env[D, I]): List[Explanation[D, I]] = {
+  def explainNode(env: Env[D, I, R]): List[Explanation[D, I, R]] = {
     explainNode1(env, this, List.empty, List.empty)
   }
 
@@ -397,11 +397,11 @@ class Node[D, I](
     * @group internal
     */
   def explainNode1(
-    env: Env[D, I],
-    node: Node[D, I],
-    queuedNodes: List[Node[D, I]],
-    explanation: List[Explanation[D, I]]):
-      List[Explanation[D, I]] = returning {
+    env: Env[D, I, R],
+    node: Node[D, I, R],
+    queuedNodes: List[Node[D, I, R]],
+    explanation: List[Explanation[D, I, R]]):
+      List[Explanation[D, I, R]] = returning {
     if queuedNodes.contains(node) then throwReturn(List.empty)
 
     if node.isAssumption && env.assumptions.contains(node)
@@ -410,7 +410,7 @@ class Node[D, I](
     for (just <- explanation)
       do if node == (just match {
         case NodeAssumed(n) => n
-        case j: Just[D, I] => j.consequence
+        case j: Just[D, I, R] => j.consequence
       }) then throwReturn(explanation)
 
     val nextQueued = node :: queuedNodes
@@ -440,7 +440,7 @@ class Node[D, I](
     *
     * @group internal
     */
-  def differsFrom(that: Option[Node[D, I]]): Boolean = that match {
+  def differsFrom(that: Option[Node[D, I, R]]): Boolean = that match {
     case None => true
     case Some(n) => this != n
   }
@@ -525,5 +525,5 @@ class Node[D, I](
   def nodeJustifications: Unit = justs.map(_.printJustification)
 }
 
-class TmsNodeError[D, I](msg: String, val node: Node[D, I])
+class TmsNodeError[D, I, R](msg: String, val node: Node[D, I, R])
     extends TmsError(msg)

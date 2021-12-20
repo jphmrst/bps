@@ -25,31 +25,31 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 /**
   * TODO fill in
   */
-type Justification[D, I] =
-  Just[D, I] | NodeAssumed[D, I] | MakeContradiction[D, I]
+type Justification[D, I, R] =
+  Just[D, I, R] | NodeAssumed[D, I, R] | MakeContradiction[D, I, R]
 
 /**
   * TODO fill in
   */
-type Explanation[D, I] =
-  Just[D, I] | NodeAssumed[D, I]
+type Explanation[D, I, R] =
+  Just[D, I, R] | NodeAssumed[D, I, R]
 
 /**
   * TODO fill in
   */
-sealed trait Stipulated[D, I]
+sealed trait Stipulated[D, I, R]
 
 /**
   * TODO fill in
   *
   * @param node
   */
-case class NodeAssumed[D, I](node: Node[D, I]) extends Stipulated[D, I]
+case class NodeAssumed[D, I, R](node: Node[D, I, R]) extends Stipulated[D, I, R]
 
 /**
   * TODO fill in
   */
-case class MakeContradiction[D, I]() extends Stipulated[D, I]
+case class MakeContradiction[D, I, R]() extends Stipulated[D, I, R]
 
 /**
   * TODO fill in
@@ -87,11 +87,11 @@ case class MakeContradiction[D, I]() extends Stipulated[D, I]
   * from outside this package.
   * @groupprio internal 10
   */
-class Just[D, I](
+class Just[D, I, R](
   val index: Int,
   val informant: I,
-  val consequence: Node[D, I],
-  val antecedents: ListBuffer[Node[D, I]]
+  val consequence: Node[D, I, R],
+  val antecedents: ListBuffer[Node[D, I, R]]
 ) {
 
 

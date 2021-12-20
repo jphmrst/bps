@@ -55,41 +55,41 @@ object Blurb {
   /**
     * Formatting functions for [[Env]] arguments.
     */
-  def env[D, I](e: Env[D, I]): String = e.envString
+  def env[D, I, R](e: Env[D, I, R]): String = e.envString
 
   /**
     * Formatting functions for `ListBuffer[Env]` arguments.
     */
-  def envLB[D, I]: (ListBuffer[Env[D, I]]) => String = listBuf(env, "; ")
+  def envLB[D, I, R]: (ListBuffer[Env[D, I, R]]) => String = listBuf(env, "; ")
 
   /**
     * Formatting functions for [[Justification]] arguments.
     */
-  def justification[D, I](j: Justification[D, I]): String = j match {
+  def justification[D, I, R](j: Justification[D, I, R]): String = j match {
     case NodeAssumed(n) => s"Node \"${n.datum.toString}\" assumed"
     case MakeContradiction() => "Stipulated as contradictory"
-    case j: Just[D, I] => j.blurb
+    case j: Just[D, I, R] => j.blurb
   }
 
   /**
     * Formatting functions for [[Node]] arguments.
     */
-  def bareNode[D, I](n: Node[D, I]): String = n.datum.toString
+  def bareNode[D, I, R](n: Node[D, I, R]): String = n.datum.toString
 
   /**
     * Formatting functions for [[Node]] arguments which include a note
     * of whether the node is contradictory.
     */
-  def node[D, I](n: Node[D, I]): String =
+  def node[D, I, R](n: Node[D, I, R]): String =
     s"${bareNode(n)} (${if n.isContradictory then "" else "not "}contradictory)"
 
   /**
     * Formatting functions for `Option[Node]` arguments.
     */
-  def nodeOption[D, I] = option(bareNode[D, I])
+  def nodeOption[D, I, R] = option(bareNode[D, I, R])
 
   /**
     * Formatting functions for `ListBuffer[Node]` arguments.
     */
-  def nodeLB[D, I] = listBuf(bareNode[D, I], ",")
+  def nodeLB[D, I, R] = listBuf(bareNode[D, I, R], ",")
 }
