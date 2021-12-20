@@ -780,8 +780,12 @@ class ATMS[D, I, R](
     val count = cenv.count
     for ((size, sizeEnvs) <- nogoodTable)
       do if (size > count)
-        then for (old <- sizeEnvs)
-          do if cenv.isSubsetEnv(old) then sizeEnvs -= old
+        then {
+          val sizeEnvRemovals = ListBuffer.empty[Env[D, I, R]]
+          for (old <- sizeEnvs)
+            do if cenv.isSubsetEnv(old) then sizeEnvRemovals += old
+          sizeEnvs --= sizeEnvRemovals
+        }
     for ((size, sizeEnvs) <- nogoodTable)
       do if (size > count)
         then for (old <- sizeEnvs)
