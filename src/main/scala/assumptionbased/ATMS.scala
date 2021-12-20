@@ -78,7 +78,8 @@ import org.maraist.truthmaintenancesystems.assumptionbased.Blurb
   *
   * @groupname query Query methods
   * @groupdesc query API methods for querying the ATMS and its beliefs
-  * from an external system.
+  * from an external system.  Note that most query-style methods are
+  * on [[Node]]s.
   * @groupprio query 2
   *
   * @groupname diagnostic Diagnostic and debugging methods
@@ -867,6 +868,8 @@ class ATMS[D, I, R](
     * this and two other functions for its calculation; see the
     * documentation of class [[InterpretationsBuilder]] for
     * notes on the translation to an object structure.
+    *
+    * @group query
     */
   def interpretations(
     choiceSets: List[List[Node[D, I, R]]]):
@@ -1137,6 +1140,23 @@ class ATMS[D, I, R](
     *
     * @group diagnostic
     */
+  def printJusts: Unit = {
+    println(s"${justs.size} justification structure${plural(justs.size)}")
+    justs.map((j) => println(s" - ${j.blurb}"))
+  }
+
+  /**
+    * Diagnostic method TODO fill in description
+    *
+    * **Translated from**:
+    * <pre>
+; From ainter.lisp
+(defun print-envs (atms &optional (stream t))
+  (print-env-table (atms-env-table atms) stream))
+</pre>
+    *
+    * @group diagnostic
+    */
   def printEnvs: Unit = {
     println(s"${envTable.envCount} environment${plural(envTable.envCount)}")
     envTable.printEnvTable(" ")
@@ -1169,6 +1189,7 @@ class ATMS[D, I, R](
     println("----------")
     printAtms
     debugNodes
+    printJusts
     printEnvs
     printNogoods
     println("----------")

@@ -60,6 +60,11 @@ object Blurb {
   /**
     * Formatting functions for `ListBuffer[Env]` arguments.
     */
+  def envL[D, I, R]: (List[Env[D, I, R]]) => String = list(env, "; ")
+
+  /**
+    * Formatting functions for `ListBuffer[Env]` arguments.
+    */
   def envLB[D, I, R]: (ListBuffer[Env[D, I, R]]) => String = listBuf(env, "; ")
 
   /**
@@ -91,5 +96,10 @@ object Blurb {
   /**
     * Formatting functions for `ListBuffer[Node]` arguments.
     */
-  def nodeLB[D, I, R] = listBuf(bareNode[D, I, R], ",")
+  def nodeL[D, I, R] = list(bareNode[D, I, R], ", ")
+
+  /**
+    * Formatting functions for `ListBuffer[Node]` arguments.
+    */
+  def nodeLB[D, I, R] = listBuf(bareNode[D, I, R], ", ")
 }
