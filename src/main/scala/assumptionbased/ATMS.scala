@@ -871,12 +871,18 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Internal method TODO fill in description
+    * Return the minimum environments which give the TMS belief in the
+    * given choice sets.  The choice sets are essentially
+    * conjunctive-normal form expressions; in the list of sublists of
+    * nodes, under each environment in the result at least one node of
+    * each sublist will be believed.
     *
     * The original Lisp uses side-effects to a global variable across
-    * this and two other functions for its calculation; see the
-    * documentation of class [[InterpretationsBuilder]] for
-    * notes on the translation to an object structure.
+    * this and two other functions for its calculation; in this Scala
+    * translation the state is wrapped in a
+    * [[InterpretationsBuilder][helper class]].  See the documentation
+    * of class [[InterpretationsBuilder]] for notes on the translation
+    * to this object structure.
     *
     * @group query
     */
@@ -903,8 +909,8 @@ class ATMS[D, I, R](
 ; From atms.lisp
 (proclaim '(special *solutions*))
 
-(defun interpretations (atms choice-sets
-                        &optional defaults &aux solutions)
+(defun interpretations (atms choice-sets &optional defaults
+                        &aux solutions)
   (if (atms-debugging atms)
    (format *trace-output*
            "~% Constructing interpretations depth-first..."))
@@ -937,16 +943,28 @@ class ATMS[D, I, R](
 
     def getSolutions: List[Env[D, I, R]] = solutionsBuffer.toList
 
-    dbg(s"Constructing interpretations depth-first...")
+    dbg(s"Constructing interpretations depth-first with ${Blurb.nodeLL(givenChoiceSets)}:")
 
     val choiceSets: List[List[Env[D, I, R]]] =
       givenChoiceSets.map(
-        (altSet) => altSet.map(
-          (alt: Node[D, I, R]) => alt.label.toList
-        ).flatten)
+        (altSet) => {
+          val result = altSet.map(
+            (alt: Node[D, I, R]) => {
+              // dbg(s"    - ${Blurb.node(alt)} --> ${Blurb.envL(alt.label.toList)}")
+              alt.label.toList
+            }
+          ).flatten
+          // dbg(s"  - ${Blurb.nodeL(altSet)} --> ${Blurb.envL(result)}")
+          result
+        })
+    // dbg(s"- Refined choiceSets to ${Blurb.envLL(choiceSets)}")
 
-    for (choice <- choiceSets.head)
-      do getDepthSolutions1(choice, choiceSets.tail)
+    for (choice <- choiceSets.head) do {
+      // dbg(s"- Calling depthSolutions with choice ${Blurb.env(// choice)}")
+      // dbg(s"-                             choice sets ${Blurb.envLL(choiceSets.tail)}")
+      getDepthSolutions1(choice, choiceSets.tail)
+      // dbg(s"-     => solutions ${Blurb.envLB(solutionsBuffer)}")
+    }
 
     if !solutionsBuffer.isEmpty || choiceSets.isEmpty then {
       if solutionsBuffer.isEmpty && choiceSets.isEmpty

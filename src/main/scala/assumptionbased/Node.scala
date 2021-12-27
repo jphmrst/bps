@@ -91,8 +91,8 @@ class Node[D, I, R](
   val index: Int = atms.incrNodeCounter
 
   /** The minimal envs under which this node is believed. */
-  val label: ListBuffer[Env[D, I, R]] =
-    ListBuffer(atms.createEnv(List(this)))
+  val label: ListBuffer[Env[D, I, R]] = ListBuffer.empty
+  if isAssumption then label += atms.createEnv(List(this))
 
   /** What this node provides support for. */
   val consequences: ListBuffer[Just[D, I, R]] = ListBuffer.empty
