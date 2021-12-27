@@ -406,7 +406,8 @@ class ATMS[D, I, R](
     justifyNode(informant, contraNode, nodes)
 
   /**
-    * Internal method TODO fill in description
+    * Propagate changes in ANTECEDENT's label for the given
+    * JUSTification.
     *
     * **Translated from**:
     * <pre>
@@ -504,7 +505,9 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Internal method TODO fill in description
+    * Update the label of nodes to include the given ENVS
+    * environments, pruning environments which are a superset of
+    * another included enviroment.
     *
     * **Translated from**:
     * <pre>
@@ -563,20 +566,19 @@ class ATMS[D, I, R](
       (setq envs (delete nil new-envs :TEST #'eq))
       (unless envs (return-from weave nil))))
 
-  ;; Finally, return the last refinemwnt of ENVS.
+  ;; Finally, return the last refinement of ENVS.
   envs)
 </pre>
     * (Comments by JM.)
     *
-    * @param antecedent TODO
-    * @param origEnvs TODO
-    * @param antecedents TODO
+    * @param antecedent Antecedent node triggering the update.
+    * @param origEnvs Environments to incorporate.
+    * @param antecedents Nodes impacted by the change.
     *
     * Note that this list is duplicated at the start of the method, so
     * no changes are made to the passed-in argument.
     *
-    * @param antecedents
-    * @return
+    * @return The refinement of `origEnvs`.
     *
     * @group internal
     */
@@ -981,7 +983,7 @@ class ATMS[D, I, R](
     }
 
     /**
-      * Internal method TODO fill in description
+      * Extend solutions list for a partial solution.
       *
       * **Translated from**:
       * <pre>
@@ -1039,7 +1041,7 @@ class ATMS[D, I, R](
       }
 
     /**
-      * Internal method TODO fill in description
+      * Refine one solution to reflect default assumptions.
       *
       * **Translated from**:
       * <pre>

@@ -195,7 +195,8 @@ class Env[D, I, R](
   val rules: ListBuffer[R] = ListBuffer.empty
 
   /**
-    * Internal method TODO fill in description
+    * Check whether any union of antecedent environments is
+    * consistent.
     *
     * **Translated from**:
     * <pre>
