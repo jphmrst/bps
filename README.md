@@ -1,8 +1,8 @@
 # bps-scala — truth maintenance systems for Scala
 
-This repository is a translation from Common Lisp to Scala (in
-progress) of the truth maintenance systems and other tools from Forbus
-and de Kleer's _Building Problem Solvers_.
+This repository is a translation from Common Lisp to Scala of 
+the truth maintenance systems and other tools from Forbus and
+de Kleer's _Building Problem Solvers_.
 
 The current version includes working versions of the
 justification- and assumption-based truth maintenance
