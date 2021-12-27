@@ -9,5 +9,7 @@ justification- and assumption-based truth maintenance
 systems (JTMS and ATMS).  There is a partial translation
 of the rule engine wrapper for these TMSes.
 
-To contribute, push changes to one of the two branches `atms` or
-`jtms`, or start a new branch for one of the other BPS tools.
+To contribute, submit pull requests to one of the two
+branches `atms` or `jtms`, or start a new branch for
+one of the other BPS tools, at
+[its repository](https://github.com/jphmrst/bps-scala).
