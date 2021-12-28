@@ -35,6 +35,49 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   *
   * @constructor The `title` argument is required; others are optional.
   *
+  * **Arguments and `val` members translated from**:
+  * <pre>
+(defstruct (jtms (:PRINT-FUNCTION print-jtms))
+  (title nil)
+  (node-counter 0)             ;; unique namer for nodes.
+  (just-counter 0)             ;; unique namer for justifications.
+  (nodes nil)                  ;; list of all tms nodes.
+  (justs nil)                  ;; list of all justifications
+  (debugging nil)              ;; debugging flag
+  (contradictions nil)         ;; list of contradiction nodes.
+  (assumptions nil)            ;; list of assumption nodes.
+  (checking-contradictions T)  ;; For external systems
+  (node-string nil)
+  (contradiction-handler nil)
+  (enqueue-procedure nil))
+
+(defun create-jtms (title &key (node-string 'default-node-string)
+                               debugging
+                               (checking-contradictions t)
+                               (contradiction-handler 'ask-user-handler)
+                               enqueue-procedure)
+  (make-jtms :TITLE title
+        :NODE-STRING node-string
+        :DEBUGGING debugging
+        :CHECKING-CONTRADICTIONS checking-contradictions
+        :CONTRADICTION-HANDLER contradiction-handler
+        :ENQUEUE-PROCEDURE enqueue-procedure
+        ))
+
+(defun change-jtms (jtms &key contradiction-handler node-string
+                         enqueue-procedure debugging
+                              checking-contradictions)
+  (if node-string (setf (jtms-node-string jtms) node-string))
+  (if debugging (setf (jtms-debugging jtms) debugging))
+  (if checking-contradictions
+      (setf (jtms-checking-contradictions jtms)
+       checking-contradictions))
+  (if contradiction-handler
+      (setf (jtms-contradiction-handler jtms) contradiction-handler))
+  (if enqueue-procedure
+      (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
+</pre>
+  *
   * @groupname interface Interface methods
   * @groupdesc interface Top-level methods for control of the JTMS
   * from an external system.
@@ -106,65 +149,33 @@ class JTMS[D, I, R](
     */
   var assumptions: ListBuffer[Node[D, I, R]] = ListBuffer.empty
 
-  // (defstruct (jtms (:PRINT-FUNCTION print-jtms))
-  //   (title nil)
-  //   (node-counter 0)             ;; unique namer for nodes.
-  //   (just-counter 0)             ;; unique namer for justifications.
-  //   (nodes nil)                  ;; list of all tms nodes.
-  //   (justs nil)                  ;; list of all justifications
-  //   (debugging nil)              ;; debugging flag
-  //   (contradictions nil)         ;; list of contradiction nodes.
-  //   (assumptions nil)            ;; list of assumption nodes.
-  //   (checking-contradictions T)  ;; For external systems
-  //   (node-string nil)
-  //   (contradiction-handler nil)
-  //   (enqueue-procedure nil))
-  //
-  // (defun create-jtms (title &key (node-string 'default-node-string)
-  //                                debugging
-  //                                (checking-contradictions t)
-  //                                (contradiction-handler 'ask-user-handler)
-  //                                enqueue-procedure)
-  //   (make-jtms :TITLE title
-  //         :NODE-STRING node-string
-  //         :DEBUGGING debugging
-  //         :CHECKING-CONTRADICTIONS checking-contradictions
-  //         :CONTRADICTION-HANDLER contradiction-handler
-  //         :ENQUEUE-PROCEDURE enqueue-procedure
-  //         ))
-  //
-  // (defun change-jtms (jtms &key contradiction-handler node-string
-  //                          enqueue-procedure debugging
-  //                               checking-contradictions)
-  //   (if node-string (setf (jtms-node-string jtms) node-string))
-  //   (if debugging (setf (jtms-debugging jtms) debugging))
-  //   (if checking-contradictions
-  //       (setf (jtms-checking-contradictions jtms)
-  //        checking-contradictions))
-  //   (if contradiction-handler
-  //       (setf (jtms-contradiction-handler jtms) contradiction-handler))
-  //   (if enqueue-procedure
-  //       (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
-
   /** Main gateway for debugging messages.
     *
     * @param msg This debugging message.
     *
     * @group internal
+    *
+    * **Translated from**:
+    * <pre>
+(defmacro debugging-jtms (jtms msg &optional node &rest args)
+  `(when (jtms-debugging ,jtms)
+     (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
+</pre>
     */
   inline def dbg(msg: String): Unit = if debugging then println(msg)
-  // (defmacro debugging-jtms (jtms msg &optional node &rest args)
-  //   `(when (jtms-debugging ,jtms)
-  //      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
 
   /** Print the JTMS by name.
     *
     * @group interface
+    *
+    * **Translated from**:
+    * <pre>
+(defun print-jtms (jtms stream ignore)
+  (declare (ignore ignore))
+  (format stream "#<JTMS: ~A>" (jtms-title jtms)))
+</pre>
     */
   def printJtms(): Unit = println(s"<JTMS: $title>")
-  // (defun print-jtms (jtms stream ignore)
-  //   (declare (ignore ignore))
-  //   (format stream "#<JTMS: ~A>" (jtms-title jtms)))
 
   /** Create a new node in this JTMS.
     *
@@ -177,6 +188,20 @@ class JTMS[D, I, R](
     * default value is `false`.
     * @param contradictionP True indicates that this node denotes a
     * contradiction.  The default value is `false`.
+    *
+    * **Translated from**:
+    * <pre>
+(defun tms-create-node (jtms datum &key assumptionp contradictoryp)
+  (let ((node (make-tms-node :INDEX (incf (jtms-node-counter jtms))
+                        :DATUM datum
+                        :ASSUMPTION? assumptionp
+                        :CONTRADICTORY? contradictoryp
+                        :JTMS jtms)))
+    (if assumptionp (push node (jtms-assumptions jtms)))
+    (if contradictoryp (push node (jtms-contradictions jtms)))
+    (push node (jtms-nodes jtms))
+    node))
+</pre>
     */
   def createNode(
     datum: D,
@@ -190,16 +215,6 @@ class JTMS[D, I, R](
     nodes += node
     node
   }
-  // (defun tms-create-node (jtms datum &key assumptionp contradictoryp)
-  //   (let ((node (make-tms-node :INDEX (incf (jtms-node-counter jtms))
-  //                         :DATUM datum
-  //                         :ASSUMPTION? assumptionp
-  //                         :CONTRADICTORY? contradictoryp
-  //                         :JTMS jtms)))
-  //     (if assumptionp (push node (jtms-assumptions jtms)))
-  //     (if contradictoryp (push node (jtms-contradictions jtms)))
-  //     (push node (jtms-nodes jtms))
-  //     node))
 
   /** Add a rule for concluding belief in a node.
     *
@@ -210,6 +225,28 @@ class JTMS[D, I, R](
     * @param consequence Node concluded by ths justification.
     * @param antecedents The premises required to trigger belief in
     * the `consequence.
+    *
+    * **Translated from**:
+    * <pre>
+(defun justify-node (informant consequence antecedents &aux just jtms)
+  (setq jtms (tms-node-jtms consequence)
+   just (make-just :INDEX (incf (jtms-just-counter jtms))
+                   :INFORMANT informant
+                   :CONSEQUENCE consequence
+                   :ANTECEDENTS antecedents))
+  (push just (tms-node-justs consequence))
+  (dolist (node antecedents) (push just (tms-node-consequences node)))
+  (push just (jtms-justs jtms))
+  (debugging-jtms jtms
+             "~%Justifying ~A by ~A using ~A."
+             consequence
+             informant
+             (mapcar #'node-string antecedents))
+  (if (or antecedents (out-node? consequence))
+      (if (check-justification just) (install-support consequence just))
+      (setf (tms-node-support consequence) just))
+  (check-for-contradictions jtms))
+</pre>
     */
   def justifyNode(
     informant: I,
@@ -253,24 +290,6 @@ class JTMS[D, I, R](
     // Detect new contradictions.
     checkForContradictions
   }
-  // (defun justify-node (informant consequence antecedents &aux just jtms)
-  //   (setq jtms (tms-node-jtms consequence)
-  //    just (make-just :INDEX (incf (jtms-just-counter jtms))
-  //                    :INFORMANT informant
-  //                    :CONSEQUENCE consequence
-  //                    :ANTECEDENTS antecedents))
-  //   (push just (tms-node-justs consequence))
-  //   (dolist (node antecedents) (push just (tms-node-consequences node)))
-  //   (push just (jtms-justs jtms))
-  //   (debugging-jtms jtms
-  //              "~%Justifying ~A by ~A using ~A."
-  //              consequence
-  //              informant
-  //              (mapcar #'node-string antecedents))
-  //   (if (or antecedents (out-node? consequence))
-  //       (if (check-justification just) (install-support consequence just))
-  //       (setf (tms-node-support consequence) just))
-  //   (check-for-contradictions jtms))
 
   /** Search for support for nodes which were disbelieved after an
     * assumption retraction.
@@ -286,6 +305,18 @@ class JTMS[D, I, R](
     * @param outQueue List of nodes which have lost support.  The
     * naming of the parameter as a queue in the Lisp code is odd: the
     * list is only read; nothing is ever enqueued.
+    *
+    * **Translated from**:
+    * <pre>
+(defun find-alternative-support (jtms out-queue)
+  (debugging-jtms jtms "~%   Looking for alternative supports.")
+  (dolist (node out-queue)
+    (unless (in-node? node)
+      (dolist (just (tms-node-justs node))
+        (when (check-justification just)
+          (install-support (just-consequence just) just)
+          (return just))))))
+</pre>
     */
   def findAlternativeSupport(outQueue: Iterable[Node[D, I, R]]):
       Unit = { // Option[Just[D, I, R]] = {
@@ -305,19 +336,23 @@ class JTMS[D, I, R](
       None
     }
   }
-  // (defun find-alternative-support (jtms out-queue)
-  //   (debugging-jtms jtms "~%   Looking for alternative supports.")
-  //   (dolist (node out-queue)
-  //     (unless (in-node? node)
-  //       (dolist (just (tms-node-justs node))
-  //         (when (check-justification just)
-  //           (install-support (just-consequence just) just)
-  //           (return just))))))
 
   /** Pass all believed contradiction nodes to the
     * [[#contradictionHandler]].
     *
     * @group internal
+    *
+    * **Translated from**:
+    * <pre>
+;;; Contradiction handling interface
+(defun check-for-contradictions (jtms &aux contradictions)
+  (when (jtms-checking-contradictions jtms)
+    (dolist (cnode (jtms-contradictions jtms))
+      (if (in-node? cnode) (push cnode contradictions)))
+    (if contradictions
+        (funcall (jtms-contradiction-handler jtms)
+                 jtms contradictions))))
+</pre>
     */
   def checkForContradictions: Unit = {
     val localContras: ListBuffer[Node[D, I, R]] = ListBuffer.empty
@@ -330,14 +365,6 @@ class JTMS[D, I, R](
       }
     }
   }
-  // ;;; Contradiction handling interface
-  // (defun check-for-contradictions (jtms &aux contradictions)
-  //   (when (jtms-checking-contradictions jtms)
-  //     (dolist (cnode (jtms-contradictions jtms))
-  //       (if (in-node? cnode) (push cnode contradictions)))
-  //     (if contradictions
-  //         (funcall (jtms-contradiction-handler jtms)
-  //                  jtms contradictions))))
 
   /** Propagate the retraction of an assumption by finding all other
     * nodes which used that assumption in their justification.
@@ -346,6 +373,24 @@ class JTMS[D, I, R](
     *
     * @param node The node which has been recently disbelieved.
     * @return List of node which may now also no longer be believed.
+    *
+    * **Translated from**:
+    * <pre>
+(defun propagate-outness (node jtms &aux out-queue)
+  (debugging-jtms jtms "~%   Propagating disbelief in ~A." node)
+  (do ((js (tms-node-consequences node) (append (cdr js) new))
+       (new nil nil)
+       (conseq nil))
+      ((null js) out-queue)
+    ;;For each justification using the node, check to see if
+    ;;it supports some other node.  If so, forget that node,
+    ;;queue up the node to look for other support, and recurse
+    (setq conseq (just-consequence (car js)))
+    (when (eq (tms-node-support conseq) (car js))
+      (make-node-out conseq)
+      (push conseq out-queue)
+      (setq new (tms-node-consequences conseq)))))
+</pre>
     */
   def propagateOutness(node: Node[D, I, R]): List[Node[D, I, R]] = {
     dbg(s"   Propagating disbelief in $node.")
@@ -363,20 +408,6 @@ class JTMS[D, I, R](
     }
     outQueue.toList
   }
-  // (defun propagate-outness (node jtms &aux out-queue)
-  //   (debugging-jtms jtms "~%   Propagating disbelief in ~A." node)
-  //   (do ((js (tms-node-consequences node) (append (cdr js) new))
-  //        (new nil nil)
-  //        (conseq nil))
-  //       ((null js) out-queue)
-  //     ;;For each justification using the node, check to see if
-  //     ;;it supports some other node.  If so, forget that node,
-  //     ;;queue up the node to look for other support, and recurse
-  //     (setq conseq (just-consequence (car js)))
-  //     (when (eq (tms-node-support conseq) (car js))
-  //       (make-node-out conseq)
-  //       (push conseq out-queue)
-  //       (setq new (tms-node-consequences conseq)))))
 
   // (defmacro without-contradiction-check (jtms &body body)
   //   (contradiction-check jtms nil body))
@@ -389,6 +420,14 @@ class JTMS[D, I, R](
     * @group internal
     *
     * @return
+    *
+    * **Translated from**:
+    * <pre>
+(defun enabled-assumptions (jtms &aux result)
+  (dolist (assumption (jtms-assumptions jtms) result)
+    (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
+      (push assumption result))))
+</pre>
     */
   def enabledAssumptions: List[Node[D, I, R]] = {
     val result = ListBuffer.empty[Node[D, I, R]]
@@ -397,10 +436,6 @@ class JTMS[D, I, R](
     then result += assumption
     result.toList
   }
-  // (defun enabled-assumptions (jtms &aux result)
-  //   (dolist (assumption (jtms-assumptions jtms) result)
-  //     (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
-  //       (push assumption result))))
 
   /** Print a verbose list of the current nodes.
     *
@@ -411,10 +446,14 @@ class JTMS[D, I, R](
   /** Print the justifications of the current nodes.
     *
     * @group diagnostic
+    *
+    * **Translated from**:
+    * <pre>
+(defun why-nodes (jtms)
+  (dolist (node (jtms-nodes jtms)) (why-node node)))
+</pre>
     */
   def whyNodes: Unit = nodes.map(_.whyNode)
-  // (defun why-nodes (jtms)
-  //   (dolist (node (jtms-nodes jtms)) (why-node node)))
 
   /** Print a verbose debugging output of this JTMS as text.
     *
@@ -433,6 +472,16 @@ class JTMS[D, I, R](
     * @param nodes The list of contradictions to be printed.
     *
     * @group diagnostic
+    *
+    * **Translated from**:
+    * <pre>
+(defun print-contra-list (nodes)
+  (do ((counter 1 (1+ counter))
+       (nn nodes (cdr nn)))
+      ((null nn))
+    (format t "~%~A ~A" counter
+       (node-string (car nn)))))
+</pre>
     */
   def printContraList(nodes: List[Node[D, I, R]]): Unit = {
     var counter: Int = 1
@@ -441,11 +490,5 @@ class JTMS[D, I, R](
       counter = 1 + counter
     }
   }
-  // (defun print-contra-list (nodes)
-  //   (do ((counter 1 (1+ counter))
-  //        (nn nodes (cdr nn)))
-  //       ((null nn))
-  //     (format t "~%~A ~A" counter
-  //        (node-string (car nn)))))
 
 } // class JTMS
