@@ -1,54 +1,4 @@
-// Copyright (c) 1986-1993, Kenneth D. Forbus, Northwestern University
-// and Johan de Kleer, the Xerox Corporation.
-// Copyright (C) 2021 John Maraist.
-// All rights reserved.
-//
-// See the LICENSE.txt and README-forbus-dekleer.txt files distributed
-// with this work for a paragraph stating scope of permission
-// and disclaimer of warranty, and for additional
-// information regarding copyright ownership.    The above copyright notice and that
-// paragraph must be included in any separate copy of this file.
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-// implied, for NON-COMMERCIAL use.  See the License for the specific
-// language governing permissions and limitations under the License.
-
-
-// Translated from KDF/JdK version 61 of 7/21/92.
-
-package org.maraist.tms.assumptionbased.tests
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.*
-// import org.maraist.tms.assumptionbased.{ATMS, Node}
-
-class TestATMS extends AnyFlatSpec with Matchers {
-
-  "FdK Test 1" `should` "all pass" in {
-    // val atms = new ATMS[String]("atms-test1", debugging = true)
-    // val a = new Node[String](atms, "A")
-    // val b = new Node[String](atms, "B")
-    // val c = new Node[String](atms, "C")
-    // val d = new Node[String](atms, "D")
-    // val e = new Node[String](atms, "E")
-    // val f = new Node[String](atms, "F")
-
-    // (assume-node a)
-    // (assume-node b)
-    // (assume-node c)
-    // (justify-node 'J1 d (list a b))
-    // (justify-node 'J2 e (list b c))
-    // (justify-node 'J3 f (list d e))
-
-    // assert(pfa.transitionProb("B", 3, "C") === 0.0)
-    // assert(pfa.transitionProb("B", 3, "D") === 0.5 +- 0.000000001)
-
-  }
-
-}
-
-/****
+;;; -*- Mode: LISP; Syntax: Common-lisp; -*-
 
 ;;;; Test code
 ;; Last edited 1/29/93, by KDF
@@ -65,6 +15,21 @@ class TestATMS extends AnyFlatSpec with Matchers {
 
 (proclaim '(special a b c d e f))
 
+(defun atms-test1 ()
+  (setq *atms* (create-atms "atms-test1" :debugging T)
+	a (tms-create-node *atms* "A")
+	b (tms-create-node *atms* "B")
+	c (tms-create-node *atms* "C")
+	d (tms-create-node *atms* "D")
+	e (tms-create-node *atms* "E")
+	f (tms-create-node *atms* "F"))
+  (assume-node a)
+  (assume-node b)
+  (assume-node c)
+  (justify-node 'J1 d (list a b))
+  (justify-node 'J2 e (list b c))
+  (justify-node 'J3 f (list d e)))
+
 (defun atms-test2 ()
   (justify-node 'simpler d (list a)))
 
@@ -77,14 +42,14 @@ class TestATMS extends AnyFlatSpec with Matchers {
 
 (defun step-1 ()
   (setq *atms* (create-atms "Step-1")
-        a (tms-create-node *atms* "A")
-        b (tms-create-node *atms* "B")
-        c (tms-create-node *atms* "C")
-        x=1 (tms-create-node *atms* "x=1")
-        y=x (tms-create-node *atms* "y=x")
-        x=z (tms-create-node *atms* "x=z")
-        y=1 (tms-create-node *atms* "y=1")
-        z=1 (tms-create-node *atms* "z=1") )
+	a (tms-create-node *atms* "A")
+	b (tms-create-node *atms* "B")
+	c (tms-create-node *atms* "C")
+	x=1 (tms-create-node *atms* "x=1")
+	y=x (tms-create-node *atms* "y=x")
+	x=z (tms-create-node *atms* "x=z")
+	y=1 (tms-create-node *atms* "y=1")
+	z=1 (tms-create-node *atms* "z=1") )
   (assume-node a)
   (assume-node b)
   (assume-node c)
@@ -197,5 +162,3 @@ E-5:* {A, B}
 E-6: {B, C}
 
 |#
-
-***/

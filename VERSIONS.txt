@@ -1,5 +1,8 @@
 #  -*- org -*-
 
+* Version 0.3
+  - Contains a mostly-working version of a standalone ATMS.
+
 * Version 0.2
   - Separation of the standalone JTMS from (untranslated) JTMS+JTRE
     wrapper.

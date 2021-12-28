@@ -14,6 +14,7 @@
 (in-package :COMMON-LISP-USER)
 
 (proclaim '(special a b c d e f))
+(defvar *atms*)
 
 (defun atms-test1 ()
   (setq *atms* (create-atms "atms-test1" :debugging T)
@@ -162,3 +163,31 @@ E-5:* {A, B}
 E-6: {B, C}
 
 |#
+
+;;; Added JPHM
+(proclaim '(special e h g x))
+(defun book-1 ()
+  (setq *atms* (create-atms "Step-1")
+        a (tms-create-node *atms* "A")
+        c (tms-create-node *atms* "C")
+        e (tms-create-node *atms* "E")
+        h (tms-create-node *atms* "H")
+	)
+  (assume-node a)
+  (assume-node c)
+  (assume-node e)
+  (justify-node 'r1 h (list c e))
+
+  (setq g (tms-create-node *atms* "G"))
+  (justify-node 'r2 g (list a c))
+  
+  (setq x (tms-create-node *atms* "X"))
+  (make-contradiction x)
+  (justify-node 'r3 x (list g))
+
+  (setq b (tms-create-node *atms* "B" :assumptionp t))
+  (justify-node 'r4 h (list b c))
+  
+  (why-nodes *atms*)
+  (print-envs *atms*)
+  ) ; end defun book-1
