@@ -17,6 +17,7 @@
 
 package org.maraist.truthmaintenancesystems.justificationbased.ruleengine
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
+import org.maraist.truthmaintenancesystems.justificationbased.{Node}
 
 type Justification[D, I] = Just[D, I] | Symbol
 

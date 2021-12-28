@@ -22,7 +22,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.ruleengine.*
 
-trait JTMScoreEx3 extends JTMSexample[Symbol, String] {
+trait JTMScoreEx3 extends JTMSexample[Symbol, String, Rule[String]] {
   val na = j.createNode(Symbol("A"), assumptionP = true)
   val nc = j.createNode(Symbol("C"), assumptionP = true)
   val ne = j.createNode(Symbol("E"), assumptionP = true)
@@ -42,7 +42,7 @@ trait JTMScoreEx3 extends JTMSexample[Symbol, String] {
 }
 
 class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
-    with JTMSexample[Symbol, String]("JTMS+JTRE multiple support example") {
+    with JTMSexample[Symbol, String, Rule[String]]("JTMS+JTRE multiple support example") {
   "JTMS+JTRE ex3" `should` "all pass" in {
     val changed = new HashSet[Rule[String]]
     val enqueuef: (Rule[String] => Unit) =

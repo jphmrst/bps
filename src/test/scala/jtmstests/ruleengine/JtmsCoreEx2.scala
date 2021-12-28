@@ -23,7 +23,7 @@ import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.ruleengine.*
 
 class JTMScoreEx2 extends AnyFlatSpec with Matchers with JTMScoreEx1
-    with JTMSexample[Symbol, String]("JTMS+JTRE simple example") {
+    with JTMSexample[Symbol, String, Unit]("JTMS+JTRE simple example") {
   val contra = j.createNode(Symbol("Loser"), contradictionP = true)
 
   override def beliefsString: String =

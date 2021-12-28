@@ -21,9 +21,10 @@ import scala.collection.mutable.ListBuffer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.ruleengine.*
+import org.maraist.truthmaintenancesystems.justificationbased.JTMS
 
-trait JTMSexample[DatumType, InformantType](name: String) {
-  val j = new JTMS[DatumType, InformantType](name, debugging = false)
+trait JTMSexample[DatumType, InformantType, R](name: String) {
+  val j = new JTMS[DatumType, InformantType, R](name, debugging = false)
 
   def beliefsString: String
   def contradictoryString: String
