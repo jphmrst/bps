@@ -31,10 +31,10 @@ trait JTMScoreEx1 extends JTMSexample[Symbol, String, Nothing] {
   val nf = j.createNode(Symbol("f"), assumptionP = true)
   val ng = j.createNode(Symbol("g"), assumptionP = true)
 
-  j.justifyNode("j1", nf, ListBuffer(na, nb))
-  j.justifyNode("j2", ne, ListBuffer(nb, nc))
-  j.justifyNode("j3", ng, ListBuffer(na, ne))
-  j.justifyNode("j4", ng, ListBuffer(nd, ne))
+  j.justifyNode("j1", nf, List(na, nb))
+  j.justifyNode("j2", ne, List(nb, nc))
+  j.justifyNode("j3", ng, List(na, ne))
+  j.justifyNode("j4", ng, List(nd, ne))
 
   def beliefsString: String = s"a:${na.believed} b:${nb.believed} c:${nc.believed} d:${nd.believed} e:${ne.believed} f:${nf.believed} g:${ng.believed}"
 

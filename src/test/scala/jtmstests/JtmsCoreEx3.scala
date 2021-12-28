@@ -17,7 +17,7 @@
 
 package org.maraist.truthmaintenancesystems.justificationbased.tests
 import scala.language.adhocExtensions
-import scala.collection.mutable.{ListBuffer,HashSet}
+import scala.collection.mutable.{HashSet}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.*
@@ -32,9 +32,9 @@ trait JTMScoreEx3 extends JTMSexample[Symbol, String, Unit] {
   val contradiction =
     j.createNode(Symbol("CONTRADICTION"), contradictionP = true)
 
-  j.justifyNode("R1", nh, ListBuffer(nc, ne))
-  j.justifyNode("R2", ng, ListBuffer(na, nc))
-  j.justifyNode("R3", contradiction, ListBuffer(ng))
+  j.justifyNode("R1", nh, List(nc, ne))
+  j.justifyNode("R2", ng, List(na, nc))
+  j.justifyNode("R3", contradiction, List(ng))
 
   def beliefsString: String = s"a:${na.believed} c:${nc.believed} e:${ne.believed} g:${ng.believed} h:${nh.believed} X:${contradiction.believed}"
 

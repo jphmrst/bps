@@ -22,7 +22,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.ruleengine.*
 
-trait JTMScoreEx3 extends JTMSexample[Symbol, String, Rule[String]] {
+trait JTMScoreEx3 extends JTMSexample[Symbol, String, Rule] {
   val na = j.createNode(Symbol("A"), assumptionP = true)
   val nc = j.createNode(Symbol("C"), assumptionP = true)
   val ne = j.createNode(Symbol("E"), assumptionP = true)
@@ -32,9 +32,9 @@ trait JTMScoreEx3 extends JTMSexample[Symbol, String, Rule[String]] {
   val contradiction =
     j.createNode(Symbol("CONTRADICTION"), contradictionP = true)
 
-  j.justifyNode("R1", nh, ListBuffer(nc, ne))
-  j.justifyNode("R2", ng, ListBuffer(na, nc))
-  j.justifyNode("R3", contradiction, ListBuffer(ng))
+  j.justifyNode("R1", nh, List(nc, ne))
+  j.justifyNode("R2", ng, List(na, nc))
+  j.justifyNode("R3", contradiction, List(ng))
 
   def beliefsString: String = s"a:${na.believed} c:${nc.believed} e:${ne.believed} g:${ng.believed} h:${nh.believed} X:${contradiction.believed}"
 
@@ -42,10 +42,10 @@ trait JTMScoreEx3 extends JTMSexample[Symbol, String, Rule[String]] {
 }
 
 class JTMScoreEx3Test extends AnyFlatSpec with Matchers with JTMScoreEx3
-    with JTMSexample[Symbol, String, Rule[String]]("JTMS+JTRE multiple support example") {
+    with JTMSexample[Symbol, String, Rule]("JTMS+JTRE multiple support example") {
   "JTMS+JTRE ex3" `should` "all pass" in {
-    val changed = new HashSet[Rule[String]]
-    val enqueuef: (Rule[String] => Unit) =
+    val changed = new HashSet[Rule]
+    val enqueuef: (Rule => Unit) =
       (node) => { changed += node }
     j.enqueueProcedure = Some(enqueuef)
     // showAll("Initially")

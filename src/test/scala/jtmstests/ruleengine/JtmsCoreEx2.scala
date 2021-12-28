@@ -17,7 +17,6 @@
 
 package org.maraist.truthmaintenancesystems.justificationbased.ruleengine.tests
 import scala.language.adhocExtensions
-import scala.collection.mutable.ListBuffer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.*
 import org.maraist.truthmaintenancesystems.justificationbased.ruleengine.*
@@ -39,7 +38,7 @@ class JTMScoreEx2 extends AnyFlatSpec with Matchers with JTMScoreEx1
     nd.enableAssumption
 
     // showAll(s"Before contra justify")
-    j.justifyNode("j5", contra, ListBuffer(ne, nf))
+    j.justifyNode("j5", contra, List(ne, nf))
     // showAll(s"After contra justify")
 
     // (Defun ex2 () ;; uses Ex1 to test the contradiction stuff.
