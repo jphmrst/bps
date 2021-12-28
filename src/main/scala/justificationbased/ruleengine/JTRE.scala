@@ -16,7 +16,7 @@
 // language governing permissions and limitations under the License.
 
 package org.maraist.truthmaintenancesystems.justificationbased.ruleengine
-import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
+import scala.collection.mutable.{HashSet, HashMap, Queue}
 import org.maraist.truthmaintenancesystems.justificationbased.{
   JTMS, Node, Just, Justification, UserStipulation}
 
@@ -231,8 +231,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
     )
 
     // jtms.justifyNode(factList.head, node, factList.tail.map((f) => referent(f, true).get.node))
-    ??? // TODO Come back to this --- we have a list here but
-        // ListBuffer expeted, probably unnecessarily.
+    ??? // TODO Come back to this
   }
 
   /**
