@@ -28,7 +28,8 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
   * @tparam R Type of rules which may be associated with each node of
   * a [[JTMS]].
   */
-type Justification[D, I, R] = Just[D, I, R] | EnabledAssumption
+type Justification[D, I, R] =
+  Just[D, I, R] | EnabledAssumption | UserStipulation
 
 /**
   * Representation of node belief support when the node is believed as
@@ -45,6 +46,23 @@ object EnabledAssumption extends EnabledAssumption {
     * class.
     */
   def unapply(e: EnabledAssumption): Some[Unit] = Some(())
+}
+
+/**
+  * Representation of node belief support following the stipulation of
+  * an external system.
+  */
+class UserStipulation private ()
+/**
+  * Singleton representation of node belief support when the node is
+  * believed as an assumption by the external system.
+  */
+object UserStipulation extends UserStipulation {
+  /**
+    * Universal match to the singleton instance of this evidence
+    * class.
+    */
+  def unapply(e: UserStipulation): Some[Unit] = Some(())
 }
 
 /** Representation of a justification allowing belief in some [[Node]]

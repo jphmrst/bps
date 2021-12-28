@@ -131,9 +131,9 @@ class Node[D, I, R] (
   def isPremise: Boolean = support match {
     case None => false
     case Some(sup) => sup match {
-      case _: EnabledAssumption => true
       case just: Just[D, I, R] => just.antecedents.isEmpty
-      // case n: Node[D, I, R] => false // TODO Come back to this --- what if it's a Node here?
+      case _: EnabledAssumption => true
+      case _: UserStipulation => true
     }
   }
   // (defun tms-node-premise? (node &aux support)
@@ -251,6 +251,8 @@ class Node[D, I, R] (
     jtms.dbg(reason match {
       case _: EnabledAssumption =>
         s"     Making $this in as enabled assumption."
+      case _: UserStipulation =>
+        s"     Making $this in as a user stipulation."
       case j: Just[D, I, R] => {
         val mapped = j.antecedents.map(jtms.nodeString)
         s"     Making $this in via ${j.informant} :: $mapped."
@@ -321,6 +323,7 @@ class Node[D, I, R] (
           && !support.map(_ match {
             case j: Just[D, I, R] => j.antecedents.isEmpty
             case _: EnabledAssumption => true // TODO Really?
+            case _: UserStipulation => true // TODO Really?
           }).getOrElse(false) then {
         support = Some(EnabledAssumption)
       }
@@ -390,8 +393,9 @@ class Node[D, I, R] (
         assumptions += node
       } else if node.isInNode then {
         node.support.map(_ match {
-          case _: EnabledAssumption  => { }
           case j: Just[D, I, R] => { queue ++= j.antecedents }
+          case _: EnabledAssumption  => { }
+          case _: UserStipulation  => { }
         })
       }
       marking(node.index) = true
@@ -419,6 +423,8 @@ class Node[D, I, R] (
     support match {
       case Some(_: EnabledAssumption)  =>
         println(s"${nodeString} is an enabled assumption")
+      case Some(_: UserStipulation)  =>
+        println(s"${nodeString} is a user stipulation")
       case Some(j: Just[D, I, R]) => {
         println(s"${nodeString} is IN via ${j.informant} on")
         j.antecedents.map((a) => println(s"  ${a.nodeString}"))
@@ -451,6 +457,8 @@ class Node[D, I, R] (
     support match {
       case Some(_: EnabledAssumption) =>
         println("- Supported: enabled assumption")
+      case Some(_: UserStipulation) =>
+        println("- Supported: user stipulation")
       case Some(j: Just[D, I, R]) =>
         println(s"- IN via ${j.informant} (${j.index})")
       case None => println(s"- OUT")
