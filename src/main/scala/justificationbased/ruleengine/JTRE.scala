@@ -223,15 +223,18 @@ class JTRE(val title: String, val debugging: Boolean = false) {
       case ListFact(l) => l
       case SymbolFact(_) => List(fact)
     }
-    val datum = referent(fact, true).get
+    val datum = getReferent(fact)
     val node = datum.node
     dbgJtre(
       this,
       s"    Asserting (${factList.map(_.toString).mkString(", ")}) via $just"
     )
 
-    // jtms.justifyNode(factList.head, node, factList.tail.map((f) => referent(f, true).get.node))
-    ??? // TODO Come back to this
+    jtms.justifyNode(
+      factList.head,
+      node,
+      factList.tail.map((f) => getReferent(f).node))
+    datum
   }
 
   /**
@@ -398,6 +401,23 @@ class JTRE(val title: String, val debugging: Boolean = false) {
     *
     *
     * @param fact
+    * @return
+    *
+    * **Translated from**:
+    * <pre>
+;; From jdata.lisp
+(defun referent (fact &optional (virtual? nil)
+                 (*JTRE* *JTRE*))
+  (if virtual? (insert fact) (referent1 fact)))
+</pre>
+    */
+  def checkReferent(fact: Fact): Option[Datum] =
+    getDbClass(fact).referent1(fact)
+
+  /**
+    *
+    *
+    * @param fact
     * @param isVirtual
     * @return
     *
@@ -409,9 +429,8 @@ class JTRE(val title: String, val debugging: Boolean = false) {
   (if virtual? (insert fact) (referent1 fact)))
 </pre>
     */
-  def referent(fact: Fact, isVirtual: Boolean = false): Option[Datum] = {
-    ???
-  }
+  def getReferent(fact: Fact): Datum =
+    getDbClass(fact).insert(fact) match { case (datum, _) => datum }
 
   /**
     *
@@ -426,7 +445,7 @@ class JTRE(val title: String, val debugging: Boolean = false) {
     (datum-assumption? r)))
 </pre>
     */
-  def isAlreadyAssumed(fact: Fact): Boolean = referent(fact) match {
+  def isAlreadyAssumed(fact: Fact): Boolean = checkReferent(fact) match {
     case None => false
     case Some(r) => r.isAssumption
   }
