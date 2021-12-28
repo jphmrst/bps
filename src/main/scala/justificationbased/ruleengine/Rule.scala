@@ -34,10 +34,10 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
   body)        ; Procedure that does the work.
 </pre>
   */
-abstract class Rule[I](val id: Int, val dbClass: DbClass[I]) {
+abstract class Rule(val id: Int, val dbClass: DbClass) {
   type V
   def matcher(m: Fact): Option[V]
-  def body(jtre: JTRE[I], values: V): Unit
+  def body(jtre: JTRE, values: V): Unit
 
   /**
     *
@@ -113,7 +113,7 @@ abstract class Rule[I](val id: Int, val dbClass: DbClass[I]) {
       (enqueue (cons (rule-body rule) bindings) *JTRE*)))))
 </pre>
     */
-  def tryRuleOn(datum: Datum[I]): Unit = {
+  def tryRuleOn(datum: Datum): Unit = {
     val jtre = datum.dbClass.jtre
     ???
   }
@@ -123,10 +123,10 @@ object Rule {
 
   // Waiting to translate this and other macro-heavy stuff
 
-  def buildRule[V, I](
-    trigger: (Rule[I]) => Option[V],
-    body: (JTRE[I], V) => Unit):
-      Rule[I] = {
+  def buildRule[V](
+    trigger: (Rule) => Option[V],
+    body: (JTRE, V) => Unit):
+      Rule = {
     ???
   }
   /*
@@ -251,7 +251,7 @@ object Rule {
                                         ))))))))))
  */
 
-  def generateMatchProcedure[V, I](trigger: (Rule[I]) => Option[V]) = ???
+  def generateMatchProcedure[V](trigger: (Rule) => Option[V]) = ???
   /*
 (defun generate-match-procedure (pattern var test condition)
   (multiple-value-bind (tests binding-specs)

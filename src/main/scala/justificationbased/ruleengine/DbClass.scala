@@ -19,13 +19,13 @@ package org.maraist.truthmaintenancesystems.justificationbased.ruleengine
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap}
 import scala.util.control.NonLocalReturns.*
 
-type DbClassTable[I] = HashMap[Any, Any]
+type DbClassTable = HashMap[Any, Any]
 
-class DbClass[I](
+class DbClass(
   val name: Any,
-  val jtre: JTRE[I],
-  val facts: ListBuffer[Datum[I]],
-  val rules: ListBuffer[Rule[I]]
+  val jtre: JTRE,
+  val facts: ListBuffer[Datum],
+  val rules: ListBuffer[Rule]
 ) {
   // (defstruct (dbclass (:PRINT-FUNCTION jtre-dbclass-printer))
   //   name    ; Corresponding symbol
@@ -41,13 +41,13 @@ class DbClass[I](
 
   def insertRule[Intermed](
     matcherFn: (Fact) => Option[Intermed],
-    bodyFn: (JTRE[I], Intermed) => Unit):
+    bodyFn: (JTRE, Intermed) => Unit):
       Unit = {
     val id = jtre.incfRuleCounter
-    val rule = new Rule[I](id, this) {
+    val rule = new Rule(id, this) {
       type V = Intermed
       def matcher(m: Fact): Option[V] = matcherFn(m)
-      def body(jtre: JTRE[I], values: V): Unit = bodyFn(jtre, values)
+      def body(jtre: JTRE, values: V): Unit = bodyFn(jtre, values)
     }
     rules += rule
     for (candidate <- facts) do rule.tryRuleOn(candidate)
@@ -72,10 +72,10 @@ class DbClass[I](
     * @param fact
     * @return
     */
-  def insert(fact: Fact): (Datum[I], Boolean) = referent1(fact) match {
+  def insert(fact: Fact): (Datum, Boolean) = referent1(fact) match {
     case Some(datum) => (datum, true)
     case None => {
-      val datum = new Datum[I](jtre, fact)
+      val datum = new Datum(jtre, fact)
       tryRules(datum)
       (datum, false)
     }
@@ -94,17 +94,17 @@ class DbClass[I](
   //       (try-rules datum)
   //       (values datum nil))))
 
-  def tryRules(datum: Datum[I]): Unit = {
+  def tryRules(datum: Datum): Unit = {
     for (rule <- datum.dbClass.rules) do rule.tryRuleOn(datum)
   }
   // (defun try-rules (datum)
   //   (dolist (rule (dbclass-rules (datum-dbclass datum)))
   //     (try-rule-on rule datum)))
 
-  def referent1(fact: Fact): Option[Datum[I]] = returning {
+  def referent1(fact: Fact): Option[Datum] = returning {
     for(candidate <- facts)
       do if candidate.fact == fact
-         then throwReturn[Option[Datum[I]]](Some(candidate))
+         then throwReturn[Option[Datum]](Some(candidate))
     None
   }
   // (defun referent1 (fact)
@@ -112,7 +112,7 @@ class DbClass[I](
   //      (when (equal (datum-lisp-form candidate) fact)
   //            (return candidate))))
 
-  def getCandidates(pattern: Fact): ListBuffer[Datum[I]] =
+  def getCandidates(pattern: Fact): ListBuffer[Datum] =
     jtre.getDbClass(pattern).facts
   // (defun get-candidates (pattern)
   //   (dbclass-facts (get-dbclass pattern)))

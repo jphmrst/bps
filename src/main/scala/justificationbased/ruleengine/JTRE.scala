@@ -20,7 +20,7 @@ import scala.collection.mutable.{HashSet, HashMap, Queue}
 import org.maraist.truthmaintenancesystems.justificationbased.{
   JTMS, Node, Just, Justification, UserStipulation}
 
-// type Fact = Symbol | List[Fact]
+// type Fact = Symbol | List
 sealed trait Fact {
   def factToString: String
 }
@@ -140,16 +140,16 @@ particular object, not a special global variable.
 (defun In-Jtre (jtre) (setq *JTRE* jtre))
 </pre>
   */
-class JTRE[I](val title: String, val debugging: Boolean = false) {
+class JTRE(val title: String, val debugging: Boolean = false) {
 
   /** Pointer to its JTMS. */
-  val jtms: JTMS[Datum[I], I, Rule[I]] = new JTMS[Datum[I], I, Rule[I]](
+  val jtms: JTMS[Datum, Fact, Rule] = new JTMS[Datum, Fact, Rule](
     title,
-    // nodeString = (n: Node[Datum[I], I, Rule[I]]) => n.datum.fact.factToString,
+    // nodeString = (n: Node[Datum, Fact, Rule]) => n.datum.fact.factToString,
     enqueueProcedure = Some(this.enqueue))
 
   /** Table of `DbClass`es. */
-  val dbClassTable: DbClassTable[I] = new HashMap[Any, Any]
+  val dbClassTable: DbClassTable = new HashMap[Any, Any]
 
   /** Unique ID generator for asserts. */
   var datumCounter: Int = 0
@@ -169,7 +169,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   var rulesRun: Int = 0
 
   /** Rule queue. */
-  val queue: Queue[Rule[I]] = Queue.empty
+  val queue: Queue[Rule] = Queue.empty
 
   /**
     *
@@ -217,8 +217,8 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   datum)
 </pre>
     */
-  def assert(fact: Fact, just: Justification[Datum[I], I, Rule[I]]):
-      Datum[I] = {
+  def assert(fact: Fact, just: Justification[Datum, Fact, Rule]):
+      Datum = {
     val factList: List[Fact] = fact match {
       case ListFact(l) => l
       case SymbolFact(_) => List(fact)
@@ -247,7 +247,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   (without-contradiction-check (jtre-jtms *JTRE*) (assert! fact just)))
 </pre>
     */
-  def quietAssert(fact: Fact, just: Just[Datum[I], I, Rule[I]]): Datum[I] = {
+  def quietAssert(fact: Fact, just: Just[Datum, Fact, Rule]): Datum = {
     ???
   }
 
@@ -275,7 +275,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   datum)
 </pre>
     */
-  def assume(fact: Fact, reason: Node[Datum[I], I, Rule[I]]): Datum[I] = {
+  def assume(fact: Fact, reason: Node[Datum, Fact, Rule]): Datum = {
     ???
   }
 
@@ -316,9 +316,9 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
     */
   def retract(
     fact: Fact,
-    just: Justification[Datum[I], I, Rule[I]] = UserStipulation,
+    just: Justification[Datum, Fact, Rule] = UserStipulation,
     quiet: Boolean = false):
-      Node[Datum[I], I, Rule[I]] = {
+      Node[Datum, Fact, Rule] = {
     ???
   }
 
@@ -338,7 +338,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
     */
   def uAssert(
     fact: Fact,
-    just: Justification[Datum[I], I, Rule[I]] = UserStipulation):
+    just: Justification[Datum, Fact, Rule] = UserStipulation):
       Unit = {
     ???
   }
@@ -357,7 +357,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   (run-rules *JTRE*))
 </pre>
     */
-  def uAssume(fact: Fact, reason: Node[Datum[I], I, Rule[I]]): Unit = {
+  def uAssume(fact: Fact, reason: Node[Datum, Fact, Rule]): Unit = {
     ???
   }
 
@@ -409,7 +409,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   (if virtual? (insert fact) (referent1 fact)))
 </pre>
     */
-  def referent(fact: Fact, isVirtual: Boolean = false): Option[Datum[I]] = {
+  def referent(fact: Fact, isVirtual: Boolean = false): Option[Datum] = {
     ???
   }
 
@@ -443,7 +443,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   (make-contradiction (datum-tms-node (referent fact t))))
 </pre>
     */
-  def contradiction(fact: Fact): Node[Datum[I], I, Rule[I]] = {
+  def contradiction(fact: Fact): Node[Datum, Fact, Rule] = {
     ???
   }
 
@@ -498,7 +498,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
    (why-node (datum-tms-node r))))
 </pre>
     */
-  def why(fact: Fact): Node[Datum[I], I, Rule[I]] = {
+  def why(fact: Fact): Node[Datum, Fact, Rule] = {
     ???
   }
 
@@ -516,7 +516,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
       (datum-tms-node (referent fact *jtre* t)))))
 </pre>
     */
-  def assumptionsOf(fact: Fact): Node[Datum[I], I, Rule[I]] = {
+  def assumptionsOf(fact: Fact): Node[Datum, Fact, Rule] = {
     ???
   }
 
@@ -535,7 +535,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
          "IN" "OUT")))
 </pre>
     */
-  def sayDatumBelief(pr: Datum[I]): Unit = {
+  def sayDatumBelief(pr: Datum): Unit = {
     ???
   }
 
@@ -624,7 +624,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
    (t (error "Bad dbclass type: ~A" fact))))
 </pre>
     */
-  def getDbClass(fact: Fact): DbClass[I] = {
+  def getDbClass(fact: Fact): DbClass = {
     ???
   }
 
@@ -642,7 +642,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
       (jtre-dbclass-table *JTRE*)))
 </pre>
     */
-  def mapDbClass(proc: (DbClass[I]) => Unit): Unit = {
+  def mapDbClass(proc: (DbClass) => Unit): Unit = {
     ???
   }
 
@@ -658,7 +658,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   (datum-tms-node (referent fact t)))
 </pre>
     */
-  def getTmsNode(fact: Fact): Node[Datum[I], I, Rule[I]] = {
+  def getTmsNode(fact: Fact): Node[Datum, Fact, Rule] = {
     ???
   }
 
@@ -677,7 +677,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
                 (return-from GET-DATUM datum))))))
 </pre>
     */
-  def getDatum(num: Int): Datum[I] = {
+  def getDatum(num: Int): Datum = {
     ???
   }
 
@@ -694,7 +694,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
      (return-from GET-just just))))
 </pre>
     */
-  def getJust(num: Int): Just[Datum[I], I, Rule[I]] = {
+  def getJust(num: Int): Just[Datum, Fact, Rule] = {
     ???
   }
 
@@ -731,7 +731,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
                           (return-from GET-RULE rule))))))
 </pre>
     */
-  def getRule(num: Int): Rule[I] = {
+  def getRule(num: Int): Rule = {
     ???
   }
 
@@ -755,7 +755,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
 (defun enqueue (new j) (push new (jtre-queue j)))
 </pre>
     */
-  def enqueue(rule: Rule[I]): Unit = queue.enqueue(rule)
+  def enqueue(rule: Rule): Unit = queue.enqueue(rule)
 
   /**
     *
@@ -766,7 +766,7 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
 (defun dequeue (jtre) (pop (jtre-queue jtre)))
 </pre>
     */
-  def dequeue: Rule[I] = queue.dequeue
+  def dequeue: Rule = queue.dequeue
 }
 
   /**
@@ -779,5 +779,5 @@ class JTRE[I](val title: String, val debugging: Boolean = false) {
   `(when (jtre-debugging *JTRE*) (format t ,msg  ,@args)))
 </pre>
     */
-inline def dbgJtre[I](jtre: JTRE[I], msg: String) =
+inline def dbgJtre(jtre: JTRE, msg: String) =
   if jtre.debugging then println(msg)

@@ -33,13 +33,13 @@ import org.maraist.truthmaintenancesystems.justificationbased.{
   * @param dbClass
   * @param jtms
   */
-class Datum[I] private[justificationbased] (jtre: JTRE[I], val fact: Fact) {
+class Datum private[justificationbased] (jtre: JTRE, val fact: Fact) {
 
   val id: Int = jtre.incfDatumCounter
 
-  val dbClass: DbClass[I] = jtre.getDbClass(fact)
+  val dbClass: DbClass = jtre.getDbClass(fact)
 
-  var node: Node[Datum[I], I, Rule[I]] = jtre.jtms.createNode(this)
+  var node: Node[Datum, Fact, Rule] = jtre.jtms.createNode(this)
 
   var isAssumption: Boolean = false
 
