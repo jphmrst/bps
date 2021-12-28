@@ -251,7 +251,7 @@ class JTMS[D, I, R](
   def justifyNode(
     informant: I,
     consequence: Node[D, I, R],
-    antecedents: ListBuffer[Node[D, I, R]]):
+    antecedents: List[Node[D, I, R]]):
       Unit = {
     // Create the structure to represent this inference rule.
     val just =

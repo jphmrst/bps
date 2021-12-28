@@ -86,7 +86,7 @@ class Just[D, I, R](
   val index: Int,
   val informant: I,
   val consequence: Node[D, I, R],
-  val antecedents: ListBuffer[Node[D, I, R]]
+  val antecedents: List[Node[D, I, R]]
 ) {
   // (defstruct (just (:PRINT-FUNCTION print-just))
   //   (index 0)
