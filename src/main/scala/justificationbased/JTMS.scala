@@ -97,7 +97,7 @@ class JTMS[D, I, R](
   val nodeString: (Node[D, I, R]) => String =
     (n: Node[D, I, R]) => s"${n.datum.toString()}",
   var debugging: Boolean = false,
-  val checkingContradictions: Boolean = true,
+  var checkingContradictions: Boolean = true,
   var enqueueProcedure: Option[(R) => Unit] = None,
   var contradictionHandler:
       Option[(JTMS[D, I, R], ListBuffer[Node[D, I, R]]) => Unit] = None
@@ -411,9 +411,41 @@ class JTMS[D, I, R](
 
   // (defmacro without-contradiction-check (jtms &body body)
   //   (contradiction-check jtms nil body))
+  inline def withoutContradictionCheck[A](body: () => A): A =
+    contradictionCheck(false, body)
 
   // (defmacro with-contradiction-check (jtms &body body)
   //   (contradiction-check jtms t body))
+  inline def withContradictionCheck[A](body: () => A): A =
+    contradictionCheck(true, body)
+
+  /**
+    *
+    * @group internal
+    *
+    * @return
+    *
+    * **Translated from**:
+    * <pre>
+(defun contradiction-check (jtms flag body)
+  (let ((jtmsv (gensym)) (old-value (gensym)))
+    `(let* ((,jtmsv ,jtms)
+            (,old-value (jtms-checking-contradictions ,jtmsv)))
+       (unwind-protect
+           (progn (setf (jtms-checking-contradictions ,jtmsv) ,flag) ,@body)
+         (setf (jtms-checking-contradictions ,jtmsv) ,old-value)))))
+</pre>
+    */
+  inline def contradictionCheck[A](flag: Boolean, body: () => A): A = {
+    val oldFlag = checkingContradictions
+    checkingContradictions = flag
+    try {
+      body()
+    } finally {
+      checkingContradictions = oldFlag
+    }
+  }
+
 
   /** Return the list of the currently enabled assumptions.
     *

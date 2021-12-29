@@ -41,7 +41,7 @@ class Datum private[justificationbased] (jtre: JTRE, val fact: Fact) {
 
   var node: Node[Datum, Fact, Rule] = jtre.jtms.createNode(this)
 
-  var isAssumption: Boolean = false
+  var isAssumption: Option[Fact] = None
 
   dbClass.facts += this
 

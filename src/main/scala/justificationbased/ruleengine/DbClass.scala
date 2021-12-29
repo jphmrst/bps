@@ -118,13 +118,3 @@ class DbClass(
   //   (dbclass-facts (get-dbclass pattern)))
 }
 
-  // (defmacro rassert! (fact just)
-  //   `(assert! ,(quotize fact) ,(quotize just)))
-
-  // ;;;; Retraction
-
-  // (defmacro rretract! (fact &optional (just 'USER))
-  //   `(retract! ,(quotize fact) ,(quotize just)))
-
-
-  // ;;;; More query routines

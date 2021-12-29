@@ -18,7 +18,7 @@
 package org.maraist.truthmaintenancesystems.justificationbased.ruleengine
 import scala.collection.mutable.{HashSet, HashMap, Queue}
 import org.maraist.truthmaintenancesystems.justificationbased.{
-  JTMS, Node, Just, Justification, UserStipulation}
+  JTMS, Node, Just, Justification, UserStipulation, TmsError}
 
 // type Fact = Symbol | List
 sealed trait Fact {
@@ -120,16 +120,6 @@ Does not seem to be used anywhere — leaving untranslated. [JM]
             (unless (member ante so-far)
               (push ante so-far)
               (push ante new-antes))))))))
-
-Called from some examples only — leaving untranslated for now. [JM]
-  //
-(defun run-rules (&optional (*JTRE* *JTRE*))
-  (do ((form (dequeue *JTRE*) (dequeue *JTRE*))
-       (counter 0 (1+ counter)))
-      ((null form)
-       (debugging-jtre "~%    ~A rules run."  counter)
-       (incf (jtre-rules-run *JTRE*) counter))
-    (apply (car form) (cdr form))))
 
 Not relevant in Scala translation: methods now called against a
 particular object, not a special global variable.
@@ -250,9 +240,8 @@ class JTRE(val title: String, val debugging: Boolean = false) {
   (without-contradiction-check (jtre-jtms *JTRE*) (assert! fact just)))
 </pre>
     */
-  def quietAssert(fact: Fact, just: Just[Datum, Fact, Rule]): Datum = {
-    ???
-  }
+  def quietAssert(fact: Fact, just: Just[Datum, Fact, Rule]): Datum =
+    jtms.withoutContradictionCheck(() => assert(fact, just))
 
   /**
     *
@@ -278,9 +267,28 @@ class JTRE(val title: String, val debugging: Boolean = false) {
   datum)
 </pre>
     */
-  def assume(fact: Fact, reason: Node[Datum, Fact, Rule]): Datum = {
-    ???
+  def assume(fact: Fact, reason: Fact): Datum = {
+    val datum = getReferent(fact)
+    val node = datum.node
+    if datum.isAssumption.isEmpty
+    then {
+      datum.isAssumption = Some(reason)
+      dbgJtre(this, s"Assuming $fact via $reason")
+      node.assumeNode
+    }
+    else if datum.isAssumption.map(_ != reason).getOrElse(true)
+    then throw new TmsError(node,
+      s"Fact ${datum.showDatum} assumed because of ${datum.isAssumption} assumed again because of ${reason}")
+    datum
   }
+
+  // (defmacro rassert! (fact just)
+  //   `(assert! ,(quotize fact) ,(quotize just)))
+
+  // ;;;; Retraction
+
+  // (defmacro rretract! (fact &optional (just 'USER))
+  //   `(retract! ,(quotize fact) ,(quotize just)))
 
   /**
     *
@@ -322,7 +330,27 @@ class JTRE(val title: String, val debugging: Boolean = false) {
     just: Justification[Datum, Fact, Rule] = UserStipulation,
     quiet: Boolean = false):
       Node[Datum, Fact, Rule] = {
-    ???
+    val datum = getReferent(fact)
+    val node = datum.node
+
+    if !node.isAssumption
+    then {
+      if !quiet then println(s"${datum.showDatum} is not an assumption")
+    }
+    else if !node.isInNode
+    then {
+      if !quiet then println(s"The assumption ${fact} is not currently in.")
+    }
+    else if datum.isAssumption.map(_ == just).getOrElse(false)
+    then {
+      dbgJtre(this, s"    Retracting $fact via $just")
+      datum.isAssumption = None
+      node.retractAssumption
+    }
+    else if !quiet
+    then println(s"${just} not source of assumption for ${fact}")
+
+    node
   }
 
   /**
@@ -343,7 +371,8 @@ class JTRE(val title: String, val debugging: Boolean = false) {
     fact: Fact,
     just: Justification[Datum, Fact, Rule] = UserStipulation):
       Unit = {
-    ???
+    assert(fact, just)
+    runRules
   }
 
   /**
@@ -361,7 +390,8 @@ class JTRE(val title: String, val debugging: Boolean = false) {
 </pre>
     */
   def uAssume(fact: Fact, reason: Node[Datum, Fact, Rule]): Unit = {
-    ???
+    assume(fact, reason)
+    runRules
   }
 
   /**
@@ -380,6 +410,24 @@ class JTRE(val title: String, val debugging: Boolean = false) {
 </pre>
     */
   def run: Unit = {
+    ???
+  }
+
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+(defun run-rules (&optional (*JTRE* *JTRE*))
+  (do ((form (dequeue *JTRE*) (dequeue *JTRE*))
+       (counter 0 (1+ counter)))
+      ((null form)
+       (debugging-jtre "~%    ~A rules run."  counter)
+       (incf (jtre-rules-run *JTRE*) counter))
+    (apply (car form) (cdr form))))
+</pre>
+    */
+  def runRules: Unit = {
     ???
   }
 
@@ -447,7 +495,7 @@ class JTRE(val title: String, val debugging: Boolean = false) {
     */
   def isAlreadyAssumed(fact: Fact): Boolean = checkReferent(fact) match {
     case None => false
-    case Some(r) => r.isAssumption
+    case Some(r) => !r.isAssumption.isEmpty
   }
 
   /**
