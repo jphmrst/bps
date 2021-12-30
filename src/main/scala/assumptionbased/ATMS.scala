@@ -947,6 +947,10 @@ class ATMS[D, I, R](
     * of this class.  The other two functions correspond to the two
     * methods.
     *
+    * Forbus and de Kleer refer to the Lisp functions translated as
+    * the methods of this class as "extremely primitive and
+    * inefficient."
+    *
     * **Value fields and initialization translated from**:
     * <pre>
 ; From atms.lisp
@@ -1005,7 +1009,7 @@ class ATMS[D, I, R](
     for (choice <- choiceSets.head) do {
       // dbg(s"- Calling depthSolutions with choice ${Blurb.env(// choice)}")
       // dbg(s"-                             choice sets ${Blurb.envLL(choiceSets.tail)}")
-      getDepthSolutions1(choice, choiceSets.tail)
+      getDepthSolutions(choice, choiceSets.tail)
       // dbg(s"-     => solutions ${Blurb.envLB(solutionsBuffer)}")
     }
 
@@ -1022,9 +1026,8 @@ class ATMS[D, I, R](
           do extendViaDefaults(solution, defaults, defaults)
       }
     }
-
-    /**
-      * Extend solutions list for a partial solution.
+    /** Extend solutions list for a partial solution by a depth-first
+      * backtrack search.
       *
       * **Translated from**:
       * <pre>
@@ -1048,13 +1051,9 @@ class ATMS[D, I, R](
                                  (cdr choice-sets)))))))
 </pre>
       *
-      * @param solution
-      * @param choiceSets
-      * @return
-      *
       * @group internal
       */
-    def getDepthSolutions1(
+    def getDepthSolutions(
       solution: Env[D, I, R],
       choiceSets: List[List[Env[D, I, R]]]):
         Unit =
@@ -1077,12 +1076,12 @@ class ATMS[D, I, R](
         else for (choice <- choiceSets.head) do {
           val newSolution = solution.unionEnv(choice)
           if !newSolution.isNogood
-          then getDepthSolutions1(newSolution, choiceSets.tail)
+          then getDepthSolutions(newSolution, choiceSets.tail)
         }
       }
 
     /**
-      * Refine one solution to reflect default assumptions.
+      * Refine one solution to add as many given defaults as possible.
       *
       * **Translated from**:
       * <pre>
