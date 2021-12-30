@@ -505,7 +505,7 @@ class ATMS[D, I, R](
   }
 
   /**
-    * Update the label of nodes to include the given ENVS
+    * Update the label of node ANTECEDENT to include the given ENVS
     * environments, pruning environments which are a superset of
     * another included enviroment.
     *
@@ -569,7 +569,7 @@ class ATMS[D, I, R](
   ;; Finally, return the last refinement of ENVS.
   envs)
 </pre>
-    * (Comments by JM.)
+    * (Comments in Lisp by JM.)
     *
     * @param antecedent Antecedent node triggering the update.
     * @param origEnvs Environments to incorporate.
@@ -583,18 +583,18 @@ class ATMS[D, I, R](
     * @group internal
     */
   def weave(
-    antecedent: Option[Node[D, I, R]],
+    node: Option[Node[D, I, R]],
     origEnvs: ListBuffer[Env[D, I, R]],
     antecedents: ListBuffer[Node[D, I, R]]):
       ListBuffer[Env[D, I, R]] = {
-    dbg(s"Calling weave with\n  antecedent ${Blurb.nodeOption(antecedent)}\n  origEnvs ${Blurb.envLB(origEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
+    dbg(s"Calling weave with\n  node ${Blurb.nodeOption(node)}\n  origEnvs ${Blurb.envLB(origEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
     var envs = origEnvs.clone
     returning[Unit] {
-      for (node <- antecedents; if node.differsFrom(antecedent)) do {
-        dbg(s" - For antecedent node ${Blurb.node(node)}")
+      for (antecedent <- antecedents; if antecedent.differsFrom(node)) do {
+        dbg(s" - For node antecedent ${Blurb.node(antecedent)}")
         val newEnvs = ListBuffer.empty[Env[D, I, R]]
 
-        for (env <- envs; nodeEnv <- node.label) do {
+        for (env <- envs; nodeEnv <- antecedent.label) do {
           dbg(s"    - For ${Blurb.env(env)} from env, ${Blurb.env(nodeEnv)} from node label")
           val newEnv = env.unionEnv(nodeEnv)
           dbg(s"      Union is ${Blurb.env(newEnv)}")
