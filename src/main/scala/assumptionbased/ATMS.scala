@@ -436,7 +436,8 @@ class ATMS[D, I, R](
   }
 
   /**
-    *
+    * Consider possible new labelling environments for a node for a
+    * new justification which has been introduced.
     *
     * **Translated from**:
     * <pre>
@@ -462,43 +463,57 @@ class ATMS[D, I, R](
     (unless new-envs (return-from update nil))))
 </pre>
     *
-    * @param newEnvs This list may be mutated by this method.
-    * @param consequence
-    * @param just
+    * @param newEnvs The possible new environments for the label of
+    * `node`.  This list may be mutated by this method to remove
+    * duplicates of existing label environments.
+    * @param node The node whose label is under possible expansion.
+    * @param just The new justification node concluding `node`.
     *
     * @group internal
     */
   def update(
     newEnvs: ListBuffer[Env[D, I, R]],
-    consequence: Node[D, I, R],
+    node: Node[D, I, R],
     just: Justification[D, I, R]):
       Unit = {
-    dbg(s"Calling update with\n  ${Blurb.envLB(newEnvs)}\n  consequence ${Blurb.node(consequence)}\n  just ${Blurb.justification(just)}")
+    dbg(s"Calling update with\n  ${Blurb.envLB(newEnvs)}\n  node ${Blurb.node(node)}\n  just ${Blurb.justification(just)}")
 
-    if consequence.isContradictory then {
+    // If the node is a contradiction, then all of the possible
+    // labelling environments are actually newly discovered NOGOODs.
+    if node.isContradictory then {
       for (env <- newEnvs) do newNogood(env, just)
       dbg("  Registered each newEnv as nogood in ATMS")
       return
     }
 
-    // `updateLabel` mutates its argument.
-    consequence.updateLabel(newEnvs)
+    // Update `node`'s label.  Note that `updateLabel` will mutate its
+    // argument to ensure minimality.
+    node.updateLabel(newEnvs)
     if newEnvs.isEmpty then return
 
+    // Call out to the external system to process any pending rules.
     enqueueProcedure.map((enqueuef) => {
-      for (rule <- consequence.rules) do enqueuef(rule)
-      consequence.rules.clear
+      for (rule <- node.rules) do enqueuef(rule)
+      node.rules.clear
     })
 
+    // For every justification which uses `node` as one of its
+    // premises, we must further propagate the new environments.
     returning[Unit] {
-      for (supportedJust <- consequence.consequences) do {
+      for (supportedJust <- node.consequences) do {
         dbg("  Relaying to propagate for ${supportedJust.toString}")
-        propagate(supportedJust, Some(consequence), newEnvs)
+        propagate(supportedJust, Some(node), newEnvs)
+
+        // Remove subsumed and inconsistent environments from the
+        // label.
         val envsToRemove = ListBuffer.empty[Env[D, I, R]]
         for (newEnv <- newEnvs) {
-          if !consequence.label.contains(newEnv) then envsToRemove += newEnv
+          if !node.label.contains(newEnv) then envsToRemove += newEnv
         }
         newEnvs --= envsToRemove
+
+        // If we have pared down the new environments to nothing, we
+        // can quit early.
         if newEnvs.isEmpty then throwReturn(())
       }
     }
@@ -508,6 +523,8 @@ class ATMS[D, I, R](
     * Update the label of node ANTECEDENT to include the given ENVS
     * environments, pruning environments which are a superset of
     * another included enviroment.
+    *
+    * Implements Algorithm 12.3 of /Building Problem Solvers/.
     *
     * **Translated from**:
     * <pre>
@@ -762,7 +779,9 @@ class ATMS[D, I, R](
   /**
     * Internal method to update nodes and tables corresponding to a
     * newly discovered *nogood*, a list of nodes which should not all
-    * be believed.
+    * be believed.  The environment is added to the list of nogoods,
+    * and it (and any supersets of it) are removed from any node's
+    * label.
     *
     * **Translated from**:
     * <pre>
@@ -795,26 +814,30 @@ class ATMS[D, I, R](
     */
   def newNogood(cenv: Env[D, I, R], just: Justification[D, I, R]): Unit = {
     dbg(s"        * New minimal nogood ${cenv.envString}")
+
+    // Mark `cenv` as NOGOOD.
     cenv.nogoodEvidence = Some(just)
     removeEnvFromLabels(cenv)
     nogoodTable.insertInTable(cenv)
+
+    // Remove `cenv` and any superset of `cenv` from any node label
+    // where it is used.
     val count = cenv.count
-    for ((size, sizeEnvs) <- nogoodTable)
-      do if (size > count)
-        then {
-          val sizeEnvRemovals = ListBuffer.empty[Env[D, I, R]]
-          for (old <- sizeEnvs)
-            do if cenv.isSubsetEnv(old) then sizeEnvRemovals += old
-          sizeEnvs --= sizeEnvRemovals
-        }
-    for ((size, sizeEnvs) <- nogoodTable)
-      do if (size > count)
-        then for (old <- sizeEnvs)
-          do if (!old.isNogood && cenv.isSubsetEnv(old))
-            then {
-              old.nogoodEvidence = Some(cenv)
-              removeEnvFromLabels(old)
-            }
+    for ((size, sizeEnvs) <- nogoodTable; if size > count) do {
+      val sizeEnvRemovals = ListBuffer.empty[Env[D, I, R]]
+      for (old <- sizeEnvs; if cenv.isSubsetEnv(old))
+        do sizeEnvRemovals += old
+      sizeEnvs --= sizeEnvRemovals
+    }
+    for (
+      (size, sizeEnvs) <- nogoodTable;
+      if size > count;
+      old <- sizeEnvs;
+      if (!old.isNogood && cenv.isSubsetEnv(old)))
+      do {
+        old.nogoodEvidence = Some(cenv)
+        removeEnvFromLabels(old)
+      }
   }
 
   /**
