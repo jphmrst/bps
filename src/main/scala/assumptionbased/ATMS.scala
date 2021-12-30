@@ -407,7 +407,9 @@ class ATMS[D, I, R](
 
   /**
     * Propagate changes in ANTECEDENT's label for the given
-    * JUSTification.
+    * JUSTification.  This method may be called recursively to
+    * incrementally update additional justifications; in this case an
+    * `antecedent` and restricted environments are provided.
     *
     * **Translated from**:
     * <pre>
@@ -436,7 +438,8 @@ class ATMS[D, I, R](
   }
 
   /**
-    *
+    * Consider possible new labelling environments for a node for a
+    * new justification which has been introduced.
     *
     * **Translated from**:
     * <pre>
@@ -462,52 +465,68 @@ class ATMS[D, I, R](
     (unless new-envs (return-from update nil))))
 </pre>
     *
-    * @param newEnvs This list may be mutated by this method.
-    * @param consequence
-    * @param just
+    * @param newEnvs The possible new environments for the label of
+    * `node`.  This list may be mutated by this method to remove
+    * duplicates of existing label environments.
+    * @param node The node whose label is under possible expansion.
+    * @param just The new justification node concluding `node`.
     *
     * @group internal
     */
   def update(
     newEnvs: ListBuffer[Env[D, I, R]],
-    consequence: Node[D, I, R],
+    node: Node[D, I, R],
     just: Justification[D, I, R]):
       Unit = {
-    dbg(s"Calling update with\n  ${Blurb.envLB(newEnvs)}\n  consequence ${Blurb.node(consequence)}\n  just ${Blurb.justification(just)}")
+    dbg(s"Calling update with\n  ${Blurb.envLB(newEnvs)}\n  node ${Blurb.node(node)}\n  just ${Blurb.justification(just)}")
 
-    if consequence.isContradictory then {
+    // If the node is a contradiction, then all of the possible
+    // labelling environments are actually newly discovered NOGOODs.
+    if node.isContradictory then {
       for (env <- newEnvs) do newNogood(env, just)
       dbg("  Registered each newEnv as nogood in ATMS")
       return
     }
 
-    // `updateLabel` mutates its argument.
-    consequence.updateLabel(newEnvs)
+    // Update `node`'s label.  Note that `updateLabel` will mutate its
+    // argument to ensure minimality.
+    node.updateLabel(newEnvs)
     if newEnvs.isEmpty then return
 
+    // Call out to the external system to process any pending rules.
     enqueueProcedure.map((enqueuef) => {
-      for (rule <- consequence.rules) do enqueuef(rule)
-      consequence.rules.clear
+      for (rule <- node.rules) do enqueuef(rule)
+      node.rules.clear
     })
 
+    // For every justification which uses `node` as one of its
+    // premises, we must further propagate the new environments.
     returning[Unit] {
-      for (supportedJust <- consequence.consequences) do {
+      for (supportedJust <- node.consequences) do {
         dbg("  Relaying to propagate for ${supportedJust.toString}")
-        propagate(supportedJust, Some(consequence), newEnvs)
+        propagate(supportedJust, Some(node), newEnvs)
+
+        // Remove subsumed and inconsistent environments from the
+        // label.
         val envsToRemove = ListBuffer.empty[Env[D, I, R]]
         for (newEnv <- newEnvs) {
-          if !consequence.label.contains(newEnv) then envsToRemove += newEnv
+          if !node.label.contains(newEnv) then envsToRemove += newEnv
         }
         newEnvs --= envsToRemove
+
+        // If we have pared down the new environments to nothing, we
+        // can quit early.
         if newEnvs.isEmpty then throwReturn(())
       }
     }
   }
 
   /**
-    * Update the label of nodes to include the given ENVS
+    * Update the label of node ANTECEDENT to include the given ENVS
     * environments, pruning environments which are a superset of
     * another included enviroment.
+    *
+    * Implements Algorithm 12.3 of /Building Problem Solvers/.
     *
     * **Translated from**:
     * <pre>
@@ -569,52 +588,68 @@ class ATMS[D, I, R](
   ;; Finally, return the last refinement of ENVS.
   envs)
 </pre>
-    * (Comments by JM.)
+    * (Comments in Lisp by JM.)
     *
-    * @param antecedent Antecedent node triggering the update.
-    * @param origEnvs Environments to incorporate.
-    * @param antecedents Nodes impacted by the change.
+    * @param node Antecedent node triggering the update.
+    * @param newEnvs Environments considered for addition to the label
+    * of `node`.
+    * @param antecedents All antecedent nodes of the justification.
+    * Note that `antecedent` will contain `node`; we explicitly check
+    * in the loop over `antecedents` that we do not process `node`.
     *
     * Note that this list is duplicated at the start of the method, so
     * no changes are made to the passed-in argument.
     *
-    * @return The refinement of `origEnvs`.
+    * @return The environments which we should actually add to the
+    * label of `node`.
     *
     * @group internal
     */
   def weave(
-    antecedent: Option[Node[D, I, R]],
-    origEnvs: ListBuffer[Env[D, I, R]],
+    node: Option[Node[D, I, R]],
+    newEnvs: ListBuffer[Env[D, I, R]],
     antecedents: ListBuffer[Node[D, I, R]]):
       ListBuffer[Env[D, I, R]] = {
-    dbg(s"Calling weave with\n  antecedent ${Blurb.nodeOption(antecedent)}\n  origEnvs ${Blurb.envLB(origEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
-    var envs = origEnvs.clone
+    dbg(s"Calling weave with\n  node ${Blurb.nodeOption(node)}\n  newEnvs ${Blurb.envLB(newEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
+
+    // We do not mutate `newEnvs`, but instead make a copy which we
+    // will mutate and return.  We iterate over the `antecedents`
+    // which are not the same as `node`.
+    var envs = newEnvs.clone
     returning[Unit] {
-      for (node <- antecedents; if node.differsFrom(antecedent)) do {
-        dbg(s" - For antecedent node ${Blurb.node(node)}")
+      for (antecedent <- antecedents; if antecedent.differsFrom(node)) do {
+        dbg(s" - For node antecedent ${Blurb.node(antecedent)}")
         val newEnvs = ListBuffer.empty[Env[D, I, R]]
 
-        for (env <- envs; nodeEnv <- node.label) do {
+        // Iterate over the possible pairs of one environment from the
+        // environments `env` to be added, and another environment
+        // from the label of this antecedent, and consider the union
+        // of this pair.
+        for (env <- envs; nodeEnv <- antecedent.label) do {
           dbg(s"    - For ${Blurb.env(env)} from env, ${Blurb.env(nodeEnv)} from node label")
-          val newEnv = env.unionEnv(nodeEnv)
-          dbg(s"      Union is ${Blurb.env(newEnv)}")
-          if !newEnv.isNogood then {
-            if newEnvs.exists(newEnv.isSupersetEnvOf(_))
+          val envUnion = env.unionEnv(nodeEnv)
+
+          // Reject the union if it is /nogood/, make sure it is
+          // minimal, and prune any duplicates.
+          dbg(s"      Union is ${Blurb.env(envUnion)}")
+          if !envUnion.isNogood then {
+            if newEnvs.exists(envUnion.isSupersetEnvOf(_))
             then {
-              dbg("       * Found newEnvs element subset of newEnv")
+              dbg("       * Found newEnvs element subset of envUnion")
             } else {
-              val toRemove = newEnvs.filter((n) => !n.isSupersetEnvOf(newEnv))
+              val toRemove =
+                newEnvs.filter((n) => !n.isSupersetEnvOf(envUnion))
               newEnvs --= toRemove
               dbg(s"       - Removed ${Blurb.envLB(toRemove)}")
-              newEnvs += newEnv
-              dbg(s"       - Added ${Blurb.env(newEnv)}")
+              newEnvs += envUnion
+              dbg(s"       - Added ${Blurb.env(envUnion)}")
               dbg(s"       - newEnvs now ${Blurb.envLB(newEnvs)}")
             }
-          } else dbg("       * newEnv is nogood")
-
-          envs = newEnvs
-          if envs.isEmpty then throwReturn(())
+          } else dbg("       * envUnion is nogood")
         }
+
+        envs = newEnvs
+        if envs.isEmpty then throwReturn(())
       }
     }
     dbg(s" --> result of weave is ${Blurb.envLB(envs)}")
@@ -746,7 +781,9 @@ class ATMS[D, I, R](
   /**
     * Internal method to update nodes and tables corresponding to a
     * newly discovered *nogood*, a list of nodes which should not all
-    * be believed.
+    * be believed.  The environment is added to the list of nogoods,
+    * and it (and any supersets of it) are removed from any node's
+    * label.
     *
     * **Translated from**:
     * <pre>
@@ -779,26 +816,30 @@ class ATMS[D, I, R](
     */
   def newNogood(cenv: Env[D, I, R], just: Justification[D, I, R]): Unit = {
     dbg(s"        * New minimal nogood ${cenv.envString}")
+
+    // Mark `cenv` as NOGOOD.
     cenv.nogoodEvidence = Some(just)
     removeEnvFromLabels(cenv)
     nogoodTable.insertInTable(cenv)
+
+    // Remove `cenv` and any superset of `cenv` from any node label
+    // where it is used.
     val count = cenv.count
-    for ((size, sizeEnvs) <- nogoodTable)
-      do if (size > count)
-        then {
-          val sizeEnvRemovals = ListBuffer.empty[Env[D, I, R]]
-          for (old <- sizeEnvs)
-            do if cenv.isSubsetEnv(old) then sizeEnvRemovals += old
-          sizeEnvs --= sizeEnvRemovals
-        }
-    for ((size, sizeEnvs) <- nogoodTable)
-      do if (size > count)
-        then for (old <- sizeEnvs)
-          do if (!old.isNogood && cenv.isSubsetEnv(old))
-            then {
-              old.nogoodEvidence = Some(cenv)
-              removeEnvFromLabels(old)
-            }
+    for ((size, sizeEnvs) <- nogoodTable; if size > count) do {
+      val sizeEnvRemovals = ListBuffer.empty[Env[D, I, R]]
+      for (old <- sizeEnvs; if cenv.isSubsetEnv(old))
+        do sizeEnvRemovals += old
+      sizeEnvs --= sizeEnvRemovals
+    }
+    for (
+      (size, sizeEnvs) <- nogoodTable;
+      if size > count;
+      old <- sizeEnvs;
+      if (!old.isNogood && cenv.isSubsetEnv(old)))
+      do {
+        old.nogoodEvidence = Some(cenv)
+        removeEnvFromLabels(old)
+      }
   }
 
   /**
@@ -906,6 +947,10 @@ class ATMS[D, I, R](
     * of this class.  The other two functions correspond to the two
     * methods.
     *
+    * Forbus and de Kleer refer to the Lisp functions translated as
+    * the methods of this class as "extremely primitive and
+    * inefficient."
+    *
     * **Value fields and initialization translated from**:
     * <pre>
 ; From atms.lisp
@@ -964,7 +1009,7 @@ class ATMS[D, I, R](
     for (choice <- choiceSets.head) do {
       // dbg(s"- Calling depthSolutions with choice ${Blurb.env(// choice)}")
       // dbg(s"-                             choice sets ${Blurb.envLL(choiceSets.tail)}")
-      getDepthSolutions1(choice, choiceSets.tail)
+      getDepthSolutions(choice, choiceSets.tail)
       // dbg(s"-     => solutions ${Blurb.envLB(solutionsBuffer)}")
     }
 
@@ -981,9 +1026,8 @@ class ATMS[D, I, R](
           do extendViaDefaults(solution, defaults, defaults)
       }
     }
-
-    /**
-      * Extend solutions list for a partial solution.
+    /** Extend solutions list for a partial solution by a depth-first
+      * backtrack search.
       *
       * **Translated from**:
       * <pre>
@@ -1007,13 +1051,9 @@ class ATMS[D, I, R](
                                  (cdr choice-sets)))))))
 </pre>
       *
-      * @param solution
-      * @param choiceSets
-      * @return
-      *
       * @group internal
       */
-    def getDepthSolutions1(
+    def getDepthSolutions(
       solution: Env[D, I, R],
       choiceSets: List[List[Env[D, I, R]]]):
         Unit =
@@ -1036,12 +1076,12 @@ class ATMS[D, I, R](
         else for (choice <- choiceSets.head) do {
           val newSolution = solution.unionEnv(choice)
           if !newSolution.isNogood
-          then getDepthSolutions1(newSolution, choiceSets.tail)
+          then getDepthSolutions(newSolution, choiceSets.tail)
         }
       }
 
     /**
-      * Refine one solution to reflect default assumptions.
+      * Refine one solution to add as many given defaults as possible.
       *
       * **Translated from**:
       * <pre>
