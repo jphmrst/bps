@@ -5,7 +5,7 @@ val scala3Version = "3.1.0"
 name := "bps-scala"
 
 // library version
-version := "0.0.3"
+version := "0.0.4"
 
 /////////////////////////////////////////////////////////////////
 // begin maven etc. publishing information

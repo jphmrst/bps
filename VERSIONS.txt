@@ -1,8 +1,9 @@
 #  -*- org -*-
 
+* Version 0.4
+  - Documentation in both JTMS and ATMS.
 * Version 0.3
   - Contains a mostly-working version of a standalone ATMS.
-
 * Version 0.2
   - Separation of the standalone JTMS from (untranslated) JTMS+JTRE
     wrapper.
@@ -11,7 +12,6 @@
     - There may be additional type parameters in later versions of
       the standalone JTMS.
   - First version containing this file.
-
 * Version 0.1
   Initial release
   - Contains a mostly-working version of the standalone JTMS.
