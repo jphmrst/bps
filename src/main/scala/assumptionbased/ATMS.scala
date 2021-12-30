@@ -407,7 +407,9 @@ class ATMS[D, I, R](
 
   /**
     * Propagate changes in ANTECEDENT's label for the given
-    * JUSTification.
+    * JUSTification.  This method may be called recursively to
+    * incrementally update additional justifications; in this case an
+    * `antecedent` and restricted environments are provided.
     *
     * **Translated from**:
     * <pre>
