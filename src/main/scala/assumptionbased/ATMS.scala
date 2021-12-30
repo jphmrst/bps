@@ -571,50 +571,66 @@ class ATMS[D, I, R](
 </pre>
     * (Comments in Lisp by JM.)
     *
-    * @param antecedent Antecedent node triggering the update.
-    * @param origEnvs Environments to incorporate.
-    * @param antecedents Nodes impacted by the change.
+    * @param node Antecedent node triggering the update.
+    * @param newEnvs Environments considered for addition to the label
+    * of `node`.
+    * @param antecedents All antecedent nodes of the justification.
+    * Note that `antecedent` will contain `node`; we explicitly check
+    * in the loop over `antecedents` that we do not process `node`.
     *
     * Note that this list is duplicated at the start of the method, so
     * no changes are made to the passed-in argument.
     *
-    * @return The refinement of `origEnvs`.
+    * @return The environments which we should actually add to the
+    * label of `node`.
     *
     * @group internal
     */
   def weave(
     node: Option[Node[D, I, R]],
-    origEnvs: ListBuffer[Env[D, I, R]],
+    newEnvs: ListBuffer[Env[D, I, R]],
     antecedents: ListBuffer[Node[D, I, R]]):
       ListBuffer[Env[D, I, R]] = {
-    dbg(s"Calling weave with\n  node ${Blurb.nodeOption(node)}\n  origEnvs ${Blurb.envLB(origEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
-    var envs = origEnvs.clone
+    dbg(s"Calling weave with\n  node ${Blurb.nodeOption(node)}\n  newEnvs ${Blurb.envLB(newEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
+
+    // We do not mutate `newEnvs`, but instead make a copy which we
+    // will mutate and return.  We iterate over the `antecedents`
+    // which are not the same as `node`.
+    var envs = newEnvs.clone
     returning[Unit] {
       for (antecedent <- antecedents; if antecedent.differsFrom(node)) do {
         dbg(s" - For node antecedent ${Blurb.node(antecedent)}")
         val newEnvs = ListBuffer.empty[Env[D, I, R]]
 
+        // Iterate over the possible pairs of one environment from the
+        // environments `env` to be added, and another environment
+        // from the label of this antecedent, and consider the union
+        // of this pair.
         for (env <- envs; nodeEnv <- antecedent.label) do {
           dbg(s"    - For ${Blurb.env(env)} from env, ${Blurb.env(nodeEnv)} from node label")
-          val newEnv = env.unionEnv(nodeEnv)
-          dbg(s"      Union is ${Blurb.env(newEnv)}")
-          if !newEnv.isNogood then {
-            if newEnvs.exists(newEnv.isSupersetEnvOf(_))
+          val envUnion = env.unionEnv(nodeEnv)
+
+          // Reject the union if it is /nogood/, make sure it is
+          // minimal, and prune any duplicates.
+          dbg(s"      Union is ${Blurb.env(envUnion)}")
+          if !envUnion.isNogood then {
+            if newEnvs.exists(envUnion.isSupersetEnvOf(_))
             then {
-              dbg("       * Found newEnvs element subset of newEnv")
+              dbg("       * Found newEnvs element subset of envUnion")
             } else {
-              val toRemove = newEnvs.filter((n) => !n.isSupersetEnvOf(newEnv))
+              val toRemove =
+                newEnvs.filter((n) => !n.isSupersetEnvOf(envUnion))
               newEnvs --= toRemove
               dbg(s"       - Removed ${Blurb.envLB(toRemove)}")
-              newEnvs += newEnv
-              dbg(s"       - Added ${Blurb.env(newEnv)}")
+              newEnvs += envUnion
+              dbg(s"       - Added ${Blurb.env(envUnion)}")
               dbg(s"       - newEnvs now ${Blurb.envLB(newEnvs)}")
             }
-          } else dbg("       * newEnv is nogood")
-
-          envs = newEnvs
-          if envs.isEmpty then throwReturn(())
+          } else dbg("       * envUnion is nogood")
         }
+
+        envs = newEnvs
+        if envs.isEmpty then throwReturn(())
       }
     }
     dbg(s" --> result of weave is ${Blurb.envLB(envs)}")
