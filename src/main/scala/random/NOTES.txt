@@ -1,0 +1,133 @@
+# -*- org -*-
+
+* Checking runtimes for data structure picks
+** Configuration
+   - 300 assumptions
+   - 8000 non-assumptions
+   - 5% chance of a node being a contradiction
+   - 10-12 justifications per conclusion
+   - 6-12 antecedents per justification
+   - not cyclic
+
+** 0.3 tagged release — Average time 6,308ms
+#+begin_example
+[info] running org.maraist.truthmaintenancesystems.random.randomAtms
+(1) 8,301 nodes, 87,884 justifications, elapsed time 10,962ms
+(2) 8,301 nodes, 88,032 justifications, elapsed time 6,265ms
+(3) 8,301 nodes, 88,003 justifications, elapsed time 6,255ms
+(4) 8,301 nodes, 87,999 justifications, elapsed time 6,176ms
+(5) 8,301 nodes, 88,020 justifications, elapsed time 6,192ms
+(6) 8,301 nodes, 87,871 justifications, elapsed time 6,206ms
+(7) 8,301 nodes, 88,049 justifications, elapsed time 6,202ms
+(8) 8,301 nodes, 87,925 justifications, elapsed time 6,397ms
+(9) 8,301 nodes, 87,989 justifications, elapsed time 6,482ms
+(10) 8,301 nodes, 87,932 justifications, elapsed time 6,523ms
+(11) 8,301 nodes, 87,990 justifications, elapsed time 6,141ms
+(12) 8,301 nodes, 88,090 justifications, elapsed time 6,087ms
+(13) 8,301 nodes, 87,959 justifications, elapsed time 6,220ms
+(14) 8,301 nodes, 88,003 justifications, elapsed time 6,353ms
+(15) 8,301 nodes, 87,878 justifications, elapsed time 6,283ms
+(16) 8,301 nodes, 87,974 justifications, elapsed time 6,399ms
+(17) 8,301 nodes, 88,085 justifications, elapsed time 6,465ms
+(18) 8,301 nodes, 87,824 justifications, elapsed time 6,430ms
+(19) 8,301 nodes, 87,946 justifications, elapsed time 6,365ms
+(20) 8,301 nodes, 88,078 justifications, elapsed time 6,395ms
+(21) 8,301 nodes, 87,896 justifications, elapsed time 6,294ms
+(22) 8,301 nodes, 88,052 justifications, elapsed time 6,108ms
+(23) 8,301 nodes, 88,031 justifications, elapsed time 6,242ms
+(24) 8,301 nodes, 88,003 justifications, elapsed time 6,175ms
+(25) 8,301 nodes, 88,116 justifications, elapsed time 6,126ms
+(26) 8,301 nodes, 88,000 justifications, elapsed time 6,103ms
+(27) 8,301 nodes, 87,935 justifications, elapsed time 6,288ms
+(28) 8,301 nodes, 87,958 justifications, elapsed time 6,292ms
+(29) 8,301 nodes, 88,031 justifications, elapsed time 6,317ms
+(30) 8,301 nodes, 88,173 justifications, elapsed time 6,242ms
+(31) 8,301 nodes, 87,936 justifications, elapsed time 6,118ms
+(32) 8,301 nodes, 88,070 justifications, elapsed time 6,047ms
+(33) 8,301 nodes, 87,871 justifications, elapsed time 6,232ms
+(34) 8,301 nodes, 88,065 justifications, elapsed time 6,097ms
+(35) 8,301 nodes, 87,964 justifications, elapsed time 6,185ms
+(36) 8,301 nodes, 87,872 justifications, elapsed time 6,501ms
+(37) 8,301 nodes, 88,017 justifications, elapsed time 6,403ms
+(38) 8,301 nodes, 88,118 justifications, elapsed time 6,363ms
+(39) 8,301 nodes, 87,855 justifications, elapsed time 6,197ms
+(40) 8,301 nodes, 87,887 justifications, elapsed time 6,246ms
+(41) 8,301 nodes, 88,072 justifications, elapsed time 6,209ms
+(42) 8,301 nodes, 88,077 justifications, elapsed time 6,087ms
+(43) 8,301 nodes, 87,869 justifications, elapsed time 6,274ms
+(44) 8,301 nodes, 88,119 justifications, elapsed time 6,344ms
+(45) 8,301 nodes, 87,982 justifications, elapsed time 6,308ms
+(46) 8,301 nodes, 87,919 justifications, elapsed time 6,484ms
+(47) 8,301 nodes, 88,102 justifications, elapsed time 6,742ms
+(48) 8,301 nodes, 88,105 justifications, elapsed time 6,330ms
+(49) 8,301 nodes, 88,027 justifications, elapsed time 6,237ms
+(50) 8,301 nodes, 87,954 justifications, elapsed time 6,078ms
+(51) 8,301 nodes, 87,925 justifications, elapsed time 6,373ms
+(52) 8,301 nodes, 87,992 justifications, elapsed time 6,320ms
+(53) 8,301 nodes, 88,052 justifications, elapsed time 6,221ms
+(54) 8,301 nodes, 87,924 justifications, elapsed time 6,419ms
+(55) 8,301 nodes, 87,957 justifications, elapsed time 6,239ms
+(56) 8,301 nodes, 88,047 justifications, elapsed time 6,342ms
+(57) 8,301 nodes, 87,945 justifications, elapsed time 6,475ms
+(58) 8,301 nodes, 87,940 justifications, elapsed time 6,311ms
+(59) 8,301 nodes, 88,059 justifications, elapsed time 6,065ms
+(60) 8,301 nodes, 88,115 justifications, elapsed time 6,205ms
+(61) 8,301 nodes, 87,942 justifications, elapsed time 6,316ms
+(62) 8,301 nodes, 88,044 justifications, elapsed time 6,449ms
+(63) 8,301 nodes, 88,054 justifications, elapsed time 6,350ms
+(64) 8,301 nodes, 87,967 justifications, elapsed time 6,364ms
+(65) 8,301 nodes, 88,039 justifications, elapsed time 6,103ms
+(66) 8,301 nodes, 87,975 justifications, elapsed time 6,340ms
+(67) 8,301 nodes, 87,933 justifications, elapsed time 6,237ms
+(68) 8,301 nodes, 88,137 justifications, elapsed time 6,264ms
+(69) 8,301 nodes, 87,931 justifications, elapsed time 6,136ms
+(70) 8,301 nodes, 88,084 justifications, elapsed time 6,187ms
+(71) 8,301 nodes, 88,093 justifications, elapsed time 6,329ms
+(72) 8,301 nodes, 88,002 justifications, elapsed time 6,501ms
+(73) 8,301 nodes, 88,076 justifications, elapsed time 6,723ms
+(74) 8,301 nodes, 88,042 justifications, elapsed time 6,233ms
+(75) 8,301 nodes, 88,012 justifications, elapsed time 6,439ms
+(76) 8,301 nodes, 88,015 justifications, elapsed time 6,554ms
+(77) 8,301 nodes, 87,889 justifications, elapsed time 6,355ms
+(78) 8,301 nodes, 87,963 justifications, elapsed time 6,021ms
+(79) 8,301 nodes, 88,049 justifications, elapsed time 6,183ms
+(80) 8,301 nodes, 88,028 justifications, elapsed time 6,178ms
+(81) 8,301 nodes, 88,033 justifications, elapsed time 6,139ms
+(82) 8,301 nodes, 88,039 justifications, elapsed time 6,255ms
+(83) 8,301 nodes, 88,129 justifications, elapsed time 6,157ms
+(84) 8,301 nodes, 88,101 justifications, elapsed time 6,202ms
+(85) 8,301 nodes, 87,926 justifications, elapsed time 6,297ms
+(86) 8,301 nodes, 88,132 justifications, elapsed time 6,009ms
+(87) 8,301 nodes, 88,071 justifications, elapsed time 5,924ms
+(88) 8,301 nodes, 87,868 justifications, elapsed time 6,048ms
+(89) 8,301 nodes, 87,927 justifications, elapsed time 6,279ms
+(90) 8,301 nodes, 87,911 justifications, elapsed time 6,087ms
+(91) 8,301 nodes, 88,029 justifications, elapsed time 6,220ms
+(92) 8,301 nodes, 88,031 justifications, elapsed time 6,036ms
+(93) 8,301 nodes, 87,932 justifications, elapsed time 6,004ms
+(94) 8,301 nodes, 87,976 justifications, elapsed time 6,302ms
+(95) 8,301 nodes, 87,916 justifications, elapsed time 6,263ms
+(96) 8,301 nodes, 87,994 justifications, elapsed time 6,185ms
+(97) 8,301 nodes, 88,014 justifications, elapsed time 6,257ms
+(98) 8,301 nodes, 88,117 justifications, elapsed time 6,239ms
+(99) 8,301 nodes, 87,957 justifications, elapsed time 6,119ms
+(100) 8,301 nodes, 87,954 justifications, elapsed time 6,136ms
+Average time 6,308
+[success] Total time: 637 s (10:37), completed Dec 30, 2021, 9:25:08 PM
+#+end_example
+
+** NEXT
+#+begin_example
+#+end_example
+
+** NEXT
+#+begin_example
+#+end_example
+
+** NEXT
+#+begin_example
+#+end_example
+
+** NEXT
+#+begin_example
+#+end_example
