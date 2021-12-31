@@ -18,7 +18,7 @@
 package org.maraist.truthmaintenancesystems.assumptionbased
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
-@main def traceInterpretations1: Unit = {
+def traceInterpretations1: Unit = {
   val atms = new ATMS[Symbol, String, Nothing]("atms-test0")
   val a = atms.createNode("A", isAssumption = true)
   val c = atms.createNode("C", isAssumption = true)
