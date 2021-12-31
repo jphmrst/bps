@@ -328,5 +328,8 @@ Average time 6,490
 Average time 6,304
 #+end_example
 
+** Also tried `Array` and `ArrayBuffer`
+   But accidentally reverted the notes.  `Array` was in between `List`
+   and `Vector`; `ArrayBuffer` was average 6,340ms.
 ** Decision
    `List` about as good as `ListBuffer`, keeping it since immutable
