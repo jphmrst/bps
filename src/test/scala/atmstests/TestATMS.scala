@@ -50,7 +50,7 @@ class TestATMS extends AnyFlatSpec with Matchers {
     h.label.length `should` be (0)
     atms.debugAtms
 
-    val j1 = atms.justifyNode("R1", h, ListBuffer(c, e))
+    val j1 = atms.justifyNode("R1", h, List(c, e))
     atms.debugAtms
     h.label.length `should` be (1)
     atms.lookupEnv(List(c, e)).map(h.label.contains(_)).getOrElse(false)
@@ -59,14 +59,14 @@ class TestATMS extends AnyFlatSpec with Matchers {
     val g = atms.createNode("G")
     g.label.isEmpty `should` be (true)
 
-    val j2 = atms.justifyNode("R2", g, ListBuffer(a, c))
+    val j2 = atms.justifyNode("R2", g, List(a, c))
     g.label.isEmpty `should` be (false)
     g.label.length `should` be (1)
     atms.lookupEnv(List(a, c)).map(g.label.contains(_)).getOrElse(false)
       `should` be (true)
 
     val x = atms.createNode("X", isContradictory = true)
-    val j3 = atms.justifyNode("R3", x, ListBuffer(g))
+    val j3 = atms.justifyNode("R3", x, List(g))
     atms.debugAtms
     g.label.isEmpty `should` be (true)
     g.label.length `should` be (0)
@@ -80,7 +80,7 @@ class TestATMS extends AnyFlatSpec with Matchers {
     atms.lookupEnv(List(b)).map(b.label.contains(_)).getOrElse(false)
     `should` be (true)
 
-    val j4 = atms.justifyNode("R4", h, ListBuffer(b, c))
+    val j4 = atms.justifyNode("R4", h, List(b, c))
     atms.debugAtms
     h.label.length `should` be (2)
     atms.lookupEnv(List(c, e)).map(h.label.contains(_)).getOrElse(false)
@@ -108,11 +108,11 @@ class TestATMS extends AnyFlatSpec with Matchers {
     h.isTrueNode `should` be (false)
     b.isTrueNode `should` be (false)
     x.isTrueNode `should` be (false)
-    val j5 = atms.justifyNode("R5", b, ListBuffer())
+    val j5 = atms.justifyNode("R5", b, List())
     b.isTrueNode `should` be (true)
     c.isTrueNode `should` be (false)
     h.isTrueNode `should` be (false)
-    val j6 = atms.justifyNode("R6", c, ListBuffer())
+    val j6 = atms.justifyNode("R6", c, List())
     b.isTrueNode `should` be (true)
     c.isTrueNode `should` be (true)
     h.isTrueNode `should` be (true)
@@ -137,19 +137,19 @@ class TestATMS extends AnyFlatSpec with Matchers {
     atms.assumeNode(b)
     atms.debugAtms
 
-    atms.justifyNode("J1", d, ListBuffer(a, b))
+    atms.justifyNode("J1", d, List(a, b))
     atms.debugAtms
 
-    atms.justifyNode("J2", e, ListBuffer(b, c))
+    atms.justifyNode("J2", e, List(b, c))
     atms.debugAtms
 
     atms.assumeNode(c)
     atms.debugAtms
 
-    atms.justifyNode("J3", f, ListBuffer(d, e))
+    atms.justifyNode("J3", f, List(d, e))
     atms.debugAtms
 
-    atms.nogoodNodes("X1", ListBuffer(d, e))
+    atms.nogoodNodes("X1", List(d, e))
     atms.debugAtms
   }
 

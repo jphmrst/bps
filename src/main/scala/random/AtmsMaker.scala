@@ -56,7 +56,7 @@ class AtmsMaker(random: Random) extends Maker(random) {
             then intSet(thisSize, IntRange(0, idx))
           else intSetExcept(thisSize, IntRange(0, totalNodes), j)
         ).map(atms.nodes(_))
-        atms.justifyNode(s"$idx.$j", node, ants)
+        atms.justifyNode(s"$idx.$j", node, ants.toList)
       }
     }
 

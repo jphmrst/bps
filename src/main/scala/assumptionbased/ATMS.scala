@@ -370,7 +370,7 @@ class ATMS[D, I, R](
     * @group construction
     */
   def justifyNode(
-    informant: I, consequence: Node[D, I, R], antecedents: ListBuffer[Node[D, I, R]]):
+    informant: I, consequence: Node[D, I, R], antecedents: List[Node[D, I, R]]):
       Just[D, I, R] = {
     val just = new Just(incrJustCounter, informant, consequence, antecedents)
     dbg(s"Adding justification ${just.blurb}")
@@ -402,7 +402,7 @@ class ATMS[D, I, R](
     *
     * @group construction
     */
-  def nogoodNodes(informant: I, nodes: ListBuffer[Node[D, I, R]]): Unit =
+  def nogoodNodes(informant: I, nodes: List[Node[D, I, R]]): Unit =
     justifyNode(informant, contraNode, nodes)
 
   /**
@@ -608,9 +608,9 @@ class ATMS[D, I, R](
   def weave(
     node: Option[Node[D, I, R]],
     newEnvs: ListBuffer[Env[D, I, R]],
-    antecedents: ListBuffer[Node[D, I, R]]):
+    antecedents: List[Node[D, I, R]]):
       ListBuffer[Env[D, I, R]] = {
-    dbg(s"Calling weave with\n  node ${Blurb.nodeOption(node)}\n  newEnvs ${Blurb.envLB(newEnvs)}\n  antecedents ${Blurb.nodeLB(antecedents)}")
+    dbg(s"Calling weave with\n  node ${Blurb.nodeOption(node)}\n  newEnvs ${Blurb.envLB(newEnvs)}\n  antecedents ${Blurb.nodeL(antecedents)}")
 
     // We do not mutate `newEnvs`, but instead make a copy which we
     // will mutate and return.  We iterate over the `antecedents`

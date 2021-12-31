@@ -53,6 +53,15 @@ object Blurb {
     "{" + b.map(aa).mkString(sep) + "}"
 
   /**
+    * Wrapper for formatting functions for a type `A` which extend the
+    * behavior to `Vector[A]`s.
+    */
+  def vector[A](aa: (A) => String, sep: String = "(empty)")
+    (b: Vector[A]):
+      String =
+    "{" + b.map(aa).mkString(sep) + "}"
+
+  /**
     * Formatting functions for [[Env]] arguments.
     */
   def env[D, I, R](e: Env[D, I, R]): String = e.envString
@@ -113,4 +122,9 @@ object Blurb {
     * Formatting functions for `ListBuffer[Node]` arguments.
     */
   def nodeLB[D, I, R] = listBuf(bareNode[D, I, R], ", ")
+
+  /**
+    * Formatting functions for `Vector[Node]` arguments.
+    */
+  def nodeV[D, I, R] = vector(bareNode[D, I, R], ", ")
 }
