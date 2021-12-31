@@ -24,13 +24,13 @@ def traceInterpretations1: Unit = {
   val c = atms.createNode("C", isAssumption = true)
   val e = atms.createNode("E", isAssumption = true)
   val h = atms.createNode("H")
-  val j1 = atms.justifyNode("R1", h, ListBuffer(c, e))
+  val j1 = atms.justifyNode("R1", h, List(c, e))
   val g = atms.createNode("G")
-  val j2 = atms.justifyNode("R2", g, ListBuffer(a, c))
+  val j2 = atms.justifyNode("R2", g, List(a, c))
   val x = atms.createNode("X", isContradictory = true)
-  val j3 = atms.justifyNode("R3", x, ListBuffer(g))
+  val j3 = atms.justifyNode("R3", x, List(g))
   val b = atms.createNode("B", isAssumption = true)
-  val j4 = atms.justifyNode("R4", h, ListBuffer(b, c))
+  val j4 = atms.justifyNode("R4", h, List(b, c))
 
   atms.debugging = true
   atms.debugAtms
