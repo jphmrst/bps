@@ -390,8 +390,9 @@ class JTRE(val title: String, val debugging: Boolean = false) {
 </pre>
     */
   def uAssume(fact: Fact, reason: Node[Datum, Fact, Rule]): Unit = {
-    assume(fact, reason)
-    runRules
+    ???
+    //assume(fact, reason)
+    //runRules
   }
 
   /**
