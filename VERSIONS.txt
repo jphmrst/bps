@@ -2,6 +2,8 @@
 
 * Version 0.4
   - Documentation in both JTMS and ATMS.
+  - Generator for large randomized ATMS examples.
+  - Some tweaks to data structure selection based on rough profiling.
 * Version 0.3
   - Contains a mostly-working version of a standalone ATMS.
 * Version 0.2
