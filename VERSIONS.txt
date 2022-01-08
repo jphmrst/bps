@@ -1,5 +1,7 @@
 #  -*- org -*-
 
+* This branch
+  - Translation of the standalone LTMS core
 * Version 0.4
   - Documentation in both JTMS and ATMS.
 * Version 0.3
