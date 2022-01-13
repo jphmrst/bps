@@ -51,21 +51,48 @@ class Clause[D, I, R](
   val index: Int
 ) {
 
-/*
-
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 (defun print-clause (clause stream ignore)
 ;; From ltms.lisp
    (declare (ignore ignore))
    (format stream "#<Clause ~D>" (clause-index clause)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+;; From ltms.lisp
 (defmacro satisfied-clause? (clause) `(> (clause-sats ,clause) 0))
-;; From ltms.lisp
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+;; From ltms.lisp
 (defmacro violated-clause? (clause) `(= (clause-pvs ,clause) 0))
-;; From ltms.lisp
+</pre>
+    *
+    */
 
-(defun simplify-clause (literals)
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
+(defun simplify-clause (literals)
   (setq literals (sort-clause literals))
   (do ((tail literals next)
        (next (cdr literals) (cdr next)))
@@ -74,26 +101,58 @@ class Clause[D, I, R](
           ((not (eq (cdar tail) (cdar next)))
            (return-from simplify-clause :TRUE))
           (t (rplacd tail (cdr next))))))
+</pre>
+    *
+    */
 
-(defun sort-clause (literals)
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
+(defun sort-clause (literals)
   (sort (copy-list literals) ;; Avoids shared structure bugs.
      #'< :KEY #'(lambda (n) (tms-node-index (car n)))))
+</pre>
+    *
+    */
 
-(defun find-unknown-pair (clause)
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
+(defun find-unknown-pair (clause)
   (dolist (term-pair (clause-literals clause))
     (if (unknown-node? (car term-pair)) (return term-pair))))
+</pre>
+    *
+    */
 
-(defun clause-consequent (clause)
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
+(defun clause-consequent (clause)
   (dolist (term-pair (clause-literals clause))
     (when (eq (tms-node-label (car term-pair)) (cdr term-pair))
       (return (if (eq clause (tms-node-support (car term-pair)))
                   (car term-pair))))))
+</pre>
+    *
+    */
 
-(defun assumptions-of-clause (in-clause &aux)
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
+(defun assumptions-of-clause (in-clause &aux)
   (do ((clause-queue (list in-clause)
                      (nconc (cdr clause-queue) new-clauses))
        (mark (list nil))
@@ -110,20 +169,38 @@ class Clause[D, I, R](
                 ((null (tms-node-support node)) (ltms-error "Node is unknown" node))
                 (t (push (tms-node-support node) new-clauses))))
         (setf (tms-node-mark node) mark)))))
+</pre>
+    *
+    */
 
-(defun clause-antecedents (clause &aux result)
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
+(defun clause-antecedents (clause &aux result)
   (dolist (pair (clause-literals clause) result)
     (unless (eq (tms-node-support (car pair)) clause)
       (push (car pair) result))))
+</pre>
+    *
+    */
 
-(defun pretty-print-clause (clause)
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
+(defun pretty-print-clause (clause)
   (format T "(:OR")
   (dolist (literal (clause-literals clause))
     (format T " ~:[(:NOT ~A)~;~A~]"
             (eq :TRUE (cdr literal)) (node-string (car literal))))
   (format T ")"))
+</pre>
+    *
+    */
 
- */
 } // class Clause

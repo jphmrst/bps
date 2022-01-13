@@ -42,21 +42,28 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 class Expr[D, I, R](
 ) {
 
-/*
-
- */
 } // class Expr
 
 object Expr {
 
-/*
-
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defvar *ltms*)
 
-;; From ltms.lisp
 (defun normalize (*ltms* exp) (normalize-1 exp nil))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun normalize-1 (exp negate)
   (case (and (listp exp) (car exp))
@@ -74,7 +81,15 @@ object Expr {
     (:TAXONOMY (normalize-tax exp negate))
     (t (if negate `((,(tms-node-false-literal (find-node *ltms* exp))))
                   `((,(tms-node-true-literal (find-node *ltms* exp))))))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun normalize-tax (exp negate)
   (normalize-1 `(:AND (:OR ,@ (copy-list (cdr exp))) ;one must be true
@@ -89,17 +104,40 @@ object Expr {
                       (push `(:NOT (:AND ,(car firsts) ,other))
                             result))))
                negate))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun normalize-conjunction (exp negate)
   (mapcan #'(lambda (sub) (normalize-1 sub negate)) (cdr exp)))
+</pre>
+    *
+    */
 
-
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun normalize-iff (exp negate)
   (nconc (normalize-1 `(:IMPLIES ,(cadr exp) ,(caddr exp)) negate)
          (normalize-1 `(:IMPLIES ,(caddr exp) ,(cadr exp)) negate)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun normalize-disjunction (exp negate)
   (unless (cdr exp)
@@ -108,7 +146,15 @@ object Expr {
        (rest (cddr exp) (cdr rest)))
       ((null rest) result)
     (setq result (disjoin (normalize-1 (car rest) negate) result))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun disjoin (conj1 conj2)
   (unless (or conj1 conj2) (return-from disjoin nil))
@@ -116,13 +162,29 @@ object Expr {
             (mapcar #'(lambda (disj2) (append disj1 disj2))
                     conj2))
           conj1))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defmacro compile-formula (run-tms f &optional informant &aux ltms)
   (setq ltms (create-ltms f))
   (add-formula ltms (expand-formula f))
   (generate-code ltms run-tms (if informant `(:IMPLIED-BY ,f ,informant))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun expand-formula (x)
   (setq x (macroexpand x))
@@ -137,13 +199,23 @@ object Expr {
            (CONS (cons (expand-formula (cadr x))
                        (mapcar #'expand-formula (caddr x))))))
         (t x)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun partial (x)
   (cond ((null x) x)
         ((keywordp x) x)
         ((not (listp x)) `',x)
         (t (cons (partial (car x)) (partial (cdr x))))))
+</pre>
+    *
+    */
 
- */
 }

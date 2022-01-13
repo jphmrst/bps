@@ -19,6 +19,21 @@ package org.maraist.truthmaintenancesystems.logicbased
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
+sealed trait Label
+object TrueLabel extends Label
+object FalseLabel extends Label
+object IsTrue {
+  def unapply(l: Label): Option[Unit] =
+    if l == TrueLabel then Some(()) else None
+}
+object IsFalse {
+  def unapply(l: Label): Option[Unit] =
+    if l == FalseLabel then Some(()) else None
+}
+
+type Formula = Any
+type Literal = Any
+
 /** Standalone implementation of logic-based truth maintenance
   * systems.
   *
@@ -131,6 +146,7 @@ class LTMS[D, I, R](
     * @group internal
     */
   var nodeCounter: Int = 0
+
   /** Increment the node counter and return its value.
     * @group internal
     */
@@ -144,6 +160,7 @@ class LTMS[D, I, R](
     * @group internal
     */
   var clauseCounter: Int = 0
+
   /** Increment the clause counter and return its value.
     * @group internal
     */
@@ -183,18 +200,26 @@ class LTMS[D, I, R](
     */
   def printLtms(): Unit = println(s"<LTMS: $title>")
 
-/*
-
-;; From ltms.lisp
-(defun default-node-string (n)
-  (format nil "~A" (TMSnode.datum n)))
-
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defmacro walk-clauses (ltms f)
   `(if (ltms-complete ,ltms)
        (walk-trie ,f (ltms-clauses ,ltms))
        (mapc ,f (ltms-clauses ,ltms))))
+</pre>
+    *
+    */
+  def walkClauses(f: Any): Unit = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun tms-create-node (ltms datum &key assumptionp)
   (if (and (ltms-nodes ltms) (gethash datum (ltms-nodes ltms)))
@@ -214,7 +239,16 @@ class LTMS[D, I, R](
       (dotimes (i (ltms-cons-size ltms))
         (push (cons nil nil) (ltms-conses ltms))))
     node))
+</pre>
+    *
+    */
+  def createNode(datum: D): Node[D, I, R] = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun enable-assumption (node label)
   (cond ((not (tms-node-assumption? node))
@@ -224,14 +258,32 @@ class LTMS[D, I, R](
         ((eq (tms-node-label node) :UNKNOWN)
          (top-set-truth node label :ENABLED-ASSUMPTION))
         (t (ltms-error "Can't set an already set node" node))))
+</pre>
+    *
+    */
+  def enableAssumption(node: Node[D, I, R], label: Label): Unit = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun retract-assumption (node)
   (when (and (known-node? node)
              (eq (tms-node-support node) :ENABLED-ASSUMPTION))
     (find-alternative-support (tms-node-ltms node)
                               (propagate-unknownness node))))
+</pre>
+    *
+    */
+  def retractAssumption(node: Node[D, I, R]): Unit = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 ;;; Adding formulas to the LTMS.
 (defun add-formula (ltms formula &optional informant)
@@ -240,13 +292,31 @@ class LTMS[D, I, R](
     (unless (eq :TRUE (setq clause (simplify-clause clause)))
         (add-clause-internal clause informant T)))
   (check-for-contradictions ltms))
+</pre>
+    *
+    */
+  def addFormula(formula: Formula): Unit = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun find-node (ltms name)
   (cond ((typep name 'tms-node) name)
         ((if (ltms-nodes ltms) (gethash name (ltms-nodes ltms))))
         ((tms-create-node ltms name))))
+</pre>
+    *
+    */
+  def findNode(name: D | Node[D, I, R]): Node[D, I, R] = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun generate-code (ltms run-tms informant &aux result bound datum)
   (maphash #'(lambda (ignore symbol)
@@ -271,15 +341,36 @@ class LTMS[D, I, R](
                      `(,(tms-node-datum s) (find-node ,run-tms ,(tms-node-mark s))))
                  bound)
      ,@result))
+</pre>
+    *
+    */
+  def generateCode(runTms: D | Node[D, I, R], informant: I): () => Unit = ???
 
-
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun add-clause (true-nodes false-nodes &optional informant)
   (add-clause-internal (nconc (mapcar #'tms-node-true-literal true-nodes)
                               (mapcar #'tms-node-false false-nodes))
                        informant
                        nil))
+</pre>
+    *
+    */
+  def addClause(
+    trueNodes: ListBuffer[Node[D, I, R]],
+    falseNodes: ListBuffer[Node[D, I, R]],
+    informant: Option[I] = None
+  ): Unit = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun add-clause-internal (literals informant internal &aux ltms)
   (setq ltms (tms-node-ltms
@@ -290,7 +381,18 @@ class LTMS[D, I, R](
       (push (bcp-add-clause ltms literals informant)
             (ltms-clauses ltms)))
   (unless internal (check-for-contradictions ltms)))
+</pre>
+    *
+    */
+  def addClauseInternal(
+    literals: List[Literal], informant: Option[I], internal: Boolean):
+      Unit = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun bcp-add-clause (ltms literals informant &optional (index T)
                                                &aux cl label)
@@ -312,14 +414,38 @@ class LTMS[D, I, R](
          (incf (clause-sats cl)) (incf (clause-pvs cl))))))
   (if index (check-clauses ltms (list cl)))
   cl)
+</pre>
+    *
+    */
+  def bcpAddClause(
+    literals: List[Literal], informant: I, index: Boolean | Int = true):
+      Clause[D, I, R] = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun add-nogood (culprit sign assumptions &aux trues falses)
   (dolist (a assumptions (add-clause trues falses 'NOGOOD))
     (ecase (if (eq a culprit) sign (tms-node-label a))
       (:TRUE (push a falses))
       (:FALSE (push a trues)))))
+</pre>
+    *
+    */
+  def addNogood(
+    culprit: Node[D, I, R],
+    sign: Label,
+    assumptions: ListBuffer[Node[D, I, R]]):
+      Unit = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (proclaim '(special *clauses-to-check*))
 
@@ -327,7 +453,16 @@ class LTMS[D, I, R](
   (debugging-ltms ltms "~% Beginning propagation...")
   (do nil ((null *clauses-to-check*))
     (check-clause ltms (pop *clauses-to-check*))))
+</pre>
+    *
+    */
+  def checkClauses: Unit = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun check-clause (ltms clause &aux unknown-pair)
   (cond ((violated-clause? clause)
@@ -339,7 +474,15 @@ class LTMS[D, I, R](
          (when unknown-pair ;must check, because it might have other
            (set-truth (car unknown-pair) ; support
                       (cdr unknown-pair) clause)))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun propagate-unknownness (in-node)
   (let (node old-value node2 unknown-queue ltms)
@@ -363,7 +506,15 @@ class LTMS[D, I, R](
             (push node2 new))))
       (if (ltms-complete ltms)
           (propagate-more-unknownness old-value node ltms)))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun find-alternative-support (ltms nodes)
   (dolist (node nodes)
@@ -371,7 +522,15 @@ class LTMS[D, I, R](
       (check-clauses ltms (tms-node-true-clauses node))
       (check-clauses ltms (tms-node-false-clauses node))))
   (if (eq T (ltms-complete ltms)) (ipia ltms)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun check-for-contradictions (ltms &aux violated-clauses)
   (setq violated-clauses
@@ -379,7 +538,15 @@ class LTMS[D, I, R](
                        (ltms-violated-clauses ltms)))
   (setf (ltms-violated-clauses ltms) violated-clauses) ;; Cache them.
   (if violated-clauses (contradiction-handler ltms violated-clauses)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun contradiction-handler (ltms violated-clauses)
   (cond ((not (ltms-checking-contradictions ltms))
@@ -392,15 +559,39 @@ class LTMS[D, I, R](
                (pushnew vc (ltms-pending-contradictions ltms)))))
         (t (dolist (handler (ltms-contradiction-handlers ltms))
              (if (funcall handler violated-clauses ltms) (return T))))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defmacro without-contradiction-check (ltms &body body)
   (contradiction-check ltms nil body))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defmacro with-contradiction-check (ltms &body body)
   (contradiction-check ltms t body))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun contradiction-check (ltms flag body)
   `(let* ((.ltms. ,ltms)
@@ -409,7 +600,15 @@ class LTMS[D, I, R](
          (progn (setf (ltms-checking-contradictions .ltms.) ,flag)
                 ,@body)
        (setf (ltms-checking-contradictions .ltms.) .old-value.))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defmacro with-contradiction-handler (ltms handler &body body)
   `(let ((.ltms. ,ltms))
@@ -417,7 +616,15 @@ class LTMS[D, I, R](
          (progn (push ,handler (ltms-contradiction-handlers .ltms.))
                 ,@ body)
        (pop (ltms-contradiction-handlers .ltms.)))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defmacro with-assumptions (assumption-values &body body)
   ;; Allows assumptions to be made safely, and retracted properly
@@ -426,17 +633,32 @@ class LTMS[D, I, R](
                             (enable-assumption (car av) (cdr av)))
                          ,@ body)
      (dolist (av ,assumption-values) (retract-assumption (car av)))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (proclaim '(special *contra-assumptions*))
 
-;; From ltms.lisp
 (defun ask-user-handler (contradictions ltms)
   (declare (ignore ltms))
   (dolist (contradiction contradictions)
     (if (violated-clause? contradiction)
         (handle-one-contradiction contradiction))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun handle-one-contradiction (violated-clause)
    (let ((*contra-assumptions* (assumptions-of-clause violated-clause))
@@ -453,7 +675,15 @@ class LTMS[D, I, R](
       (if the-answer
          (retract-assumption (nth (1- the-answer)
                                 *contra-assumptions*)))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun print-contra-list (nodes)
   (do ((counter 1 (1+ counter))
@@ -461,7 +691,15 @@ class LTMS[D, I, R](
       ((null nn))
     (format t "~%~A ~A" counter
             (node-string (car nn)))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun tms-answer (num)
   (if (integerp num)
@@ -471,7 +709,15 @@ class LTMS[D, I, R](
               (format t "~%Ignoring answer, too big."))
           (format t "~%Ignoring answer, too small"))
       (format t "~%Ignoring answer, must be an integer.")))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun avoid-all (contradictions ignore &aux culprits culprit sign)
   (dolist (contradiction contradictions)
@@ -483,16 +729,34 @@ class LTMS[D, I, R](
       (retract-assumption culprit)
       (add-nogood culprit sign culprits)
       t)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun why-nodes (ltms)
   (maphash #'(lambda (ignore n) (why-node n)) (ltms-nodes ltms)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun pretty-print-clauses (ltms)
   (walk-clauses ltms #'(lambda (l)
                          (format T "~% ")
                          (pretty-print-clause l))))
+</pre>
+    *
+    */
 
- */
 } // class LTMS

@@ -70,59 +70,171 @@ class Node[D, I, R](
     */
   val index: Int = ltms.incrNodeCounter
 
-/*
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+;; From ltms.lisp
+(defun default-node-string (n)
+  (format nil "~A" (tms-node-datum n)))
+</pre>
+    *
+    */
+  def defaultNodeString: String = ???
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun print-tms-node (node stream ignore)
    (declare (ignore ignore))
    (format stream "#<NODE: ~A>" (node-string node)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun node-string (node)
   (funcall (ltms-node-string (tms-node-ltms node)) node))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defmacro debugging-ltms (ltms msg &optional node &rest args)
   `(when (ltms-debugging ,ltms)
      (format *trace-output*
              ,msg (if ,node (node-string ,node)) ,@args)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun ltms-error (string &optional thing) (error string thing))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
-(defun unknown-node? (node) (eq (TMSnode.label node) :UNKNOWN))
+(defun unknown-node? (node) (eq (tms-node-label node) :UNKNOWN))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
-(defun known-node? (node) (not (eq (TMSnode.label node) :UNKNOWN)))
+(defun known-node? (node) (not (eq (tms-node-label node) :UNKNOWN)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
-(defun true-node? (node) (eq (TMSnode.label node) :TRUE))
+(defun true-node? (node) (eq (tms-node-label node) :TRUE))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
-(defun false-node? (node) (eq (TMSnode.label node) :FALSE))
+(defun false-node? (node) (eq (tms-node-label node) :FALSE))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun convert-to-assumption (node)
   (unless (tms-node-assumption? node)
     (debugging-ltms (tms-node-ltms node)
                     "~%Converting ~A into an assumption" node)
     (setf (tms-node-assumption? node) T)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun insert-true-clause (cl node)
   (push cl (tms-node-true-clauses node)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun insert-false-clause (cl node)
   (push cl (tms-node-false-clauses node)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun top-set-truth (node value reason &aux *clauses-to-check*)
   (set-truth node value reason)
   (check-clauses (tms-node-ltms node) *clauses-to-check*)
   (check-for-contradictions (tms-node-ltms node)))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun set-truth (node value reason &aux ltms enqueuef)
   (setq ltms (tms-node-ltms node)
@@ -150,7 +262,15 @@ class Node[D, I, R](
             (dolist (clause (tms-node-true-clauses node))
               (if (< (decf (clause-pvs clause)) 2)
                   (push clause *clauses-to-check*))))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun support-for-node (node &aux result support)
   (cond ((null (setq support (tms-node-support node))) nil)
@@ -159,19 +279,43 @@ class Node[D, I, R](
              (unless (eq (car pair) node)
                (push (car pair) result)))
            (values result (clause-informant support)))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun assumptions-of-node (node)
   (cond ((eq :ENABLED-ASSUMPTION (tms-node-support node)) (list node))
         ((known-node? node)
          (assumptions-of-clause (tms-node-support node)))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun signed-node-string (node)
   (if (true-node? node) (node-string node)
       (format nil "~:[Unknown~;Not~][~A]"
               (false-node? node) (node-string node))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun node-consequences (node &aux conseq conseqs)
   (dolist (cl (ecase (tms-node-label node)
@@ -181,7 +325,15 @@ class Node[D, I, R](
       (setq conseq (clause-consequent cl))
       (if conseq (push conseq conseqs))))
   conseqs)
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun why-node (node)
   (cond ((unknown-node? node)
@@ -204,7 +356,15 @@ class Node[D, I, R](
                        (node-string (car term-pair))
                        (tms-node-label (car term-pair)))))))
   node)
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 (defvar *line-count*)
 
 ;; From ltms.lisp
@@ -214,8 +374,15 @@ class Node[D, I, R](
     (maphash #'(lambda (ignore node) (setf (tms-node-mark node) nil))
              (ltms-nodes (tms-node-ltms node)))
     (explain-1 node)))
+</pre>
+    *
+    */
 
-
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun explain-1 (node &aux antecedents)
   (cond ((tms-node-mark node))
@@ -230,7 +397,15 @@ class Node[D, I, R](
                    (node-string node) antecedents)
            (pretty-print-clause (tms-node-support node))
            (setf (tms-node-mark node) *line-count*))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun show-node-consequences (node)
   (let ((conseqs (node-consequences node)))
@@ -239,7 +414,15 @@ class Node[D, I, R](
            (dolist (conseq conseqs)
                    (format t "~%  ~A" (signed-node-string conseq))))
           (t (format t "~% ~A has no consequences." (node-string node))))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun node-show-clauses (node)
   (format t "For ~A:" (node-string node))
@@ -247,8 +430,15 @@ class Node[D, I, R](
     (format T "~%") (pretty-print-clause cl))
   (dolist (cl (tms-node-false-clauses node))
     (format T "~%") (pretty-print-clause cl)))
+</pre>
+    *
+    */
 
-
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From ltms.lisp
 (defun explore-network (node)
   (unless (known-node? node)
@@ -292,7 +482,15 @@ class Node[D, I, R](
               (setq good? choice)
               (format t "~% Must be q, a, c or an integer from 0 to ~D."
                         olen)))))
+</pre>
+    *
+    */
 
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
 ;; From explain.lisp in biohacker extensions
 (defun node-all-antecedents (node)
   (clear-node-marks)
@@ -309,7 +507,8 @@ class Node[D, I, R](
       (unless (eq :ENABLED-ASSUMPTION support)
         (setq todo (append (clause-antecedents support) todo)))
       (push current result))))
-
- */
+</pre>
+    *
+    */
 
 } // class Node
