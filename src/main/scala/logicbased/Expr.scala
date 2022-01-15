@@ -42,10 +42,6 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 class Expr[D, I, R](
 ) {
 
-} // class Expr
-
-object Expr {
-
   /**
     *
     *
@@ -58,6 +54,7 @@ object Expr {
 </pre>
     *
     */
+  def normalize: Expr[D, I, R] = ???
 
   /**
     *
@@ -84,6 +81,7 @@ object Expr {
 </pre>
     *
     */
+  def normalize1(negate: Boolean): Expr[D, I, R] = ???
 
   /**
     *
@@ -107,6 +105,7 @@ object Expr {
 </pre>
     *
     */
+  def normalizeTax(negate: Boolean): Expr[D, I, R] = ???
 
   /**
     *
@@ -119,6 +118,8 @@ object Expr {
 </pre>
     *
     */
+  def normalizeConjunction(negate: Boolean):
+      Expr[D, I, R] = ???
 
   /**
     *
@@ -132,6 +133,7 @@ object Expr {
 </pre>
     *
     */
+  def normalizeIff(negate: Boolean): Expr[D, I, R] = ???
 
   /**
     *
@@ -149,6 +151,12 @@ object Expr {
 </pre>
     *
     */
+  def normalizeDisjunction(negate: Boolean):
+      Expr[D, I, R] = ???
+
+} // class Expr
+
+object Expr {
 
   /**
     *
@@ -165,6 +173,8 @@ object Expr {
 </pre>
     *
     */
+  def disjoin[D, I, R](
+    conj1: Expr[D, I, R], conj2: Expr[D, I, R]): Expr[D, I, R] = ???
 
   /**
     *
@@ -202,6 +212,7 @@ object Expr {
 </pre>
     *
     */
+  def expandFormula[D, I, R](e: Expr[D, I, R]): Expr[D, I, R] = ???
 
   /**
     *
