@@ -18,6 +18,7 @@
 package org.maraist.truthmaintenancesystems.logicbased
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
+import java.io.PrintStream
 
 /**
   *
@@ -63,6 +64,7 @@ class Clause[D, I, R](
 </pre>
     *
     */
+  def printClause(stream: PrintStream = Console.out): Unit = ???
 
   /**
     *

@@ -34,6 +34,8 @@ object IsFalse {
 type Formula = Any
 type Literal = Any
 
+type ContradictionHandler[D, I, R] = Any
+
 /** Standalone implementation of logic-based truth maintenance
   * systems.
   *
@@ -477,6 +479,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def checkClause(clause: Clause[D, I, R]): Unit = ???
 
   /**
     *
@@ -509,6 +512,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def propagateUnknownness(inNode: Node[D, I, R]): Unit = ???
 
   /**
     *
@@ -525,6 +529,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def findAlternativeSupport(nodes: List[Node[D, I, R]]): Unit = ???
 
   /**
     *
@@ -541,6 +546,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def checkForContradictions: Unit = ???
 
   /**
     *
@@ -562,6 +568,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def contradictonHandler(violatedClauses: List[Clause[D, I, R]]): Unit = ???
 
   /**
     *
@@ -574,6 +581,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  inline def withoutContradictionCheck(body: () => Unit): Unit = ???
 
   /**
     *
@@ -586,6 +594,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  inline def withContradictionCheck(body: () => Unit): Unit = ???
 
   /**
     *
@@ -603,6 +612,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def contradictionCheck(flag: Boolean, body: () => Unit): Unit = ???
 
   /**
     *
@@ -619,6 +629,8 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  inline def withContradictionHandler(
+    handler: ContradictionHandler[D, I, R], body: () => Unit): Unit = ???
 
   /**
     *
@@ -636,6 +648,8 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  inline def withAssumptions(assumptionValues: List[(Node[D, I, R], Label)]):
+      Unit = ???
 
   /**
     *
@@ -653,6 +667,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def askUserHandler(contradictions: List[Node[D, I, R]]): Unit = ???
 
   /**
     *
@@ -678,6 +693,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def handleOneContradiction(violatedClauses: List[Clause[D, I, R]]): Unit = ???
 
   /**
     *
@@ -694,6 +710,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def printContraList(nodes: List[Node[D, I, R]]) = ???
 
   /**
     *
@@ -712,6 +729,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def answer(num: Int) = ???
 
   /**
     *
@@ -732,6 +750,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def avoidAll(contradictions: List[Clause[D, I, R]]): Unit = ???
 
   /**
     *
@@ -744,6 +763,7 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def whyNodes: Unit = ???
 
   /**
     *
@@ -758,5 +778,6 @@ class LTMS[D, I, R](
 </pre>
     *
     */
+  def prettyPrintClauses: Unit = ???
 
 } // class LTMS
