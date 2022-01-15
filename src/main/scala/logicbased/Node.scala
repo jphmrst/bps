@@ -70,6 +70,8 @@ class Node[D, I, R](
     */
   val index: Int = ltms.incrNodeCounter
 
+  var label: Label = UnknownLabel
+
   /**
     *
     *
@@ -143,6 +145,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def isUnknown: Boolean = ???
 
   /**
     *

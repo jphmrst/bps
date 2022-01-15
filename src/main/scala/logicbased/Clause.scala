@@ -76,6 +76,7 @@ class Clause[D, I, R](
 </pre>
     *
     */
+  inline def isSatisfied: Boolean = ???
 
   /**
     *
@@ -87,6 +88,7 @@ class Clause[D, I, R](
 </pre>
     *
     */
+  inline def isViolated: Boolean = ???
 
   /**
     *
@@ -106,19 +108,7 @@ class Clause[D, I, R](
 </pre>
     *
     */
-
-  /**
-    *
-    *
-    * **Translated from**:
-    * <pre>
-;; From ltms.lisp
-(defun sort-clause (literals)
-  (sort (copy-list literals) ;; Avoids shared structure bugs.
-     #'< :KEY #'(lambda (n) (tms-node-index (car n)))))
-</pre>
-    *
-    */
+  def simplifyClause(stream: PrintStream = Console.out): Unit = ???
 
   /**
     *
@@ -132,6 +122,7 @@ class Clause[D, I, R](
 </pre>
     *
     */
+  def findUnknownPair: Option[Literal[D, I, R]] = ???
 
   /**
     *
@@ -147,6 +138,7 @@ class Clause[D, I, R](
 </pre>
     *
     */
+  def clauseConsequent: Option[Clause[D, I, R]] = ???
 
   /**
     *
@@ -174,6 +166,7 @@ class Clause[D, I, R](
 </pre>
     *
     */
+  def assumptionsOfClause: List[Node[D, I, R]] = ???
 
   /**
     *
@@ -188,6 +181,7 @@ class Clause[D, I, R](
 </pre>
     *
     */
+  def clauseAntecedents: List[Node[D, I, R]] = ???
 
   /**
     *
@@ -204,5 +198,6 @@ class Clause[D, I, R](
 </pre>
     *
     */
+  def prettyPrintClause: Unit = ???
 
 } // class Clause

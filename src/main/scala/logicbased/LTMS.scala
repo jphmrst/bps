@@ -20,8 +20,19 @@ import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 sealed trait Label
+object UnknownLabel extends Label
 object TrueLabel extends Label
 object FalseLabel extends Label
+
+object IsKnown {
+  def unapply(l: Label): Option[Unit] =
+    if l == TrueLabel || l == FalseLabel then Some(()) else None
+}
+object IsUnknown {
+  def unapply(l: Label): Option[Unit] =
+    if l != TrueLabel && l != FalseLabel then Some(()) else None
+}
+
 object IsTrue {
   def unapply(l: Label): Option[Unit] =
     if l == TrueLabel then Some(()) else None
@@ -32,7 +43,6 @@ object IsFalse {
 }
 
 type Formula = Any
-type Literal = Any
 
 type ContradictionHandler[D, I, R] = Any
 
@@ -387,7 +397,7 @@ class LTMS[D, I, R](
     *
     */
   def addClauseInternal(
-    literals: List[Literal], informant: Option[I], internal: Boolean):
+    literals: List[Literal[D, I, R]], informant: Option[I], internal: Boolean):
       Unit = ???
 
   /**
@@ -420,7 +430,8 @@ class LTMS[D, I, R](
     *
     */
   def bcpAddClause(
-    literals: List[Literal], informant: I, index: Boolean | Int = true):
+    literals: List[Literal[D, I, R]],
+    informant: I, index: Boolean | Int = true):
       Clause[D, I, R] = ???
 
   /**
