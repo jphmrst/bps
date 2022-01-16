@@ -18,6 +18,16 @@
 package org.maraist.truthmaintenancesystems.logicbased
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
+import java.io.PrintStream
+
+enum Support[D, I, R] {
+  case NoSupport[D, I, R]() extends Support[D, I, R]
+
+  case EnabledAssumption[D, I, R]() extends Support[D, I, R]
+
+  case Evidence[D, I, R](nodes: List[Node[D, I, R]], informant: I)
+      extends Support[D, I, R]
+}
 
 /**
   *
@@ -97,6 +107,8 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def printNode(stream: PrintStream = Console.out): Unit = ???
+
 
   /**
     *
@@ -109,31 +121,7 @@ class Node[D, I, R](
 </pre>
     *
     */
-
-  /**
-    *
-    *
-    * **Translated from**:
-    * <pre>
-;; From ltms.lisp
-(defmacro debugging-ltms (ltms msg &optional node &rest args)
-  `(when (ltms-debugging ,ltms)
-     (format *trace-output*
-             ,msg (if ,node (node-string ,node)) ,@args)))
-</pre>
-    *
-    */
-
-  /**
-    *
-    *
-    * **Translated from**:
-    * <pre>
-;; From ltms.lisp
-(defun ltms-error (string &optional thing) (error string thing))
-</pre>
-    *
-    */
+  def nodeString: String = ???
 
   /**
     *
@@ -157,6 +145,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def isKnown: Boolean = ???
 
   /**
     *
@@ -168,6 +157,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def isTrue: Boolean = ???
 
   /**
     *
@@ -179,6 +169,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def isFalse: Boolean = ???
 
   /**
     *
@@ -194,6 +185,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def convertToAssumption: Unit = ???
 
   /**
     *
@@ -206,6 +198,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def insertTrueClause(cl: Clause[D, I, R]): Unit = ???
 
   /**
     *
@@ -218,6 +211,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def insertFalseClause(cl: Clause[D, I, R]): Unit = ???
 
   /**
     *
@@ -232,6 +226,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def topSetTruth(value: Label, reason: Clause[D, I, R]): Unit = ???
 
   /**
     *
@@ -268,6 +263,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def setTruth(value: Label, reason: Support[D, I, R]): Unit = ???
 
   /**
     *
@@ -285,6 +281,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def supportForNode: Support[D, I, R] = ???
 
   /**
     *
@@ -299,6 +296,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def assumptionsOfNode: List[Support[D, I, R]] = ???
 
   /**
     *
@@ -313,6 +311,8 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def signedNodeString: String = ???
+
 
   /**
     *
@@ -331,6 +331,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def nodeConsequences: List[Clause[D, I, R]] = ???
 
   /**
     *
@@ -362,6 +363,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def whyNode: Unit = ???
 
   /**
     *
@@ -380,6 +382,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def explain: Unit = ???
 
   /**
     *
@@ -403,6 +406,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def explain1: Unit = ???
 
   /**
     *
@@ -420,6 +424,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def showNodeConsequences: Unit = ???
 
   /**
     *
@@ -436,6 +441,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def showNodeClauses: Unit = ???
 
   /**
     *
@@ -488,6 +494,7 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def exploreNetwork: Unit = ???
 
   /**
     *
@@ -513,5 +520,6 @@ class Node[D, I, R](
 </pre>
     *
     */
+  def allAntecedents: List[Node[D, I, R]] = ???
 
 } // class Node

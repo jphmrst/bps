@@ -2,7 +2,8 @@
 
 * Lisp files
 ** Core
-   - ltms.lisp :: Functions distributed among Clause, Expr, LTMS, Node
+   - ltms.lisp :: Functions distributed among Clause, Expr, LTMS,
+     Node, Literal
      classes
    - explain.lisp :: One function `node-all-antecedents` into Node
    - ltms-ex.lisp :: Unexamined

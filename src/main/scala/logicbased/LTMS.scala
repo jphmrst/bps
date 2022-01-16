@@ -195,9 +195,26 @@ class LTMS[D, I, R](
     *
     * **Translated from**:
     * <pre>
+;; From ltms.lisp
+(defmacro debugging-ltms (ltms msg &optional node &rest args)
+  `(when (ltms-debugging ,ltms)
+     (format *trace-output*
+             ,msg (if ,node (node-string ,node)) ,@args)))
 </pre>
     */
   inline def dbg(msg: String): Unit = if debugging then println(msg)
+
+  /**
+    *
+    *
+    * **Translated from**:
+    * <pre>
+;; From ltms.lisp
+(defun ltms-error (string &optional thing) (error string thing))
+</pre>
+    *
+    */
+  def ltmsError(string: String): Nothing = throw new LtmsError(string)
 
   /** Print the LTMS by name.
     *
@@ -792,3 +809,5 @@ class LTMS[D, I, R](
   def prettyPrintClauses: Unit = ???
 
 } // class LTMS
+
+class LtmsError(msg: String) extends RuntimeException(msg)
