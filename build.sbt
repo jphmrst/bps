@@ -8,6 +8,14 @@ name := "bps-scala"
 version := "0.0.4"
 
 /////////////////////////////////////////////////////////////////
+// This section activates scala-native
+
+// // Set to false or remove if you want to show stubs as linking errors
+// nativeLinkStubs := false
+// //
+// enablePlugins(ScalaNativePlugin)
+
+/////////////////////////////////////////////////////////////////
 // begin maven etc. publishing information
 
 // groupId, SCM, license information
