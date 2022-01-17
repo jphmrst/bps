@@ -20,7 +20,8 @@ import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 import java.io.PrintStream
 
-/**
+/** A clause is a disjunction of [[Literal]]s, where none of the
+  * literals are either repeated or complementary (contradictory).
   *
   * **Arguments and `val` members translated from**:
   * <pre>
@@ -49,7 +50,9 @@ import java.io.PrintStream
   * @groupprio internal 10
   */
 class Clause[D, I, R](
-  val index: Int
+  val index: Int,
+  val informant: I,
+  val literals: List[Literal[D, I, R]]
 ) {
 
   /**
