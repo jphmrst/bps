@@ -61,24 +61,16 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * from outside this package.
   * @groupprio internal 10
   */
-class DbClass(val name: Symbol, val tre: TRE) {
+class DbClass[F](val name: Symbol, val tre: TRE[F]) {
 
-/*
+  /**
+    * Facts of this dbclass.
+    */
+  val facts: ListBuffer[F] = new ListBuffer
 
-(defun show-data (&optional (stream *standard-output*) &aux counter)
-  (setq counter 0)
-  (maphash #'(lambda (key dbclass)
-               (dolist (datum (dbclass-facts dbclass))
-                       (incf counter)
-                       (format stream "~%~A" datum)))
-           (tre-dbclass-table *TRE*))
-  counter)
-
-;;;; Installing new facts
-
-
-(defun get-candidates (pattern tre) (dbclass-facts (get-dbclass pattern tre)))
-
- */
+  /**
+    * Rules applicable to this dbclass.
+    */
+  val rules: ListBuffer[Rule[F]] = new ListBuffer
 
 }

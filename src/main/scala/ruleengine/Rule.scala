@@ -22,6 +22,14 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 // Tiny rule engine, translated from F/dK version 61 of 7/21/92.
 
 /**
+  * @tparam R Type of the representation of rules.
+  * @tparam K The keys by which a fact can be indexed.
+  * @tparam F The representation of facts.
+  */
+trait RuleFactImpl[R, K, F] {
+}
+
+/**
   *
   * **Arguments and `val` members translated from**:
   * <pre>
@@ -65,12 +73,14 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * from outside this package.
   * @groupprio internal 10
   */
-class Rule(
+class Rule[F](
   val counter: Int
 ) {
 
-/*
-
+  /**
+    *
+    * <pre>
+; From rules.lisp
 (defun show-rules (&optional (stream *standard-output*) &aux counter)
   (setq counter 0)
   (maphash #'(lambda (key dbclass)
@@ -80,7 +90,13 @@ class Rule(
                        (print-rule rule stream)))
            (tre-dbclass-table *TRE*))
   counter)
+</pre>
+    */
 
+  /**
+    *
+    * <pre>
+; From rules.lisp
 (defun print-rule (rule &optional (stream *standard-output*))
   (format stream "Rule ~A: ~A; ~A"       ;don't show body, too big
           (rule-counter rule)
@@ -88,29 +104,57 @@ class Rule(
           (sublis (rule-environment rule)
                   (rule-trigger rule))
           (rule-environment rule)))
-
-;;;; Building and installing rules
+</pre>
+    */
 
+  /**
+    *
+    * <pre>
 ;; Sugar for the user (or other programs!)
+; From rules.lisp
 (defmacro rule (trigger &rest body) `(add-rule ',trigger ',body))
+</pre>
+    */
 
+  /**
+    *
+    * <pre>
+; From rules.lisp
 (defun try-rules (fact tre)
   ;; This is called by the database system when it adds something.
   (dolist (rule (get-candidate-rules fact tre))
     (try-rule-on rule fact tre)))
+</pre>
+    */
 
+  /**
+    *
+    * <pre>
+; From rules.lisp
 (defun get-candidate-rules (fact tre)
   (dbclass-rules (get-dbclass fact tre)))
+</pre>
+    */
 
+  /**
+    *
+    * <pre>
+; From rules.lisp
 (defun try-rule-on (rule fact tre &aux bindings)
   ;; If the trigger matches, queue it up.
   (setq bindings (unify fact (rule-trigger rule)
                         (rule-environment rule)))
   (unless (eq bindings :FAIL)
     (enqueue (cons (rule-body rule) bindings) tre)))
-
+</pre>
+    */
+
+  /**
+    *
+    * <pre>
 ;;;; Executing rules
 
+; From rules.lisp
 (defun run-rules (tre) ;; Called externally
     (do ((rule-pair (dequeue tre) (dequeue tre))
          (counter 0 (1+ counter)))
@@ -118,13 +162,33 @@ class Rule(
          (debugging-tre  "~%    ~A rules run."  counter))
         (run-rule rule-pair tre)))
 
+; From rules.lisp
 ;; Ideally, all rules triggered will be executed, and the
 ;; results will be independent of the order of execution.
 ;; Thus a simple LIFO queue suffices.
+</pre>
+    */
 
+  /**
+    *
+    * <pre>
+; From rules.lisp
 (defun enqueue (new tre) (push new (tre-queue tre)))
-(defun dequeue (tre) (pop (tre-queue tre)))
+</pre>
+    */
 
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun dequeue (tre) (pop (tre-queue tre)))
+</pre>
+    */
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
 (defun run-rule (pair tre)
   ;; Here pair is (<body> . <bindings>).  The LET makes
   ;; the bindings available to nested rules.
@@ -139,6 +203,7 @@ class Rule(
                                          (cdr binding))))
                          (cdr pair))
              ,@ (car pair)))))
-*/
+</pre>
+    */
 
 }

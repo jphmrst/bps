@@ -30,23 +30,10 @@ enum Expr {
   case SExpr(subexprs: List[Expr]) extends Expr
 }
 
-/**
-  * @tparam R Type of the representation of rules.
-  * @tparam K The keys by which a fact can be indexed.
-  * @tparam F The representation of facts.
-  */
-trait RuleFactImpl[R, K, F] {
-}
-
-
+type Bindings[E] = Map[Symbol, E] | UnifyFail
+case class UnifyFail()
 
 /**
-  *
-  * **Arguments and `val` members translated from**:
-  * <pre>
-; From unify.lisp
-
-</pre>
   *
   * @param title Name of this TMS, for output.
   *
@@ -72,14 +59,26 @@ trait RuleFactImpl[R, K, F] {
   * from outside this package.
   * @groupprio internal 10
   */
-object Fact {
+object Expr {
 
-/*
-
+  /**
+    *
+    * <pre>
+; From unify.lisp
 (defun variable? (x)
   (and (symbolp x)      ;A symbol whose first character is "?"
        (char= #\? (elt (symbol-name x) 0))))
+</pre>
+    */
+  def isVariable(e: Expr): Boolean = e match {
+    case Sym(s) => s.name.length > 0 && s.name.charAt(0) == '?'
+    case _ => false
+  }
 
+  /**
+    *
+    * <pre>
+; From unify.lisp
 (defun unify (a b &optional (bindings nil))
    (cond ((equal a b) bindings)
          ((variable? a) (unify-variable a b bindings))
@@ -89,7 +88,15 @@ object Fact {
                                (unify (car a) (car b) bindings))))
           (unify (cdr a) (cdr b) bindings))
          (t :FAIL)))
+</pre>
+    */
+  def unify(a: Expr, b: Expr, bindings: Map[Symbol, Expr] = Map()):
+      Bindings[Expr] = ???
 
+  /**
+    *
+    * <pre>
+; From unify.lisp
 (defun unify-variable (var exp bindings &aux binding)
   ;; Must distinguish no value from value of nil
   (setq binding (assoc var bindings))
@@ -97,7 +104,15 @@ object Fact {
         ;; If safe, bind <var> to <exp>
         ((free-in? var exp bindings) (cons (cons var exp) bindings))
         (t :FAIL)))
+</pre>
+    */
+  def unifyVariable(v: Symbol, exp: Expr, bindings: Map[Symbol, Expr]):
+      Bindings[Expr] = ???
 
+  /**
+    *
+    * <pre>
+; From unify.lisp
 (defun free-in? (var exp bindings)
   ;; Returns nil if <var> occurs in <exp>, assuming <bindings>.
   (cond ((null exp) t)
@@ -110,7 +125,9 @@ object Fact {
         ((not (listp exp)) t)
         ((free-in? var (car exp) bindings)
          (free-in? var (cdr exp) bindings))))
-
- */
+</pre>
+    */
+  def isFreeIn(v: Symbol, exp: Expr, bindings: Map[Symbol, Expr]): Boolean =
+    ???
 
 }
