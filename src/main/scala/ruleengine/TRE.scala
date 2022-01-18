@@ -18,8 +18,11 @@
 package org.maraist.truthmaintenancesystems.ruleengine
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
+import java.io.PrintStream
 
 // Tiny rule engine, translated from F/dK version 61 of 7/21/92.
+
+type Q = Any
 
 /**
   *
@@ -43,6 +46,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * **Untranslated Lisp code**:
   * <pre>
 (defvar *TRE* nil "Name for default TRE")
+(proclaim '(special *TRE*)) ;; Current TRE
 
 (defmacro With-TRE (tre &rest forms)
   `(let ((*TRE* ,tre)) ,@ forms))
@@ -78,6 +82,16 @@ class TRE[F](
   val title: String
 ) {
 
+  /** Prints extra info if non-nil.
+    *
+    * <pre>
+;; From tinter.lisp
+(defun debug-tre (tre debugging)
+  (setf (tre-debugging tre) debugging))
+</pre>
+    */
+  var debugging: Boolean = false
+
   /**
     *
     * <pre>
@@ -86,14 +100,7 @@ class TRE[F](
   (format st "<TRE: ~A>" (tre-title tre)))
 </pre>
     */
-
-  /**
-    *
-    * <pre>
-;; From tinter.lisp
-(proclaim '(special *TRE*)) ;; Current TRE
-</pre>
-    */
+  def trePrinter(st: PrintStream): Unit = ???
 
   /**
     *
@@ -103,21 +110,13 @@ class TRE[F](
   `(when (tre-debugging *TRE*) (format t ,msg ,@ args)))
 </pre>
     */
+  inline def debuggingTre(msg: String): Unit = if debugging then println(msg)
+
+  // ***** Drivers for programs and people ***************************
 
   /**
     *
     * <pre>
-;; From tinter.lisp
-(defun debug-tre (tre debugging)
-  (setf (tre-debugging tre) debugging))
-</pre>
-    */
-
-  /**
-    *
-    * <pre>
-;;;; Drivers for programs and people
-
 ;; From tinter.lisp
 (defun run (&optional (*TRE* *TRE*))
     (format T "~%>>")
@@ -126,7 +125,13 @@ class TRE[F](
         (format t "~%~A" (eval form))
         (run-rules *tre*)  ;; Defined in RULES module
         (format t "~%>>")))
+</pre>
+    */
+  def run: Unit = ???
 
+  /** Does this make sense with objects?
+    *
+    * <pre>
 ;; From tinter.lisp
 (defun run-forms (*TRE* forms) ;; Toplevel for programs
   (dolist (form forms)
@@ -144,6 +149,7 @@ class TRE[F](
   (show-rules stream))
 </pre>
     */
+  def show(st: PrintStream = Console.out): Unit = ???
 
   /**
     *
@@ -165,6 +171,7 @@ class TRE[F](
     (try-rule-on rule candidate *TRE*)))
 </pre>
     */
+  def addRule(trigger: F, body: RuleBody): Unit = ???
 
   /**
     *
@@ -175,6 +182,7 @@ class TRE[F](
     (try-rules fact *tre*))) ;; run the rules on it.
 </pre>
     */
+  def assert(fact: F): Unit = ???
 
   /**
     *
@@ -187,6 +195,7 @@ class TRE[F](
           (push fact (dbclass-facts dbclass))))
 </pre>
     */
+  def insert(fact: F): Unit = ???
 
   /**
     *
@@ -211,6 +220,7 @@ class TRE[F](
         (t (error "Bad dbclass type: ~A" fact))))
 </pre>
     */
+  def getDbClass(fact: F): DbClass[F] = ???
 
   /**
     *
@@ -224,6 +234,7 @@ class TRE[F](
       (push (sublis bindings pattern) unifiers))))
 </pre>
     */
+  def fetch(pattern: F): List[F] = ???
 
   /**
     *
@@ -239,6 +250,7 @@ class TRE[F](
   counter)
 </pre>
     */
+  def showData(stream: PrintStream = Console.out): Int = ???
 
   /**
     *
@@ -247,5 +259,100 @@ class TRE[F](
 (defun get-candidates (pattern tre) (dbclass-facts (get-dbclass pattern tre)))
 </pre>
     */
+  def getCandidates(pattern: F): List[F] = ???
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun try-rules (fact tre)
+  ;; This is called by the database system when it adds something.
+  (dolist (rule (get-candidate-rules fact tre))
+    (try-rule-on rule fact tre)))
+</pre>
+    */
+  def tryRules(fact: F): Unit = ???
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun get-candidate-rules (fact tre)
+  (dbclass-rules (get-dbclass fact tre)))
+</pre>
+    */
+  def getCandidateRules(fact: F): List[Rule[F]] = ???
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun try-rule-on (rule fact tre &aux bindings)
+  ;; If the trigger matches, queue it up.
+  (setq bindings (unify fact (rule-trigger rule)
+                        (rule-environment rule)))
+  (unless (eq bindings :FAIL)
+    (enqueue (cons (rule-body rule) bindings) tre)))
+</pre>
+    */
+  def getCandidateRules(rule: Rule[F], fact: F): Unit = ???
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun run-rules (tre) ;; Called externally
+    (do ((rule-pair (dequeue tre) (dequeue tre))
+         (counter 0 (1+ counter)))
+        ((null rule-pair)
+         (debugging-tre  "~%    ~A rules run."  counter))
+        (run-rule rule-pair tre)))
+
+;; Ideally, all rules triggered will be executed, and the
+;; results will be independent of the order of execution.
+;; Thus a simple LIFO queue suffices.
+</pre>
+    */
+  def runRules: Unit = ???
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun enqueue (new tre) (push new (tre-queue tre)))
+</pre>
+    */
+  def enqueue(n: Q): Unit = ???
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun dequeue (tre) (pop (tre-queue tre)))
+</pre>
+    */
+  def dequeue: Q = ???
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun run-rule (pair tre)
+  ;; Here pair is (<body> . <bindings>).  The LET makes
+  ;; the bindings available to nested rules.
+  (let ((*ENV* (cdr pair))
+        (*TRE* tre))
+    (incf (tre-rules-run tre))
+    ;; Now we build a form that creates the right environment.
+    ;; We will see better ways to do this later.
+    (eval `(let ,(mapcar #'(lambda (binding)
+                             `(,(car binding)
+                               ',(sublis (cdr pair)
+                                         (cdr binding))))
+                         (cdr pair))
+             ,@ (car pair)))))
+</pre>
+    */
+  def runRule(bindings: Map[Symbol, F], body: RuleBody): Unit = ???
 
 }

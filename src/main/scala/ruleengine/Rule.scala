@@ -18,6 +18,7 @@
 package org.maraist.truthmaintenancesystems.ruleengine
 import scala.util.control.NonLocalReturns.*
 import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
+import java.io.PrintStream
 
 // Tiny rule engine, translated from F/dK version 61 of 7/21/92.
 
@@ -28,6 +29,8 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   */
 trait RuleFactImpl[R, K, F] {
 }
+
+type RuleBody = () => Unit
 
 /**
   *
@@ -92,6 +95,7 @@ class Rule[F](
   counter)
 </pre>
     */
+  def showRules(stream: PrintStream = System.out): Unit = ???
 
   /**
     *
@@ -106,6 +110,7 @@ class Rule[F](
           (rule-environment rule)))
 </pre>
     */
+  def printRule(stream: PrintStream = System.out): Unit = ???
 
   /**
     *
@@ -115,95 +120,6 @@ class Rule[F](
 (defmacro rule (trigger &rest body) `(add-rule ',trigger ',body))
 </pre>
     */
-
-  /**
-    *
-    * <pre>
-; From rules.lisp
-(defun try-rules (fact tre)
-  ;; This is called by the database system when it adds something.
-  (dolist (rule (get-candidate-rules fact tre))
-    (try-rule-on rule fact tre)))
-</pre>
-    */
-
-  /**
-    *
-    * <pre>
-; From rules.lisp
-(defun get-candidate-rules (fact tre)
-  (dbclass-rules (get-dbclass fact tre)))
-</pre>
-    */
-
-  /**
-    *
-    * <pre>
-; From rules.lisp
-(defun try-rule-on (rule fact tre &aux bindings)
-  ;; If the trigger matches, queue it up.
-  (setq bindings (unify fact (rule-trigger rule)
-                        (rule-environment rule)))
-  (unless (eq bindings :FAIL)
-    (enqueue (cons (rule-body rule) bindings) tre)))
-</pre>
-    */
-
-  /**
-    *
-    * <pre>
-;;;; Executing rules
-
-; From rules.lisp
-(defun run-rules (tre) ;; Called externally
-    (do ((rule-pair (dequeue tre) (dequeue tre))
-         (counter 0 (1+ counter)))
-        ((null rule-pair)
-         (debugging-tre  "~%    ~A rules run."  counter))
-        (run-rule rule-pair tre)))
-
-; From rules.lisp
-;; Ideally, all rules triggered will be executed, and the
-;; results will be independent of the order of execution.
-;; Thus a simple LIFO queue suffices.
-</pre>
-    */
-
-  /**
-    *
-    * <pre>
-; From rules.lisp
-(defun enqueue (new tre) (push new (tre-queue tre)))
-</pre>
-    */
-
-  /**
-    *
-    * <pre>
-; From rules.lisp
-(defun dequeue (tre) (pop (tre-queue tre)))
-</pre>
-    */
-
-  /**
-    *
-    * <pre>
-; From rules.lisp
-(defun run-rule (pair tre)
-  ;; Here pair is (<body> . <bindings>).  The LET makes
-  ;; the bindings available to nested rules.
-  (let ((*ENV* (cdr pair))
-        (*TRE* tre))
-    (incf (tre-rules-run tre))
-    ;; Now we build a form that creates the right environment.
-    ;; We will see better ways to do this later.
-    (eval `(let ,(mapcar #'(lambda (binding)
-                             `(,(car binding)
-                               ',(sublis (cdr pair)
-                                         (cdr binding))))
-                         (cdr pair))
-             ,@ (car pair)))))
-</pre>
-    */
+  inline def rule(trigger: F, body: RuleBody): Rule[F] = ???
 
 }

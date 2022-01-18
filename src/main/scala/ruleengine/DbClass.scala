@@ -37,7 +37,9 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
      rules)             ;rules applicable to this dbclass
 </pre>
   *
-  * @param title Name of this TMS, for output.
+  * @param name Symbol associated with the facts and rules in this
+  * class.
+  * @param tre [[TRE]] with which this organizer is associated.
   *
   * @constructor The `title` argument is required; others are optional.
   *
