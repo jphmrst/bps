@@ -63,7 +63,7 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
   * from outside this package.
   * @groupprio internal 10
   */
-class DbClass[F](val name: Symbol, val tre: TRE[F]) {
+class DbClass[K, F](val name: K, val tre: TRE[K, F]) {
 
   /**
     * Facts of this dbclass.
@@ -73,6 +73,6 @@ class DbClass[F](val name: Symbol, val tre: TRE[F]) {
   /**
     * Rules applicable to this dbclass.
     */
-  val rules: ListBuffer[Rule[F]] = new ListBuffer
+  val rules: ListBuffer[Rule[K, F]] = new ListBuffer
 
 }

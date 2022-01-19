@@ -23,31 +23,31 @@ import java.io.PrintStream
 // Tiny rule engine, translated from F/dK version 61 of 7/21/92.
 
 /**
-  * @tparam R Type of the representation of rules.
   * @tparam K The keys by which a fact can be indexed.
   * @tparam F The representation of facts.
   */
-trait RuleFactImpl[R, K, F] {
+trait FactImpl[K, F] {
+  def getIndexer(fact: F): K
 }
 
 type RuleBody = () => Unit
 
-trait Rule[F] {
+trait Rule[K, F] {
   def counter: Int
-  def dbClass: Symbol
+  def className: K
 }
 
 object Rule {
 
-  def apply[F, E](
+  def apply[K, F, E](
     counter: Int,
-    dbClass: Symbol,
+    className: K,
     environment: Bindings[F],
     t: (F) => Option[E],
     b: (E) => Unit,
     formatT: String):
-      Rule[F] =
-    new RuleImpl(counter, dbClass, environment) {
+      Rule[K, F] =
+    new RuleImpl(counter, className, environment) {
       type Extraction = E
       val trigger: (F) => Option[E] = t
       val body: (Extraction) => Unit = b
@@ -77,11 +77,11 @@ object Rule {
 </pre>
   *
   */
-abstract class RuleImpl[F](
+abstract class RuleImpl[K, F](
   val counter: Int,
-  val dbClass: Symbol,
+  val className: K,
   val environment: Bindings[F]
-) extends Rule[F] {
+) extends Rule[K, F] {
   type Extraction
   def trigger: (F) => Option[Extraction]
   def body: (Extraction) => Unit

@@ -52,6 +52,20 @@ type Q = Any
   `(let ((*TRE* ,tre)) ,@ forms))
 
 (defun in-TRE (tre) (setq *TRE* tre))
+
+;; From tinter.lisp --- Here we just call tre.runRules in between
+;; whatever other code.
+(defun run (&optional (*TRE* *TRE*))
+    (format T "~%>>")
+    (do ((form (read) (read)))
+        ((member form '(quit stop exit)) nil)
+        (format t "~%~A" (eval form))
+        (run-rules *tre*)  ;; Defined in RULES module
+        (format t "~%>>")))
+
+(defun run-forms (*TRE* forms) ;; Toplevel for programs
+  (dolist (form forms)
+          (eval form) (run-rules *TRE*)))
 </pre>
   *
   * @param title Name of this TMS, for output.
@@ -78,9 +92,7 @@ type Q = Any
   * from outside this package.
   * @groupprio internal 10
   */
-class TRE[F](
-  val title: String
-) {
+abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
 
   /** Prints extra info if non-nil.
     *
@@ -100,7 +112,10 @@ class TRE[F](
   (format st "<TRE: ~A>" (tre-title tre)))
 </pre>
     */
-  def trePrinter(st: PrintStream): Unit = ???
+  def trePrinter(st: PrintStream): Unit = st.print(s"<TRE: $title>")
+
+  /** Map from symbols to classes. */
+  val dbClassTable: HashMap[K, DbClass[K, F]] = new HashMap
 
   /**
     *
@@ -118,38 +133,16 @@ class TRE[F](
     *
     * <pre>
 ;; From tinter.lisp
-(defun run (&optional (*TRE* *TRE*))
-    (format T "~%>>")
-    (do ((form (read) (read)))
-        ((member form '(quit stop exit)) nil)
-        (format t "~%~A" (eval form))
-        (run-rules *tre*)  ;; Defined in RULES module
-        (format t "~%>>")))
-</pre>
-    */
-  def run: Unit = ???
-
-  /** Does this make sense with objects?
-    *
-    * <pre>
-;; From tinter.lisp
-(defun run-forms (*TRE* forms) ;; Toplevel for programs
-  (dolist (form forms)
-          (eval form) (run-rules *TRE*)))
-</pre>
-    */
-
-  /**
-    *
-    * <pre>
-;; From tinter.lisp
 (defun show (&optional (stream *standard-output*))
   ;; Pass on the request to both modules of default TRE
   (show-data stream)
   (show-rules stream))
 </pre>
     */
-  def show(st: PrintStream = Console.out): Unit = ???
+  def show(stream: PrintStream = Console.out): Unit = {
+    showData(stream)
+    showRules(stream)
+  }
 
   /**
     *
@@ -171,17 +164,11 @@ class TRE[F](
     (try-rule-on rule candidate *TRE*)))
 </pre>
     */
-  def addRule(trigger: F, body: RuleBody): Unit = ???
-
-  /**
-    *
-    * <pre>
-;; Sugar for the user (or other programs!)
-; From rules.lisp
-(defmacro rule (trigger &rest body) `(add-rule ',trigger ',body))
-</pre>
-    */
-  inline def rule(trigger: F, body: RuleBody): Rule[F] = ???
+  def addRule(rule: Rule[K, F]): Unit = {
+    val dbClass = indexToDbClass(rule.className)
+    dbClass.rules += rule
+    for (candidate <- dbClass.facts) do tryRuleOn(rule, candidate)
+  }
 
   /**
     *
@@ -192,7 +179,7 @@ class TRE[F](
     (try-rules fact *tre*))) ;; run the rules on it.
 </pre>
     */
-  def assert(fact: F): Unit = ???
+  def assert(fact: F): Unit = if insert(fact) then tryRules(fact)
 
   /**
     *
@@ -205,7 +192,9 @@ class TRE[F](
           (push fact (dbclass-facts dbclass))))
 </pre>
     */
-  def insert(fact: F): Unit = ???
+  def insert(fact: F): Boolean = {
+    ???
+  }
 
   /**
     *
@@ -230,7 +219,12 @@ class TRE[F](
         (t (error "Bad dbclass type: ~A" fact))))
 </pre>
     */
-  def getDbClass(fact: F): DbClass[F] = ???
+  def getDbClass(fact: F): DbClass[K, F] = {
+    ???
+  }
+  def indexToDbClass(s: K): DbClass[K, F] = {
+    ???
+  }
 
   /**
     *
@@ -244,7 +238,9 @@ class TRE[F](
       (push (sublis bindings pattern) unifiers))))
 </pre>
     */
-  def fetch(pattern: F): List[F] = ???
+  def fetch(pattern: F): List[F] = {
+    ???
+  }
 
   /**
     *
@@ -260,7 +256,9 @@ class TRE[F](
   counter)
 </pre>
     */
-  def showData(stream: PrintStream = Console.out): Int = ???
+  def showData(stream: PrintStream = Console.out): Int = {
+    ???
+  }
 
   /**
     *
@@ -269,7 +267,9 @@ class TRE[F](
 (defun get-candidates (pattern tre) (dbclass-facts (get-dbclass pattern tre)))
 </pre>
     */
-  def getCandidates(pattern: F): List[F] = ???
+  def getCandidates(pattern: F): List[F] = {
+    ???
+  }
 
   /**
     *
@@ -281,7 +281,9 @@ class TRE[F](
     (try-rule-on rule fact tre)))
 </pre>
     */
-  def tryRules(fact: F): Unit = ???
+  def tryRules(fact: F): Unit = {
+    ???
+  }
 
   /**
     *
@@ -291,7 +293,9 @@ class TRE[F](
   (dbclass-rules (get-dbclass fact tre)))
 </pre>
     */
-  def getCandidateRules(fact: F): List[Rule[F]] = ???
+  def getCandidateRules(fact: F): List[Rule[K, F]] = {
+    ???
+  }
 
   /**
     *
@@ -305,7 +309,9 @@ class TRE[F](
     (enqueue (cons (rule-body rule) bindings) tre)))
 </pre>
     */
-  def getCandidateRules(rule: Rule[F], fact: F): Unit = ???
+  def tryRuleOn(rule: Rule[K, F], fact: F): Unit = {
+    ???
+  }
 
   /**
     *
@@ -323,7 +329,9 @@ class TRE[F](
 ;; Thus a simple LIFO queue suffices.
 </pre>
     */
-  def runRules: Unit = ???
+  def runRules: Unit = {
+    ???
+  }
 
   /**
     *
@@ -332,7 +340,9 @@ class TRE[F](
 (defun enqueue (new tre) (push new (tre-queue tre)))
 </pre>
     */
-  def enqueue(n: Q): Unit = ???
+  def enqueue(n: Q): Unit = {
+    ???
+  }
 
   /**
     *
@@ -341,7 +351,9 @@ class TRE[F](
 (defun dequeue (tre) (pop (tre-queue tre)))
 </pre>
     */
-  def dequeue: Q = ???
+  def dequeue: Q = {
+    ???
+  }
 
   /**
     *
@@ -363,7 +375,9 @@ class TRE[F](
              ,@ (car pair)))))
 </pre>
     */
-  def runRule(bindings: Map[Symbol, F], body: RuleBody): Unit = ???
+  def runRule(bindings: Bindings[F], body: RuleBody): Unit = {
+    ???
+  }
 
   /**
     *
@@ -380,6 +394,43 @@ class TRE[F](
   counter)
 </pre>
     */
-  def showRules(stream: PrintStream = System.out): Unit = ???
+  def showRules(stream: PrintStream = System.out): Unit = {
+    ???
+  }
 
+  /**
+    *
+    * <pre>
+;; From rules.lisp
+(defun add-rule (trigger body &aux rule dbclass)
+  ;; First build the struct
+  (setq rule (make-rule :TRIGGER trigger
+                        :BODY body
+                        :COUNTER (incf (tre-rule-counter *TRE*))
+                        :ENVIRONMENT *ENV*))
+  ;; Now index it
+  (setq dbclass (get-dbclass trigger *TRE*))
+  (push rule (dbclass-rules dbclass))
+  (setf (rule-dbclass rule) dbclass)
+  (debugging-tre "~% TRE: New rule: ~A" (print-rule rule nil))
+  ;; Go into the database and see what it might trigger on.
+  (dolist (candidate (get-candidates trigger *TRE*))
+    (try-rule-on rule candidate *TRE*)))
+</pre>
+    */
+  def addRule(trigger: F, body: RuleBody): Unit = {
+    ???
+  }
+
+  /**
+    *
+    * <pre>
+;; Sugar for the user (or other programs!)
+; From rules.lisp
+(defmacro rule (trigger &rest body) `(add-rule ',trigger ',body))
+</pre>
+    */
+  inline def rule(trigger: F, body: RuleBody): Rule[K, F] = {
+    ???
+  }
 }
