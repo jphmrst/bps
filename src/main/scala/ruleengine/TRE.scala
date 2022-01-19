@@ -176,6 +176,16 @@ class TRE[F](
   /**
     *
     * <pre>
+;; Sugar for the user (or other programs!)
+; From rules.lisp
+(defmacro rule (trigger &rest body) `(add-rule ',trigger ',body))
+</pre>
+    */
+  inline def rule(trigger: F, body: RuleBody): Rule[F] = ???
+
+  /**
+    *
+    * <pre>
 ;; From data.lisp
 (defun assert! (fact &optional (*TRE* *TRE*))
   (when (insert fact *tre*)  ;; when it isn't already there
@@ -354,5 +364,22 @@ class TRE[F](
 </pre>
     */
   def runRule(bindings: Map[Symbol, F], body: RuleBody): Unit = ???
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun show-rules (&optional (stream *standard-output*) &aux counter)
+  (setq counter 0)
+  (maphash #'(lambda (key dbclass)
+               (dolist (rule (dbclass-rules dbclass))
+                       (incf counter)
+                       (format stream "~%  ")
+                       (print-rule rule stream)))
+           (tre-dbclass-table *TRE*))
+  counter)
+</pre>
+    */
+  def showRules(stream: PrintStream = System.out): Unit = ???
 
 }

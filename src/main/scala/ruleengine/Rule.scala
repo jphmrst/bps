@@ -32,6 +32,30 @@ trait RuleFactImpl[R, K, F] {
 
 type RuleBody = () => Unit
 
+trait Rule[F] {
+  def counter: Int
+  def dbClass: Symbol
+}
+
+object Rule {
+
+  def apply[F, E](
+    counter: Int,
+    dbClass: Symbol,
+    environment: Bindings[F],
+    t: (F) => Option[E],
+    b: (E) => Unit,
+    formatT: String):
+      Rule[F] =
+    new RuleImpl(counter, dbClass, environment) {
+      type Extraction = E
+      val trigger: (F) => Option[E] = t
+      val body: (Extraction) => Unit = b
+      val formatTrigger: String = formatT
+    }
+
+}
+
 /**
   *
   * **Arguments and `val` members translated from**:
@@ -52,50 +76,17 @@ type RuleBody = () => Unit
 ;;;; Interface for rules
 </pre>
   *
-  * @param title Name of this TMS, for output.
-  *
-  * @constructor The `title` argument is required; others are optional.
-  *
-  * @groupname construction Construction methods
-  * @groupdesc construction API methods for building and changing
-  * an ATMS from an external system.
-  * @groupprio construction 1
-  *
-  * @groupname query Query methods
-  * @groupdesc query API methods for querying the TRE and its beliefs
-  * from an external system.  Note that most query-style methods are
-  * on [[Node]]s.
-  * @groupprio query 2
-  *
-  * @groupname diagnostic Diagnostic and debugging methods
-  * @groupdesc diagnostic Reporting the current TRE state as text.
-  * @groupprio diagnostic 3
-  *
-  * @groupname internal Internal methods
-  * @groupdesc internal Implementation methods; not generally for use
-  * from outside this package.
-  * @groupprio internal 10
   */
-class Rule[F](
-  val counter: Int
-) {
+abstract class RuleImpl[F](
+  val counter: Int,
+  val dbClass: Symbol,
+  val environment: Bindings[F]
+) extends Rule[F] {
+  type Extraction
+  def trigger: (F) => Option[Extraction]
+  def body: (Extraction) => Unit
 
-  /**
-    *
-    * <pre>
-; From rules.lisp
-(defun show-rules (&optional (stream *standard-output*) &aux counter)
-  (setq counter 0)
-  (maphash #'(lambda (key dbclass)
-               (dolist (rule (dbclass-rules dbclass))
-                       (incf counter)
-                       (format stream "~%  ")
-                       (print-rule rule stream)))
-           (tre-dbclass-table *TRE*))
-  counter)
-</pre>
-    */
-  def showRules(stream: PrintStream = System.out): Unit = ???
+  def formatTrigger: String
 
   /**
     *
@@ -110,16 +101,6 @@ class Rule[F](
           (rule-environment rule)))
 </pre>
     */
-  def printRule(stream: PrintStream = System.out): Unit = ???
-
-  /**
-    *
-    * <pre>
-;; Sugar for the user (or other programs!)
-; From rules.lisp
-(defmacro rule (trigger &rest body) `(add-rule ',trigger ',body))
-</pre>
-    */
-  inline def rule(trigger: F, body: RuleBody): Rule[F] = ???
-
+  def printRule(stream: PrintStream = System.out): Unit = // TODO nsublis
+    stream.println(s"Rule $counter: $formatTrigger; $environment")
 }
