@@ -29,8 +29,6 @@ enum Expr {
   case SExpr(subexprs: List[Expr]) extends Expr
 }
 
-type Bindings[E] = Option[Map[Symbol, E]]
-
 /**
   *
   * @param title Name of this TMS, for output.
@@ -101,19 +99,21 @@ object Expr {
          (t :FAIL)))
 </pre>
     */
-  def unify(a: Expr, b: Expr, bindings: Bindings[Expr] = Some(Map.empty)):
-      Bindings[Expr] = (a, b) match {
-    case (Sym(sa), Sym(sb)) if sa == sb => bindings
-    case (Sym(s), _) if isVariable(s) => unifyVariable(s, b, bindings)
-    case (_, Sym(s)) if isVariable(s) => unifyVariable(s, a, bindings)
-    case (Num(na), Num(nb)) if na == nb => bindings
-    case (SExpr(Nil), SExpr(Nil)) => bindings
-    case (SExpr(a1 :: as), SExpr(b1 :: bs)) => unify(a1, b1, bindings) match {
-      case None => None
-      case bnd2 => unify(SExpr(as), SExpr(bs), bnd2)
+  def unify(
+    a: Expr, b: Expr, bindings: Bindings[Symbol, Expr] = Some(Map.empty)):
+      Bindings[Symbol, Expr] =
+    (a, b) match {
+      case (Sym(sa), Sym(sb)) if sa == sb => bindings
+      case (Sym(s), _) if isVariable(s) => unifyVariable(s, b, bindings)
+      case (_, Sym(s)) if isVariable(s) => unifyVariable(s, a, bindings)
+      case (Num(na), Num(nb)) if na == nb => bindings
+      case (SExpr(Nil), SExpr(Nil)) => bindings
+      case (SExpr(a1 :: as), SExpr(b1 :: bs)) => unify(a1, b1, bindings) match {
+        case None => None
+        case bnd2 => unify(SExpr(as), SExpr(bs), bnd2)
+      }
+      case _ => None
     }
-    case _ => None
-  }
 
   /**
     *
@@ -128,8 +128,8 @@ object Expr {
         (t :FAIL)))
 </pre>
     */
-  def unifyVariable(v: Symbol, exp: Expr, bindings: Bindings[Expr]):
-      Bindings[Expr] = bindings.flatMap(_.get(v)) match {
+  def unifyVariable(v: Symbol, exp: Expr, bindings: Bindings[Symbol, Expr]):
+      Bindings[Symbol, Expr] = bindings.flatMap(_.get(v)) match {
     case None => if isFreeIn(v, exp, bindings)
       then Some(bindings.map(_ + ((v, exp))).getOrElse(Map((v, exp)))) else None
     case Some(binding) => unify(binding, exp, bindings)
@@ -153,7 +153,8 @@ object Expr {
          (free-in? var (cdr exp) bindings))))
 </pre>
     */
-  def isFreeIn(v: Symbol, exp: Expr, bindings: Bindings[Expr]): Boolean =
+  def isFreeIn(v: Symbol, exp: Expr, bindings: Bindings[Symbol, Expr]):
+      Boolean =
     exp match {
       case Sym(s) if s == v => false
       case Sym(s) =>

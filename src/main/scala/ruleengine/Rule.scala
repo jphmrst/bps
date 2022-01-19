@@ -22,19 +22,15 @@ import java.io.PrintStream
 
 // Tiny rule engine, translated from F/dK version 61 of 7/21/92.
 
-/**
-  * @tparam K The keys by which a fact can be indexed.
-  * @tparam F The representation of facts.
-  */
-trait FactImpl[K, F] {
-  def getIndexer(fact: F): K
-}
-
 type RuleBody = () => Unit
 
 trait Rule[K, F] {
   def counter: Int
   def className: K
+  def apply(fact: F): Unit
+  type Runnable
+  def run(r: Runnable): Unit
+  def printRule(stream: PrintStream): Unit
 }
 
 object Rule {
@@ -42,18 +38,22 @@ object Rule {
   def apply[K, F, E](
     counter: Int,
     className: K,
-    environment: Bindings[F],
+    environment: Bindings[K, F],
     t: (F) => Option[E],
     b: (E) => Unit,
     formatT: String):
       Rule[K, F] =
     new RuleImpl(counter, className, environment) {
-      type Extraction = E
+      type Runnable = E
       val trigger: (F) => Option[E] = t
-      val body: (Extraction) => Unit = b
+      val body: (Runnable) => Unit = b
       val formatTrigger: String = formatT
     }
 
+}
+
+class RuleRunnable[K, F](val rule: Rule[K, F], val runnable: rule.Runnable) {
+  def run: Unit = rule.run(runnable)
 }
 
 /**
@@ -80,11 +80,38 @@ object Rule {
 abstract class RuleImpl[K, F](
   val counter: Int,
   val className: K,
-  val environment: Bindings[F]
+  val environment: Bindings[K, F]
 ) extends Rule[K, F] {
-  type Extraction
-  def trigger: (F) => Option[Extraction]
-  def body: (Extraction) => Unit
+  type Runnable
+  def trigger: (F) => Option[Runnable]
+  def body: (Runnable) => Unit
+
+  def apply(fact: F): Unit = trigger(fact) match {
+    case None => { }
+    case Some(r) => body(r)
+  }
+
+  /**
+    *
+    * <pre>
+; From rules.lisp
+(defun run-rule (pair tre)
+  ;; Here pair is (<body> . <bindings>).  The LET makes
+  ;; the bindings available to nested rules.
+  (let ((*ENV* (cdr pair))
+        (*TRE* tre))
+    (incf (tre-rules-run tre))
+    ;; Now we build a form that creates the right environment.
+    ;; We will see better ways to do this later.
+    (eval `(let ,(mapcar #'(lambda (binding)
+                             `(,(car binding)
+                               ',(sublis (cdr pair)
+                                         (cdr binding))))
+                         (cdr pair))
+             ,@ (car pair)))))
+</pre>
+    */
+  def run(r: Runnable): Unit = body(r)
 
   def formatTrigger: String
 

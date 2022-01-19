@@ -22,8 +22,6 @@ import java.io.PrintStream
 
 // Tiny rule engine, translated from F/dK version 61 of 7/21/92.
 
-type Q = Any
-
 /**
   *
   * **Arguments and `val` members translated from**:
@@ -117,6 +115,9 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
   /** Map from symbols to classes. */
   val dbClassTable: HashMap[K, DbClass[K, F]] = new HashMap
 
+  /** LIFO. */
+  val queue = new Queue[RuleRunnable[K, F]]
+
   /**
     *
     * <pre>
@@ -193,7 +194,12 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
 </pre>
     */
   def insert(fact: F): Boolean = {
-    ???
+    val dbClass = getDbClass(fact)
+    if !dbClass.facts.contains(fact) then {
+      debuggingTre(s"Inserting $fact into database.")
+      dbClass.facts += fact
+      true
+    } else false
   }
 
   /**
@@ -219,11 +225,15 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
         (t (error "Bad dbclass type: ~A" fact))))
 </pre>
     */
-  def getDbClass(fact: F): DbClass[K, F] = {
-    ???
-  }
-  def indexToDbClass(s: K): DbClass[K, F] = {
-    ???
+  inline def getDbClass(fact: F): DbClass[K, F] =
+    indexToDbClass(factImpl.getIndexer(fact))
+  def indexToDbClass(s: K): DbClass[K, F] = dbClassTable.get(s) match {
+    case Some(dbc) => dbc
+    case None => {
+      val dbc = new DbClass(s, this)
+      dbClassTable += ((s, dbc))
+      dbc
+    }
   }
 
   /**
@@ -239,7 +249,14 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
 </pre>
     */
   def fetch(pattern: F): List[F] = {
-    ???
+    val unifiers = new ListBuffer[F]
+
+    for (candidate <- getCandidates(pattern)) do {
+      val bindings = factImpl.unify(pattern, candidate)
+      if bindings.succeeded then unifiers += factImpl.subst(pattern, bindings)
+    }
+
+    unifiers.toList
   }
 
   /**
@@ -257,7 +274,12 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
 </pre>
     */
   def showData(stream: PrintStream = Console.out): Int = {
-    ???
+    var counter = 0
+    for ((name, dbClass) <- dbClassTable; datum <- dbClass.facts) do {
+      counter = counter + 1
+      println(datum)
+    }
+    counter
   }
 
   /**
@@ -267,9 +289,7 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
 (defun get-candidates (pattern tre) (dbclass-facts (get-dbclass pattern tre)))
 </pre>
     */
-  def getCandidates(pattern: F): List[F] = {
-    ???
-  }
+  def getCandidates(pattern: F): List[F] = getDbClass(pattern).facts.toList
 
   /**
     *
@@ -281,9 +301,7 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
     (try-rule-on rule fact tre)))
 </pre>
     */
-  def tryRules(fact: F): Unit = {
-    ???
-  }
+  def tryRules(fact: F): Unit = getCandidateRules(fact).map(tryRuleOn(_, fact))
 
   /**
     *
@@ -293,9 +311,8 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
   (dbclass-rules (get-dbclass fact tre)))
 </pre>
     */
-  def getCandidateRules(fact: F): List[Rule[K, F]] = {
-    ???
-  }
+  def getCandidateRules(fact: F): List[Rule[K, F]] =
+    indexToDbClass(factImpl.getIndexer(fact)).rules.toList
 
   /**
     *
@@ -309,13 +326,11 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
     (enqueue (cons (rule-body rule) bindings) tre)))
 </pre>
     */
-  def tryRuleOn(rule: Rule[K, F], fact: F): Unit = {
-    ???
-  }
+  def tryRuleOn(rule: Rule[K, F], fact: F): Unit = rule(fact)
 
   /**
     *
-    * <pre>
+    * <pre>
 ; From rules.lisp
 (defun run-rules (tre) ;; Called externally
     (do ((rule-pair (dequeue tre) (dequeue tre))
@@ -330,7 +345,12 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
 </pre>
     */
   def runRules: Unit = {
-    ???
+    var counter = 0
+    while (!queue.isEmpty) {
+      counter = counter + 1
+      queue.dequeue.run
+    }
+    debuggingTre(s"$counter rules run.")
   }
 
   /**
@@ -340,9 +360,7 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
 (defun enqueue (new tre) (push new (tre-queue tre)))
 </pre>
     */
-  def enqueue(n: Q): Unit = {
-    ???
-  }
+  def enqueue(n: RuleRunnable[K, F]): Unit = queue.enqueue(n)
 
   /**
     *
@@ -351,33 +369,7 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
 (defun dequeue (tre) (pop (tre-queue tre)))
 </pre>
     */
-  def dequeue: Q = {
-    ???
-  }
-
-  /**
-    *
-    * <pre>
-; From rules.lisp
-(defun run-rule (pair tre)
-  ;; Here pair is (<body> . <bindings>).  The LET makes
-  ;; the bindings available to nested rules.
-  (let ((*ENV* (cdr pair))
-        (*TRE* tre))
-    (incf (tre-rules-run tre))
-    ;; Now we build a form that creates the right environment.
-    ;; We will see better ways to do this later.
-    (eval `(let ,(mapcar #'(lambda (binding)
-                             `(,(car binding)
-                               ',(sublis (cdr pair)
-                                         (cdr binding))))
-                         (cdr pair))
-             ,@ (car pair)))))
-</pre>
-    */
-  def runRule(bindings: Bindings[F], body: RuleBody): Unit = {
-    ???
-  }
+  def dequeue: RuleRunnable[K, F] = queue.dequeue
 
   /**
     *
@@ -394,8 +386,13 @@ abstract class TRE[K, F](val title: String)(using factImpl: FactImpl[K, F]) {
   counter)
 </pre>
     */
-  def showRules(stream: PrintStream = System.out): Unit = {
-    ???
+  def showRules(stream: PrintStream = System.out): Int = {
+    var counter = 0
+    for ((key, dbClass) <- dbClassTable; rule <- dbClass.rules) do {
+      counter = counter + 1
+      rule.printRule(stream)
+    }
+    counter
   }
 
   /**
