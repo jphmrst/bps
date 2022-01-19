@@ -30,8 +30,7 @@ enum Expr {
   case SExpr(subexprs: List[Expr]) extends Expr
 }
 
-type Bindings[E] = Map[Symbol, E] | UnifyFail
-case class UnifyFail()
+type Bindings[E] = Option[Map[Symbol, E]]
 
 /**
   *
@@ -71,9 +70,22 @@ object Expr {
 </pre>
     */
   def isVariable(e: Expr): Boolean = e match {
-    case Sym(s) => s.name.length > 0 && s.name.charAt(0) == '?'
+    case Sym(s) => isVariable(s)
     case _ => false
   }
+
+  /**
+    *
+    * <pre>
+; From unify.lisp
+(defun variable? (x)
+  (and (symbolp x)      ;A symbol whose first character is "?"
+       (char= #\? (elt (symbol-name x) 0))))
+</pre>
+    */
+  def isVariable(s: Symbol): Boolean =
+    s.name.length > 0 && s.name.charAt(0) == '?'
+
 
   /**
     *
@@ -90,8 +102,19 @@ object Expr {
          (t :FAIL)))
 </pre>
     */
-  def unify(a: Expr, b: Expr, bindings: Map[Symbol, Expr] = Map()):
-      Bindings[Expr] = ???
+  def unify(a: Expr, b: Expr, bindings: Bindings[Expr] = Some(Map.empty)):
+      Bindings[Expr] = (a, b) match {
+    case (Sym(sa), Sym(sb)) if sa == sb => bindings
+    case (Sym(s), _) if isVariable(s) => unifyVariable(s, b, bindings)
+    case (_, Sym(s)) if isVariable(s) => unifyVariable(s, a, bindings)
+    case (Num(na), Num(nb)) if na == nb => bindings
+    case (SExpr(Nil), SExpr(Nil)) => bindings
+    case (SExpr(a1 :: as), SExpr(b1 :: bs)) => unify(a1, b1, bindings) match {
+      case None => None
+      case bnd2 => unify(SExpr(as), SExpr(bs), bnd2)
+    }
+    case _ => None
+  }
 
   /**
     *
@@ -106,8 +129,12 @@ object Expr {
         (t :FAIL)))
 </pre>
     */
-  def unifyVariable(v: Symbol, exp: Expr, bindings: Map[Symbol, Expr]):
-      Bindings[Expr] = ???
+  def unifyVariable(v: Symbol, exp: Expr, bindings: Bindings[Expr]):
+      Bindings[Expr] = bindings.flatMap(_.get(v)) match {
+    case None => if isFreeIn(v, exp, bindings)
+      then Some(bindings.map(_ + ((v, exp))).getOrElse(Map((v, exp)))) else None
+    case Some(binding) => unify(binding, exp, bindings)
+  }
 
   /**
     *
@@ -127,7 +154,13 @@ object Expr {
          (free-in? var (cdr exp) bindings))))
 </pre>
     */
-  def isFreeIn(v: Symbol, exp: Expr, bindings: Map[Symbol, Expr]): Boolean =
-    ???
+  def isFreeIn(v: Symbol, exp: Expr, bindings: Bindings[Expr]): Boolean =
+    exp match {
+      case Sym(s) if s == v => false
+      case Sym(s) =>
+        bindings.flatMap(_.get(s)).map(isFreeIn(v, _, bindings)).getOrElse(true)
+      case Num(_) => true
+      case SExpr(es) => es.forall(isFreeIn(v, _, bindings))
+    }
 
 }
