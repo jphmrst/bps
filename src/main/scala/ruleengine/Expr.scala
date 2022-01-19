@@ -21,7 +21,6 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 // Tiny rule engine, translated from F/dK version 61 of 7/21/92.
 
-// type Fact = Symbol | Int | List[Fact]
 enum Expr {
   case Sym(s: Symbol) extends Expr
 
@@ -162,5 +161,4 @@ object Expr {
       case Num(_) => true
       case SExpr(es) => es.forall(isFreeIn(v, _, bindings))
     }
-
 }
