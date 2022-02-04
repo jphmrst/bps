@@ -207,7 +207,7 @@ printJustRule just = liftIO $ print $ justIndex just
 data Monad m => Justification d i r s m =
   ByRule (JustRule d i r s m) | EnabledAssumption | UserStipulation
 
--- Returns @True@ when the node is supported by a `JustRule` with no
+-- |Returns @True@ when the node is supported by a `JustRule` with no
 -- antecedents.
 --
 -- /Translated from/:
