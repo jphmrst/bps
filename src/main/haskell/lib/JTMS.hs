@@ -10,6 +10,28 @@ Portability : POSIX
 
 Translation of Forbus and de Kleer's justification-based truth
 maintenance systems (JTMSes) from Common Lisp to Haskell.
+
+This is not a very \"Haskelly\" implementation; rather, it is a
+translation of the original code with minimal changes.  Most of the
+deviations from the original are due to either Haskell's strong
+typing, which necessitates some additional tagging, and to the
+abomination which is Lisp's @do@ macro.  The translation relies on
+mutable data structures using `ST` state thread references.  A more
+pure translation, possibly not relying on the `ST` monad/`STT`
+transformer, is a significant piece of future work.
+
+See the @LICENSE.txt@ and @README-forbus-dekleer.txt@ files
+distributed with this work for a paragraph stating scope of permission
+and disclaimer of warranty, and for additional information regarding
+copyright ownership.  The above copyright notice and that paragraph
+must be included in any separate copy of this file.
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied, for NON-COMMERCIAL use.  See the License for the specific
+language governing permissions and limitations under the License.
+
 -}
 
 {-# LANGUAGE KindSignatures #-}
@@ -47,7 +69,7 @@ import Control.Monad.ST.Trans
 -- >   (node-string nil)
 -- >   (contradiction-handler nil)
 -- >   (enqueue-procedure nil))
-data JTMS d i r s (m :: * -> *) = JTMS {
+data Monad m => JTMS d i r s m = JTMS {
   -- |Name of this JTMS.
   jtmsTitle :: String,
   -- |Unique namer for nodes.
@@ -57,7 +79,7 @@ data JTMS d i r s (m :: * -> *) = JTMS {
   -- |List of all TMS nodes.
   jtmsNodes :: STRef s [Node d i r s m],
   -- |List of all justifications.
-  jtmsJusts :: STRef s [Just d i r s m],
+  jtmsJusts :: STRef s [JustRule d i r s m],
   -- |List of all contradiction nodes.
   jtmsContradictions :: STRef s [Node d i r s m],
   -- |List of all assumption nodes.
@@ -76,7 +98,7 @@ newJTMS title = do
   nc <- newSTRef 0
   jc <- newSTRef 0
   nodes <- newSTRef ([] :: [Node d i r s m])
-  justs <- newSTRef ([] :: [Just d i r s m])
+  justs <- newSTRef ([] :: [JustRule d i r s m])
   contradictions <- newSTRef ([] :: [Node d i r s m])
   assumptions <- newSTRef ([] :: [Node d i r s m])
   checkingContradictions <- newSTRef True
@@ -116,21 +138,21 @@ printJTMS jtms = liftIO $ print $ jtmsTitle jtms
 -- >   (in-rules nil)     ;; Rules that should be triggered when node goes in
 -- >   (out-rules nil)    ;; Rules that should be triggered when node goes out
 -- >   (jtms nil))           ;; The JTMS in which this node appears.
-data Node d i r s (m :: * -> *) = Node {
+data Monad m => Node d i r s m = Node {
   nodeIndex :: Int,
   nodeDatum :: d,
   nodeJTMS :: JTMS d i r s m,
   nodeIsAssumption :: STRef s Bool,
   nodeIsContradictory :: STRef s Bool,
-  -- TODO nodeSupport -- need Justification vs Just
+  nodeSupport :: STRef s (Maybe (Justification d i r s m)),
   nodeBelieved :: STRef s Bool,
-  nodeConsequences :: STRef s [Just d i r s m],
+  nodeConsequences :: STRef s [JustRule d i r s m],
   nodeInRules :: STRef s [r],
   nodeOutRules :: STRef s [r],
-  nodeJusts :: STRef s [Just d i r s m]
+  nodeJusts :: STRef s [JustRule d i r s m]
 }
 
--- |Write one node in the standard way for this JTMS.  Force the
+-- |Write one node in the standard way for this JTMS.  Forces the
 -- wrapped monad to be `MonadIO`.
 --
 -- /Translated from/:
@@ -142,8 +164,7 @@ data Node d i r s (m :: * -> *) = Node {
 printTmsNode :: MonadIO m => Node d i r s m -> STT s m ()
 printTmsNode node = do
   s <- nodeString node
-  lift $ liftIO $ print s
-
+  liftIO $ print s
 
 -- |Wrapper for one justification relationship between many antecedent
 -- nodes and one consequent node.
@@ -156,7 +177,7 @@ printTmsNode node = do
 -- >   informant
 -- >   consequence
 -- >   antecedents)
-data Just d i r s (m :: * -> *) = Just {
+data Monad m => JustRule d i r s m = JustRule {
   justIndex :: Int,
   justInformant :: i,
   justConsequence :: Node d i r s m,
@@ -171,11 +192,17 @@ data Just d i r s (m :: * -> *) = Just {
 -- > (defun print-just (just stream ignore)
 -- >   (declare (ignore ignore))
 -- >   (format stream "#<Just ~D>" (just-index just)))
-printJust :: MonadIO m => Just d i r s m -> STT s m ()
-printJust just = lift $ liftIO $ print $ justIndex just
+printJustRule :: MonadIO m => JustRule d i r s m -> STT s m ()
+printJustRule just = liftIO $ print $ justIndex just
 
+-- |Forms of data which might signal support for a node.  The original
+-- Lisp does not need this declaration since it is untyped; the latter
+-- two cases are simply symbols.
+data Monad m => Justification d i r s m =
+  ByRule (JustRule d i r s m) | EnabledAssumption | UserStipulation
 
--- TODO
+-- Returns @True@ when the node is supported by a `JustRule` with no
+-- antecedents.
 --
 -- /Translated from/:
 --
@@ -184,7 +211,12 @@ printJust just = lift $ liftIO $ print $ justIndex just
 -- >   (and (setq support (tms-node-support node))
 -- >        (not (eq support :ENABLED-ASSUMPTION))
 -- >        (null (just-antecedents support))))
-
+nodeIsPremise :: Monad m => Node d i r s m -> STT s m Bool
+nodeIsPremise node = do
+  support <- readSTRef $ nodeSupport node
+  case support of
+    Just (ByRule (JustRule _ _ _ antecedents)) -> return $ null antecedents
+    _ -> return False
 
 -- * Simple utilities
 
@@ -201,7 +233,7 @@ nodeString node = do
   ns <- readSTRef $ jtmsNodeString $ nodeJTMS node
   return (ns node)
 
---
+-- TODO
 --
 -- /Translated from/:
 --
@@ -728,3 +760,9 @@ nodeString node = do
 -- >              (t (format t
 -- >                  "~% Must be q or an integer from 0 to ~D."
 -- >                  olen))))))
+
+
+-- |This instance declaration is not part of `STT`, but it is
+-- convenient.
+instance MonadIO m => MonadIO (STT s m) where
+  liftIO = lift . liftIO
