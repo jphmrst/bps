@@ -22,7 +22,7 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - mtl
-- StMonadTrans >= 0.4.6  # Use `stack unpack STMonadTrans-0.4.6`
+- STMonadTrans >= 0.4.6
 
 library:
   source-dirs: src/main/haskell/lib
