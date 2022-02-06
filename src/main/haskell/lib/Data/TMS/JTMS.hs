@@ -43,12 +43,51 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 
-module JTMS where
+module Data.TMS.JTMS where
 import Control.Monad.State
 import Control.Monad.ST.Trans
+import Control.Monad.Except
+
+-- * The @JTMST@ monad transformer
+--
+-- Construction and manipulation of a JTMS happens inside this monad
+-- wrapper.
 
 -- |The process of building and using a mutable JTMS.
-type JTMST s m a = STT s m a
+newtype Monad m => JTMST s m a = JtmsT { unwrap :: ExceptT JtmsErr (STT s m) a }
+
+-- |Errors which can arise from JTMS operations.
+data JtmsErr = JtmsErr
+
+instance (Monad m) => Functor (JTMST s m) where
+  fmap f (JtmsT m) = JtmsT $ do
+    v <- m
+    return $ f v
+
+instance (Monad m, Functor m) => Applicative (JTMST s m) where
+  pure v = JtmsT $ pure v
+  (JtmsT m1) <*> (JtmsT m2) = JtmsT $ do
+    f <- m1
+    v <- m2
+    return (f v)
+
+instance (Monad m, Functor m) => Monad (JTMST s m) where
+  -- (>>=) :: JTMST s m a -> (a -> JTMST s m b) -> JTMST s m b
+  (JtmsT m) >>= f = JtmsT $ m >>= (unwrap . f)
+
+  -- (>>) :: JTMST s m a -> JTMST s m b -> JTMST s m b
+  (JtmsT m1) >> (JtmsT m2) = JtmsT $ m1 >> m2
+
+  -- return :: a -> JTMST s m a
+  return v = JtmsT $ return v
+
+instance MonadTrans (JTMST s) where
+  lift m = JtmsT $ lift $ lift m
+
+instance MonadIO m => MonadIO (JTMST s m) where
+  liftIO = lift . liftIO
+
+-- * JTMS elements
 
 -- |Standalone implementation of justification-based truth maintenance
 -- systems.
@@ -97,23 +136,6 @@ data Monad m => JTMS d i r s m = JTMS {
   jtmsContradictionHandler :: STRef s ([Node d i r s m] -> JTMST s m ())
 
 }
-
--- |Create and return a new JTMS.
-newJTMS :: Monad m => String -> JTMST s m (JTMS d i r s m)
-newJTMS title = do
-  nc <- newSTRef 0
-  jc <- newSTRef 0
-  nodes <- newSTRef ([] :: [Node d i r s m])
-  justs <- newSTRef ([] :: [JustRule d i r s m])
-  contradictions <- newSTRef ([] :: [Node d i r s m])
-  assumptions <- newSTRef ([] :: [Node d i r s m])
-  checkingContradictions <- newSTRef True
-  nodeString <- newSTRef (\ node -> "?")
-  enqueueProcedure <- newSTRef (\ _ -> return ())
-  contradictionHandler <- newSTRef (\ _ -> return ())
-  return (JTMS title nc jc nodes justs contradictions assumptions
-               checkingContradictions nodeString enqueueProcedure
-               contradictionHandler)
 
 -- |Print a simple tag with the title of this JTMS.  Forces the
 -- enclosed monad to be `MonadIO`.
@@ -218,7 +240,7 @@ data Monad m => Justification d i r s m =
 -- >        (not (eq support :ENABLED-ASSUMPTION))
 -- >        (null (just-antecedents support))))
 nodeIsPremise :: Monad m => Node d i r s m -> JTMST s m Bool
-nodeIsPremise node = do
+nodeIsPremise node = JtmsT $ lift $ do
   support <- readSTRef $ nodeSupport node
   case support of
     Just (ByRule (JustRule _ _ _ antecedents)) -> return $ null antecedents
@@ -235,7 +257,7 @@ nodeIsPremise node = do
 -- > (defun node-string (node)
 -- >   (funcall (jtms-node-string (tms-node-jtms node)) node))
 nodeString :: Monad m => Node d i r s m -> JTMST s m String
-nodeString node = do
+nodeString node = JtmsT $ lift $ do
   ns <- readSTRef $ jtmsNodeString $ nodeJTMS node
   return (ns node)
 
@@ -248,12 +270,14 @@ nodeString node = do
 -- >   `(when (jtms-debugging ,jtms)
 -- >      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
 
--- TODO --- figure out error handling
+-- |Raise a JTMS-related error.
 --
 -- /Translated from/:
 --
 -- > ;; In jtms.lisp:
 -- > (defun tms-error (string node) (error string (node-string node)))
+tmsError :: Monad m => JtmsErr -> JTMST s m ()
+tmsError e = JtmsT $ throwError e
 
 -- |
 --
@@ -261,9 +285,10 @@ nodeString node = do
 --
 -- > ;; In jtms.lisp:
 -- > (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
-defaultNodeString = error "TODO"
+defaultNodeString :: (Show d, Monad m) => Node d i r s m -> String
+defaultNodeString node = show $ nodeDatum node
 
--- |
+-- |Create and return a new JTMS.
 --
 -- /Translated from/:
 --
@@ -280,7 +305,21 @@ defaultNodeString = error "TODO"
 -- >           :CONTRADICTION-HANDLER contradiction-handler
 -- >           :ENQUEUE-PROCEDURE enqueue-procedure
 -- >           ))
-createJTMS = error "TODO"
+createJTMS :: Monad m => String -> JTMST s m (JTMS d i r s m)
+createJTMS title = JtmsT $ lift $ do
+  nc <- newSTRef 0
+  jc <- newSTRef 0
+  nodes <- newSTRef ([] :: [Node d i r s m])
+  justs <- newSTRef ([] :: [JustRule d i r s m])
+  contradictions <- newSTRef ([] :: [Node d i r s m])
+  assumptions <- newSTRef ([] :: [Node d i r s m])
+  checkingContradictions <- newSTRef True
+  nodeString <- newSTRef (\ node -> "?")
+  enqueueProcedure <- newSTRef (\ _ -> return ())
+  contradictionHandler <- newSTRef (\ _ -> return ())
+  return (JTMS title nc jc nodes justs contradictions assumptions
+               checkingContradictions nodeString enqueueProcedure
+               contradictionHandler)
 
 -- |
 --
@@ -304,23 +343,31 @@ changeJTMS = error "TODO"
 
 -- * Basic inference-engine interface
 
--- |
+-- |Returns @True@ if the current believed assumptions justify the
+-- fact represented by the given node.
 --
 -- /Translated from/:
 --
 -- > ;; In jtms.lisp:
 -- > (defun in-node? (node) (eq (tms-node-label node) :IN))
-isInNode = error "TODO"
+isInNode :: Monad m => Node d i r s m -> JTMST s m Bool
+isInNode node = JtmsT $ do
+  believed <- lift $ readSTRef (nodeBelieved node)
+  return believed
 
--- |
+-- |Returns @True@ if the current believed assumptions do not justify
+-- the fact represented by the given node.
 --
 -- /Translated from/:
 --
 -- > ;; In jtms.lisp:
 -- > (defun out-node? (node) (eq (tms-node-label node) :OUT))
-isOutNode = error "TODO"
+isOutNode :: Monad m => Node d i r s m -> JTMST s m Bool
+isOutNode node = do
+  believed <- isInNode node
+  return $ not believed
 
--- |
+-- |Add a node to a JTMS.
 --
 -- /Translated from/:
 --
@@ -335,7 +382,42 @@ isOutNode = error "TODO"
 -- >     (if contradictoryp (push node (jtms-contradictions jtms)))
 -- >     (push node (jtms-nodes jtms))
 -- >     node))
-createNode = error "TODO"
+createNode :: Monad m => JTMS d i r s m -> d -> Bool -> Bool ->
+                           JTMST s m (Node d i r s m)
+createNode jtms datum isAssumption isContradictory = JtmsT $ do
+  let nodeCounter = jtmsNodeCounter jtms
+    in lift $ do
+      nodeIdx <- readSTRef nodeCounter
+      writeSTRef nodeCounter $ 1 + nodeIdx
+      assumptionRef <- newSTRef isAssumption
+      contraRef <- newSTRef isContradictory
+      supportRef <- newSTRef Nothing
+      believedRef <- newSTRef False
+      conseqRef <- newSTRef []
+      inRulesRef <- newSTRef []
+      outRulesRef <- newSTRef []
+      justsRef <- newSTRef []
+      let node = Node nodeIdx datum jtms assumptionRef contraRef
+                      supportRef believedRef conseqRef
+                      inRulesRef outRulesRef justsRef
+          nodeListRef = jtmsNodes jtms
+       in do
+        if isAssumption
+          then let assumptionsRef = jtmsAssumptions jtms
+               in do prevAssumptions <- readSTRef assumptionsRef
+                     writeSTRef assumptionsRef $ node : prevAssumptions
+          else return ()
+
+        if isContradictory
+          then let contradictionsRef = jtmsContradictions jtms
+               in do prevContradictions <- readSTRef contradictionsRef
+                     writeSTRef contradictionsRef $ node : prevContradictions
+          else return ()
+
+        prevNodes <- readSTRef nodeListRef
+        writeSTRef nodeListRef $ node : prevNodes
+
+        return node
 
 -- |
 --
@@ -349,7 +431,8 @@ createNode = error "TODO"
 -- >     (setf (tms-node-assumption? node) t)
 -- >     (push node (jtms-assumptions jtms)))
 -- >   (enable-assumption node))
-assumeNode = error "TODO"
+assumeNode :: Monad m => Node d i r s m -> JTMST s m ()
+assumeNode node = error "TODO"
 
 -- |
 --
@@ -361,6 +444,7 @@ assumeNode = error "TODO"
 -- >     (setf (tms-node-contradictory? node) t)
 -- >     (push node (jtms-contradictions jtms))
 -- >     (check-for-contradictions jtms)))
+makeContradiction :: Monad m => Node d i r s m -> JTMST s m ()
 makeContradiction = error "TODO"
 
 -- |
@@ -386,6 +470,8 @@ makeContradiction = error "TODO"
 -- >       (if (check-justification just) (install-support consequence just))
 -- >       (setf (tms-node-support consequence) just))
 -- >   (check-for-contradictions jtms))
+justifyNode :: Monad m =>
+                 i -> Node d i r s m -> [Node d i r s m] -> JTMST s m ()
 justifyNode = error "TODO"
 
 -- * Support for adding justifications
@@ -398,7 +484,8 @@ justifyNode = error "TODO"
 -- > (defun check-justification (just)
 -- >   (and (out-node? (just-consequence just))
 -- >        (justification-satisfied? just)))
-checkJustification = error "TODO"
+checkJustification :: Monad m => JustRule d i r s m -> JTMST s m Bool
+checkJustification just = error "TODO"
 
 -- |
 --
@@ -407,7 +494,8 @@ checkJustification = error "TODO"
 -- > ;; In jtms.lisp:
 -- > (defun justification-satisfied? (just)
 -- >   (every #'in-node? (just-antecedents just)))
-isJustificationSatisfied = error "TODO"
+isJustificationSatisfied :: Monad m => JustRule d i r s m -> JTMST s m Bool
+isJustificationSatisfied j = error "TODO"
 
 -- |
 --
@@ -417,7 +505,9 @@ isJustificationSatisfied = error "TODO"
 -- > (defun install-support (conseq just)
 -- >   (make-node-in conseq just)
 -- >   (propagate-inness conseq))
-installSupport = error "TODO"
+installSupport :: Monad m =>
+                    Node d i r s m -> JustRule d i r s m -> JTMST s m ()
+installSupport node just = error "TODO"
 
 -- |
 --
@@ -431,7 +521,8 @@ installSupport = error "TODO"
 -- >       (when (check-justification justification)
 -- >      (make-node-in (just-consequence justification) justification)
 -- >      (push (just-consequence justification) q)))))
-propagateInness = error "TODO"
+propagateInness :: Monad m => Node d i r s m -> JTMST s m ()
+propagateInness node = error "TODO"
 
 -- |
 --
@@ -454,7 +545,9 @@ propagateInness = error "TODO"
 -- >     (dolist (in-rule (tms-node-in-rules conseq))
 -- >       (funcall enqueuef in-rule))
 -- >     (setf (tms-node-in-rules conseq) nil)))
-makeNodeIn = error "TODO"
+makeNodeIn :: Monad m =>
+                Node d i r s m -> Justification d i r s m -> JTMST s m ()
+makeNodeIn conseq reason = error "TODO"
 
 -- > * Assumption Manipulation
 
@@ -469,7 +562,8 @@ makeNodeIn = error "TODO"
 -- >     (debugging-jtms jtms "~%  Retracting assumption ~A." node)
 -- >     (make-node-out node)
 -- >     (find-alternative-support jtms (cons node (propagate-outness node jtms)))))
-retractAssumption = error "TODO"
+retractAssumption :: Monad m => Node d i r s m -> JTMST s m ()
+retractAssumption node = error "TODO"
 
 -- |
 --
@@ -486,7 +580,8 @@ retractAssumption = error "TODO"
 -- >           (null (just-antecedents (tms-node-support node)))))
 -- >      (t (setf (tms-node-support node) :ENABLED-ASSUMPTION)))
 -- >   (check-for-contradictions jtms))
-enableAssumption = error "TODO"
+enableAssumption :: Monad m => Node d i r s m -> JTMST s m ()
+enableAssumption node = error "TODO"
 
 -- |
 --
@@ -502,7 +597,8 @@ enableAssumption = error "TODO"
 -- >   (if enqueuef (dolist (out-rule (tms-node-out-rules node))
 -- >               (funcall enqueuef out-rule)))
 -- >   (setf (tms-node-out-rules node) nil))
-makeNodeOut = error "TODO"
+makeNodeOut :: Monad m => Node d i r s m -> JTMST s m ()
+makeNodeOut node = error "TODO"
 
 -- |
 --
@@ -523,7 +619,8 @@ makeNodeOut = error "TODO"
 -- >       (make-node-out conseq)
 -- >       (push conseq out-queue)
 -- >       (setq new (tms-node-consequences conseq)))))
-propagateOutness = error "TODO"
+propagateOutness :: Monad m => Node d i r s m -> JTMS d i r s m -> JTMST s m ()
+propagateOutness node jtms = error "TODO"
 
 -- |
 --
@@ -539,7 +636,9 @@ propagateOutness = error "TODO"
 -- >        (install-support (just-consequence just)
 -- >                               just)
 -- >        (return just))))))
-findAlternativeSupport = error "TODO"
+findAlternativeSupport ::
+  Monad m => JTMS d i r s m -> [Node d i r s m] -> JTMST s m ()
+findAlternativeSupport jtms outs = error "TODO"
 
 -- > * Contradiction handling interface
 
@@ -554,7 +653,8 @@ findAlternativeSupport = error "TODO"
 -- >       (if (in-node? cnode) (push cnode contradictions)))
 -- >     (if contradictions
 -- >      (funcall (jtms-contradiction-handler jtms) jtms contradictions))))
-checkForContradictions = error "TODO"
+checkForContradictions :: Monad m => JTMS d i r s m -> JTMST s m ()
+checkForContradictions jtms = error "TODO"
 
 --
 --
@@ -563,6 +663,9 @@ checkForContradictions = error "TODO"
 -- > ;; In jtms.lisp:
 -- > (defmacro without-contradiction-check (jtms &body body)
 -- >   (contradiction-check jtms nil body))
+withoutContradictionCheck ::
+  Monad m => JTMS d i r s m -> JTMST s m () -> JTMST s m ()
+withoutContradictionCheck jtms body = error "TODO"
 
 --
 --
@@ -571,6 +674,9 @@ checkForContradictions = error "TODO"
 -- > ;; In jtms.lisp:
 -- > (defmacro with-contradiction-check (jtms &body body)
 -- >   (contradiction-check jtms t body))
+withContradictionCheck ::
+  Monad m => JTMS d i r s m -> JTMST s m () -> JTMST s m ()
+withContradictionCheck jtms body = error "TODO"
 
 -- |
 --
@@ -584,7 +690,9 @@ checkForContradictions = error "TODO"
 -- >        (unwind-protect
 -- >         (progn (setf (jtms-checking-contradictions ,jtmsv) ,flag) ,@body)
 -- >       (setf (jtms-checking-contradictions ,jtmsv) ,old-value)))))
-contradictionCheck = error "TODO"
+contradictionCheck ::
+  Monad m => JTMS d i r s m -> Bool -> JTMST s m () -> JTMST s m ()
+contradictionCheck jtms flag body = error "TODO"
 
 --
 --
@@ -599,7 +707,7 @@ contradictionCheck = error "TODO"
 -- >       (progn (setf (jtms-contradiction-handler ,jtmsv) ,handler) ,@body)
 -- >        (setf (jtms-contradiction-handler ,jtmsv) ,old-handler)))))
 
--- |
+--
 --
 -- /Translated from/:
 --
@@ -614,17 +722,19 @@ contradictionCheck = error "TODO"
 -- >            ((not (eq :DEFAULT (tms-node-assumption? assumption))))
 -- >            ((catch 'CONTRADICTION (enable-assumption assumption))
 -- >             (retract-assumption assumption)))))))
-defaultAssumptions = error "TODO"
+-- defaultAssumptions :: Monad m => JTMS d i r s m -> JTMST s m ()
+-- defaultAssumptions jtms = error "TODO"
 
 -- > * Well-founded support inqueries
 
--- |
+--
 --
 -- /Translated from/:
 --
 -- > ;; In jtms.lisp:
 -- > (defun supporting-justification-for-node (node) (tms-node-support node))
-supportingJustificationForNode = error "TODO"
+-- supportingJustificationForNode :: Monad m => Node d i r s m -> JTMST s m ()
+-- supportingJustificationForNode = error "TODO"
 
 -- |
 --
@@ -642,7 +752,8 @@ supportingJustificationForNode = error "TODO"
 -- >          ((in-node? node)
 -- >           (setq new (just-antecedents (tms-node-support node)))))
 -- >       (setf (tms-node-mark node) marker))))
-assumptionsOfNode = error "TODO"
+assumptionsOfNode :: Monad m => Node d i r s m -> JTMST s m [Node d i r s m]
+assumptionsOfNode node = error "TODO"
 
 -- |
 --
@@ -653,9 +764,10 @@ assumptionsOfNode = error "TODO"
 -- >   (dolist (assumption (jtms-assumptions jtms) result)
 -- >     (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
 -- >      (push assumption result))))
-enabledAssumptions = error "TODO"
+enabledAssumptions :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
+enabledAssumptions jtms = error "TODO"
 
--- > * Inference engine stub to allow this JTMS to be used stand alone
+-- > * Inference engine stub to allow this JTMS to be used standalone
 
 -- |
 --
@@ -675,7 +787,8 @@ enabledAssumptions = error "TODO"
 -- >         (format t "~%  ~A" (node-string anode))))
 -- >      (T (format t "~%~A is OUT." (node-string node))))
 -- >   node)
-whyNode = error "TODO"
+whyNode :: MonadIO m => Node d i r s m -> JTMST s m ()
+whyNode node = error "TODO"
 
 -- |
 --
@@ -684,7 +797,8 @@ whyNode = error "TODO"
 -- > ;; In jtms.lisp:
 -- > (defun why-nodes (jtms)
 -- >   (dolist (node (jtms-nodes jtms)) (why-node node)))
-whyNodes = error "TODO"
+whyNodes :: MonadIO m => JTMS d i r s m -> JTMST s m ()
+whyNodes jtms = error "TODO"
 
 -- |
 --
@@ -696,7 +810,9 @@ whyNodes = error "TODO"
 -- > (defun ask-user-handler (jtms contradictions)
 -- >   (handle-one-contradiction (car contradictions))
 -- >   (check-for-contradictions jtms))
-askUserHandler = error "TODO"
+askUserHandler ::
+  MonadIO m => JTMS d i r s m -> [Node d i r s m] -> JTMST s m ()
+askUserHandler jtms contradictions = error "TODO"
 
 -- |
 --
@@ -719,7 +835,8 @@ askUserHandler = error "TODO"
 -- >         (not (> the-answer (length *contra-assumptions*))))
 -- >       (retract-assumption (nth (1- the-answer)
 -- >                             *contra-assumptions*))))
-handleOneContradiction = error "TODO"
+handleOneContradiction :: Monad m => JTMS d i r s m -> JTMST s m ()
+handleOneContradiction node = error "TODO"
 
 -- |
 --
@@ -732,7 +849,8 @@ handleOneContradiction = error "TODO"
 -- >       ((null nn))
 -- >     (format t "~%~A ~A" counter
 -- >          (node-string (car nn)))))
-printContraList = error "TODO"
+printContraList :: MonadIO m => [Node d i r s m] -> JTMST s m ()
+printContraList nodes = error "TODO"
 
 -- |
 --
@@ -747,6 +865,7 @@ printContraList = error "TODO"
 -- >            (format t "~%Ignoring answer, too big."))
 -- >        (format t "~%Ignoring answer, too small"))
 -- >       (format t "~%Ignoring answer, must be an integer.")))
+tmsAnswer :: MonadIO m => Int -> JTMST s m ()
 tmsAnswer = error "TODO"
 
 --
