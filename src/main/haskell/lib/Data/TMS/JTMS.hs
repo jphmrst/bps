@@ -54,7 +54,10 @@ import Control.Monad.Except
 -- wrapper.
 
 -- |The process of building and using a mutable JTMS.
-newtype Monad m => JTMST s m a = JtmsT { unwrap :: ExceptT JtmsErr (STT s m) a }
+type JTMSTInner s m a = Monad m => ExceptT JtmsErr (STT s m) a
+
+-- |The process of building and using a mutable JTMS.
+newtype Monad m => JTMST s m a = JtmsT { unwrap :: JTMSTInner s m a }
 
 -- |Errors which can arise from JTMS operations.
 data JtmsErr = JtmsErr
@@ -134,8 +137,26 @@ data Monad m => JTMS d i r s m = JTMS {
   jtmsNodeString :: STRef s (Node d i r s m -> String),
   jtmsEnqueueProcedure :: STRef s (r -> JTMST s m ()),
   jtmsContradictionHandler :: STRef s ([Node d i r s m] -> JTMST s m ())
-
 }
+
+-- |Get the next node counter value, incrementing for future accesses.
+nextNodeCounter :: Monad m => JTMS d i r s m -> JTMSTInner s m Int
+nextNodeCounter jtms = lift $
+  let nodeCounter = jtmsNodeCounter jtms
+  in do
+    nodeId <- readSTRef nodeCounter
+    writeSTRef nodeCounter $ 1 + nodeId
+    return nodeId
+
+-- |Get the next justification rule counter value, incrementing for
+-- future accesses.
+nextJustCounter :: Monad m => JTMS d i r s m -> JTMSTInner s m Int
+nextJustCounter jtms = lift $
+  let justCounter = jtmsJustCounter jtms
+  in do
+    justId <- readSTRef justCounter
+    writeSTRef justCounter $ 1 + justId
+    return justId
 
 -- |Print a simple tag with the title of this JTMS.  Forces the
 -- enclosed monad to be `MonadIO`.
@@ -385,23 +406,21 @@ isOutNode node = do
 createNode :: Monad m => JTMS d i r s m -> d -> Bool -> Bool ->
                            JTMST s m (Node d i r s m)
 createNode jtms datum isAssumption isContradictory = JtmsT $ do
-  let nodeCounter = jtmsNodeCounter jtms
-    in lift $ do
-      nodeIdx <- readSTRef nodeCounter
-      writeSTRef nodeCounter $ 1 + nodeIdx
-      assumptionRef <- newSTRef isAssumption
-      contraRef <- newSTRef isContradictory
-      supportRef <- newSTRef Nothing
-      believedRef <- newSTRef False
-      conseqRef <- newSTRef []
-      inRulesRef <- newSTRef []
-      outRulesRef <- newSTRef []
-      justsRef <- newSTRef []
-      let node = Node nodeIdx datum jtms assumptionRef contraRef
-                      supportRef believedRef conseqRef
-                      inRulesRef outRulesRef justsRef
-          nodeListRef = jtmsNodes jtms
-       in do
+  nodeIdx <- nextNodeCounter jtms
+  lift $ do
+    assumptionRef <- newSTRef isAssumption
+    contraRef <- newSTRef isContradictory
+    supportRef <- newSTRef Nothing
+    believedRef <- newSTRef False
+    conseqRef <- newSTRef []
+    inRulesRef <- newSTRef []
+    outRulesRef <- newSTRef []
+    justsRef <- newSTRef []
+    let node = Node nodeIdx datum jtms assumptionRef contraRef
+                    supportRef believedRef conseqRef
+                    inRulesRef outRulesRef justsRef
+        nodeListRef = jtmsNodes jtms
+      in do
         if isAssumption
           then let assumptionsRef = jtmsAssumptions jtms
                in do prevAssumptions <- readSTRef assumptionsRef
