@@ -145,7 +145,8 @@ data Monad m => JTMS d i r s m = JTMS {
   jtmsCheckingContradictions :: STRef s Bool,
   jtmsNodeString :: STRef s (Node d i r s m -> String),
   jtmsEnqueueProcedure :: STRef s (r -> JTMST s m ()),
-  jtmsContradictionHandler :: STRef s ([Node d i r s m] -> JTMST s m ())
+  jtmsContradictionHandler :: STRef s ([Node d i r s m] -> JTMST s m ()),
+  jtmsDebugging :: STRef s Bool
 }
 
 -- |Get the next node counter value, incrementing for future accesses.
@@ -291,14 +292,24 @@ nodeString node = JtmsT $ lift $ do
   ns <- readSTRef $ jtmsNodeString $ nodeJTMS node
   return (ns node)
 
--- TODO
+-- Debugging is turned off for now.
+
+-- -- Overloading the debugging operators to allow printing when the
+-- -- underlying monad is `MonadIO`.
+-- class Monad m => JTMSDebugger m where
+--   debuggingJtms :: String -> m ()
+--   debuggingJtms _ = return ()
 --
--- /Translated from/:
+-- instance MonadIO m => JTMSDebugger (JTMST s m) where
+--   debuggingJtms s = liftIO $ print s
 --
--- > ;; In jtms.lisp:
--- > (defmacro debugging-jtms (jtms msg &optional node &rest args)
--- >   `(when (jtms-debugging ,jtms)
--- >      (format *trace-output* ,msg (if ,node (node-string ,node)) ,@args)))
+-- -- /Translated from/:
+-- --
+-- -- > ;; In jtms.lisp:
+-- -- > (defmacro debugging-jtms (jtms msg &optional node &rest args)
+-- -- >   `(when (jtms-debugging ,jtms)
+-- -- >      (format *trace-output*
+-- -- >        ,msg (if ,node (node-string ,node)) ,@args)))
 
 -- |Raise a JTMS-related error.
 --
@@ -348,9 +359,10 @@ createJTMS title = JtmsT $ lift $ do
   nodeString <- newSTRef (\ node -> "?")
   enqueueProcedure <- newSTRef (\ _ -> return ())
   contradictionHandler <- newSTRef (\ _ -> return ())
+  debugging <- newSTRef False
   return (JTMS title nc jc nodes justs contradictions assumptions
                checkingContradictions nodeString enqueueProcedure
-               contradictionHandler)
+               contradictionHandler debugging)
 
 -- |Helper function for writing setter command for `JTMS` components.
 --
@@ -366,12 +378,13 @@ setNodeString ::
   Monad m => JTMS d i r s m -> (Node d i r s m -> String) -> JTMST s m ()
 setNodeString = jtmsSetter jtmsNodeString
 
--- Turn on or turn off debugging in a JTMS.  Requires that the
--- underlying monad @m@ is `MonadIO`.
+-- |Turn on or turn off debugging in a JTMS.  Any actual printing will
+-- require that the underlying monad @m@ be `MonadIO`, but the bit can
+-- be uselessly toggled off-and-on in any context.
 --
 -- After @change-jtms@ in @jtms.lisp@.
--- setDebugging :: Monad m => JTMS d i r s m -> Bool -> JTMST s m ()
--- setDebugging = jtmsSetter (error "TODO")
+setDebugging :: Monad m => JTMS d i r s m -> Bool -> JTMST s m ()
+setDebugging = jtmsSetter jtmsDebugging
 
 -- |Set whether the `JTMS` should issue external notifications of
 -- contradictions.
@@ -471,19 +484,14 @@ createNode jtms datum isAssumption isContradictory = JtmsT $ do
         nodeListRef = jtmsNodes jtms
       in do
         if isAssumption
-          then let assumptionsRef = jtmsAssumptions jtms
-               in do prevAssumptions <- readSTRef assumptionsRef
-                     writeSTRef assumptionsRef $ node : prevAssumptions
+          then push node $ jtmsAssumptions jtms
           else return ()
 
         if isContradictory
-          then let contradictionsRef = jtmsContradictions jtms
-               in do prevContradictions <- readSTRef contradictionsRef
-                     writeSTRef contradictionsRef $ node : prevContradictions
+          then push node $ jtmsContradictions jtms
           else return ()
 
-        prevNodes <- readSTRef nodeListRef
-        writeSTRef nodeListRef $ node : prevNodes
+        push node nodeListRef
 
         return node
 
@@ -507,11 +515,8 @@ assumeNode node =
   in do
     ifM ((notM $ jLiftSTT $ readSTRef isAssumptionRef)
           &&^ (notM $ nodeIsPremise node))
-      (let assumptionListRef = jtmsAssumptions jtms
-       in do
-         jLiftSTT $ writeSTRef isAssumptionRef True
-         prevAssumptions <- jLiftSTT $ readSTRef assumptionListRef
-         jLiftSTT $ writeSTRef assumptionListRef $ node : prevAssumptions)
+      (do jLiftSTT $ writeSTRef isAssumptionRef True
+          jLiftSTT $ push node $ jtmsAssumptions jtms)
       (return ())
     enableAssumption node
 
@@ -530,12 +535,10 @@ makeContradiction :: Monad m => Node d i r s m -> JTMST s m ()
 makeContradiction node =
   let jtms = nodeJTMS node
       isContraRef = nodeIsContradictory node
-      contraListRef = jtmsContradictions jtms
   in do
     ifM (notM $ jLiftSTT $ readSTRef isContraRef)
       (do jLiftSTT $ writeSTRef isContraRef False
-          contraList <- jLiftSTT $ readSTRef contraListRef
-          jLiftSTT $ writeSTRef contraListRef $ node : contraList
+          jLiftSTT $ push node $ jtmsContradictions jtms
           checkForContradictions jtms)
       (return ())
 
@@ -566,7 +569,39 @@ makeContradiction node =
 -- >   (check-for-contradictions jtms))
 justifyNode :: Monad m =>
                  i -> Node d i r s m -> [Node d i r s m] -> JTMST s m ()
-justifyNode = error "TODO"
+justifyNode informant consequence antecedents =
+  let jtms = nodeJTMS consequence
+  in do
+    justIdx <- JtmsT $ nextJustCounter jtms
+    just <- return $ JustRule justIdx informant consequence antecedents
+
+    -- Add this new JustRule as a possible justification of the
+    -- consequent.
+    jLiftSTT $ push just $ nodeJusts consequence
+
+    -- For each antecedent, add the new rule as a possible consequence
+    -- of that antecedent node.
+    forM_ antecedents $ \ node -> do
+      jLiftSTT $ push just $ nodeConsequences node
+
+    -- Add the new rule to the JTMS's list of justification rules.
+    jLiftSTT $ push just $ jtmsJusts jtms
+
+    -- We attempt to use this new rule right now if either the
+    -- consequence is currently OUT, or if there actually are
+    -- antecedents.
+    --
+    -- TODO Wrong condition checking.  Not if both, but if either.
+    when (not $ null antecedents) $ do
+      ifM (jLiftSTT $ notM $ readSTRef $ nodeBelieved consequence)
+        -- If the antecedents are satisfied, add it as a support
+        -- for the consequence.
+        (whenM (checkJustification just) $ installSupport consequence just)
+        -- Otherwise we can install as a support straightaway.
+        (jLiftSTT $ writeSTRef (nodeSupport consequence) $ Just $ ByRule just)
+
+    -- Check for new contradictions introduced with this rule.
+    checkForContradictions jtms
 
 -- * Support for adding justifications
 
@@ -1020,7 +1055,16 @@ tmsAnswer = error "TODO"
 -- >                  "~% Must be q or an integer from 0 to ~D."
 -- >                  olen))))))
 
+-- * Other helpers
+
 -- |This instance declaration is not part of `STT`, but it is
 -- convenient.
 instance MonadIO m => MonadIO (STT s m) where
   liftIO = lift . liftIO
+
+-- |Push a value onto the front of the list at the given `STT`
+-- reference.
+push :: Monad m => a -> STRef s [a] -> STT s m ()
+push v r = do
+  prev <- readSTRef r
+  writeSTRef r $ v : prev
