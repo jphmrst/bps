@@ -91,9 +91,11 @@ instance MonadTrans (JTMST s) where
 instance MonadIO m => MonadIO (JTMST s m) where
   liftIO = lift . liftIO
 
+-- |Lift `STT` behavior to the `JTMST` level.
 jLiftSTT :: Monad m => STT s m r -> JTMST s m r
 jLiftSTT md = JtmsT $ lift $ md
 
+-- |Lift `ExceptT` behavior to the `JTMST` level.
 jLiftExcept :: Monad m => ExceptT JtmsErr (STT s m) r -> JTMST s m r
 jLiftExcept md = JtmsT $ md
 
@@ -350,10 +352,50 @@ createJTMS title = JtmsT $ lift $ do
                checkingContradictions nodeString enqueueProcedure
                contradictionHandler)
 
--- |
+-- |Helper function for writing setter command for `JTMS` components.
 --
--- /Translated from/:
+-- Not part of the original Lisp.
+jtmsSetter :: Monad m =>
+  (JTMS d i r s m -> STRef s v) -> JTMS d i r s m -> v -> JTMST s m ()
+jtmsSetter field jtms = JtmsT . lift . writeSTRef (field jtms)
+
+-- |Set the display function for `Node`s in a `JTMS`.
 --
+-- After @change-jtms@ in @jtms.lisp@.
+setNodeString ::
+  Monad m => JTMS d i r s m -> (Node d i r s m -> String) -> JTMST s m ()
+setNodeString = jtmsSetter jtmsNodeString
+
+-- Turn on or turn off debugging in a JTMS.  Requires that the
+-- underlying monad @m@ is `MonadIO`.
+--
+-- After @change-jtms@ in @jtms.lisp@.
+-- setDebugging :: Monad m => JTMS d i r s m -> Bool -> JTMST s m ()
+-- setDebugging = jtmsSetter (error "TODO")
+
+-- |Set whether the `JTMS` should issue external notifications of
+-- contradictions.
+--
+-- After @change-jtms@ in @jtms.lisp@.
+setCheckingContradictions :: Monad m => JTMS d i r s m -> Bool -> JTMST s m ()
+setCheckingContradictions = jtmsSetter jtmsCheckingContradictions
+
+-- |Set the contradiction handler.  The `JTMS` default is to do
+-- nothing; the intention is to allow a callback to the external
+-- system using the `JTMS`.
+--
+-- After @change-jtms@ in @jtms.lisp@.
+setContradictionHandler :: Monad m =>
+  JTMS d i r s m -> ([Node d i r s m] -> JTMST s m ()) -> JTMST s m ()
+setContradictionHandler = jtmsSetter jtmsContradictionHandler
+
+-- |Set the queuing behavior needed for the external system.
+--
+-- After @change-jtms@ in @jtms.lisp@.
+setEnqueueProcedure :: Monad m =>
+  JTMS d i r s m -> (r -> JTMST s m ()) -> JTMST s m ()
+setEnqueueProcedure = jtmsSetter jtmsEnqueueProcedure
+
 -- > ;; In jtms.lisp:
 -- > (defun change-jtms (jtms &key contradiction-handler node-string
 -- >                            enqueue-procedure debugging
@@ -367,7 +409,6 @@ createJTMS title = JtmsT $ lift $ do
 -- >       (setf (jtms-contradiction-handler jtms) contradiction-handler))
 -- >   (if enqueue-procedure
 -- >       (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
-changeJTMS = error "TODO"
 
 
 -- * Basic inference-engine interface
