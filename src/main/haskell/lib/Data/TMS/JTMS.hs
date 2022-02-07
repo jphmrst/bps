@@ -101,12 +101,15 @@ jLiftExcept md = JtmsT $ md
 
 -- * JTMS elements
 
+-- ** The JTMS structure
+
 -- |Standalone implementation of justification-based truth maintenance
 -- systems.
 --
 --  * @d@ is the type of data associated with each `Node` of this JTMS.
 --  * @i@ is the type of informants in the external system.
---  * @r@ is the type of rules which may be associated with each `Node` of this JTMS.
+--  * @r@ is the type of rules which may be associated with each `Node`
+--    of this JTMS.
 --  * @s@ is the (phantom) type of the state thread.
 --  * @m@ is the monad in which this computation lives.
 --
@@ -179,6 +182,8 @@ nextJustCounter jtms = lift $
 -- >   (format stream "#<JTMS: ~A>" (jtms-title jtms)))
 printJTMS jtms = liftIO $ print $ jtmsTitle jtms
 
+-- ** Individual nodes
+
 -- |Wrapper for one possible belief known to the TMS.
 --
 -- /Translated from/:
@@ -224,6 +229,8 @@ printTmsNode :: MonadIO m => Node d i r s m -> JTMST s m ()
 printTmsNode node = do
   s <- nodeString node
   liftIO $ print s
+
+-- ** Justifications
 
 -- |Wrapper for one justification relationship between many antecedent
 -- nodes and one consequent node.
@@ -378,9 +385,8 @@ setNodeString ::
   Monad m => JTMS d i r s m -> (Node d i r s m -> String) -> JTMST s m ()
 setNodeString = jtmsSetter jtmsNodeString
 
--- |Turn on or turn off debugging in a JTMS.  Any actual printing will
--- require that the underlying monad @m@ be `MonadIO`, but the bit can
--- be uselessly toggled off-and-on in any context.
+-- |Turn on or turn off debugging in a JTMS.  This setting currently
+-- has no effect.
 --
 -- After @change-jtms@ in @jtms.lisp@.
 setDebugging :: Monad m => JTMS d i r s m -> Bool -> JTMST s m ()
@@ -592,9 +598,10 @@ justifyNode informant consequence antecedents =
     -- antecedents.
     ifM ((return $ not $ null antecedents)
           ||^ (jLiftSTT $ notM $ readSTRef $ nodeBelieved consequence))
-      -- If the antecedents are satisfied, add it as a support
-      -- for the consequence.
-      (whenM (checkJustification just) $ installSupport consequence just)
+      -- To use the rule now, if the antecedents are satisfied, add it
+      -- as a support for the consequence.
+      (whenM (checkJustification just) $
+       installSupport consequence $ ByRule just)
       -- Otherwise we can install as a support straightaway.
       (jLiftSTT $ writeSTRef (nodeSupport consequence) $ Just $ ByRule just)
 
@@ -613,7 +620,8 @@ justifyNode informant consequence antecedents =
 -- >   (and (out-node? (just-consequence just))
 -- >        (justification-satisfied? just)))
 checkJustification :: Monad m => JustRule d i r s m -> JTMST s m Bool
-checkJustification just = error "TODO"
+checkJustification just =
+  (isOutNode $ justConsequence just) &&^ isJustificationSatisfied just
 
 -- |Returns @True@ when all of the antecedents of justification @j@
 -- are believed by the `JTMS`.
@@ -624,7 +632,7 @@ checkJustification just = error "TODO"
 -- > (defun justification-satisfied? (just)
 -- >   (every #'in-node? (just-antecedents just)))
 isJustificationSatisfied :: Monad m => JustRule d i r s m -> JTMST s m Bool
-isJustificationSatisfied j = error "TODO"
+isJustificationSatisfied j = allM isInNode $ justAntecedents j
 
 -- |Add a reason for this @conseq@ node to be believed.
 --
@@ -634,9 +642,11 @@ isJustificationSatisfied j = error "TODO"
 -- > (defun install-support (conseq just)
 -- >   (make-node-in conseq just)
 -- >   (propagate-inness conseq))
-installSupport :: Monad m =>
-                    Node d i r s m -> JustRule d i r s m -> JTMST s m ()
-installSupport node just = error "TODO"
+installSupport ::
+  Monad m => Node d i r s m -> Justification d i r s m -> JTMST s m ()
+installSupport node just = do
+  makeNodeIn node just
+  propagateInness node
 
 -- |Trigger justifications which rely (directly or indirectly) on the
 -- @node@ as an antecedent when @node@ becomes believed.
@@ -644,7 +654,8 @@ installSupport node just = error "TODO"
 -- /Translated from/:
 --
 -- > ;; In jtms.lisp:
--- > (defun propagate-inness (node &aux (jtms (tms-node-jtms node)) (q (list node)))
+-- > (defun propagate-inness (node &aux (jtms (tms-node-jtms node))
+-- >                                    (q (list node)))
 -- >   (do () ((null (setq node (pop q))))
 -- >     (debugging-jtms jtms "~%   Propagating belief in ~A." node)
 -- >     (dolist (justification (tms-node-consequences node))
