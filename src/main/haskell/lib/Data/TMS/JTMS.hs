@@ -47,6 +47,7 @@ module Data.TMS.JTMS where
 import Control.Monad.State
 import Control.Monad.ST.Trans
 import Control.Monad.Except
+import Control.Monad.Extra
 
 -- * The @JTMST@ monad transformer
 --
@@ -89,6 +90,12 @@ instance MonadTrans (JTMST s) where
 
 instance MonadIO m => MonadIO (JTMST s m) where
   liftIO = lift . liftIO
+
+jLiftSTT :: Monad m => STT s m r -> JTMST s m r
+jLiftSTT md = JtmsT $ lift $ md
+
+jLiftExcept :: Monad m => ExceptT JtmsErr (STT s m) r -> JTMST s m r
+jLiftExcept md = JtmsT $ md
 
 -- * JTMS elements
 
@@ -300,7 +307,8 @@ nodeString node = JtmsT $ lift $ do
 tmsError :: Monad m => JtmsErr -> JTMST s m ()
 tmsError e = JtmsT $ throwError e
 
--- |
+-- |The default representation of a node is by @show@ing its datum.
+-- Requires that @d@ is in class `Show`.
 --
 -- /Translated from/:
 --
@@ -438,7 +446,8 @@ createNode jtms datum isAssumption isContradictory = JtmsT $ do
 
         return node
 
--- |
+-- |Internal method used to flag this node as an assumption, and to
+-- enable belief in this assumption.
 --
 -- /Translated from/:
 --
@@ -451,9 +460,22 @@ createNode jtms datum isAssumption isContradictory = JtmsT $ do
 -- >     (push node (jtms-assumptions jtms)))
 -- >   (enable-assumption node))
 assumeNode :: Monad m => Node d i r s m -> JTMST s m ()
-assumeNode node = error "TODO"
+assumeNode node =
+  let jtms = nodeJTMS node
+      isAssumptionRef = nodeIsAssumption node
+  in do
+    ifM ((notM $ jLiftSTT $ readSTRef isAssumptionRef)
+          &&^ (notM $ nodeIsPremise node))
+      (let assumptionListRef = jtmsAssumptions jtms
+       in do
+         jLiftSTT $ writeSTRef isAssumptionRef True
+         prevAssumptions <- jLiftSTT $ readSTRef assumptionListRef
+         jLiftSTT $ writeSTRef assumptionListRef $ node : prevAssumptions)
+      (return ())
+    enableAssumption node
 
--- |
+-- |API command used when the external system categorizes this node as
+-- representing a contradiction.
 --
 -- /Translated from/:
 --
@@ -464,9 +486,21 @@ assumeNode node = error "TODO"
 -- >     (push node (jtms-contradictions jtms))
 -- >     (check-for-contradictions jtms)))
 makeContradiction :: Monad m => Node d i r s m -> JTMST s m ()
-makeContradiction = error "TODO"
+makeContradiction node =
+  let jtms = nodeJTMS node
+      isContraRef = nodeIsContradictory node
+      contraListRef = jtmsContradictions jtms
+  in do
+    ifM (notM $ jLiftSTT $ readSTRef isContraRef)
+      (do jLiftSTT $ writeSTRef isContraRef False
+          contraList <- jLiftSTT $ readSTRef contraListRef
+          jLiftSTT $ writeSTRef contraListRef $ node : contraList
+          checkForContradictions jtms)
+      (return ())
 
--- |
+-- |Add a rule for concluding belief in the @consequence@.  The rule
+-- is triggered when the @antecedents@ are all believed, and is
+-- associated with (perhaps named as) the @informant@.
 --
 -- /Translated from/:
 --
@@ -495,7 +529,8 @@ justifyNode = error "TODO"
 
 -- * Support for adding justifications
 
--- |
+-- |Detect the case when justification @just@ is satisfied, but the
+-- `JTMS` does not believe its consequence.
 --
 -- /Translated from/:
 --
@@ -506,7 +541,8 @@ justifyNode = error "TODO"
 checkJustification :: Monad m => JustRule d i r s m -> JTMST s m Bool
 checkJustification just = error "TODO"
 
--- |
+-- |Returns @True@ when all of the antecedents of justification @j@
+-- are believed by the `JTMS`.
 --
 -- /Translated from/:
 --
@@ -516,7 +552,7 @@ checkJustification just = error "TODO"
 isJustificationSatisfied :: Monad m => JustRule d i r s m -> JTMST s m Bool
 isJustificationSatisfied j = error "TODO"
 
--- |
+-- |Add a reason for this @conseq@ node to be believed.
 --
 -- /Translated from/:
 --
@@ -528,7 +564,8 @@ installSupport :: Monad m =>
                     Node d i r s m -> JustRule d i r s m -> JTMST s m ()
 installSupport node just = error "TODO"
 
--- |
+-- |Trigger justifications which rely (directly or indirectly) on the
+-- @node@ as an antecedent when @node@ becomes believed.
 --
 -- /Translated from/:
 --
@@ -543,7 +580,7 @@ installSupport node just = error "TODO"
 propagateInness :: Monad m => Node d i r s m -> JTMST s m ()
 propagateInness node = error "TODO"
 
--- |
+-- |Called when the given @reason@ causes the JTMS to believe @node@.
 --
 -- /Translated from/:
 --
@@ -570,7 +607,8 @@ makeNodeIn conseq reason = error "TODO"
 
 -- > * Assumption Manipulation
 
--- |
+-- |This command is called when the external system chooses to
+-- disbelieve the assumption represented by @node@.
 --
 -- /Translated from/:
 --
@@ -584,7 +622,8 @@ makeNodeIn conseq reason = error "TODO"
 retractAssumption :: Monad m => Node d i r s m -> JTMST s m ()
 retractAssumption node = error "TODO"
 
--- |
+-- |Called when the external system chooses to believe the assumption
+-- represented by @node@.
 --
 -- /Translated from/:
 --
@@ -602,7 +641,7 @@ retractAssumption node = error "TODO"
 enableAssumption :: Monad m => Node d i r s m -> JTMST s m ()
 enableAssumption node = error "TODO"
 
--- |
+-- |Called when the JTMS disbelieves @node@.
 --
 -- /Translated from/:
 --
@@ -619,7 +658,8 @@ enableAssumption node = error "TODO"
 makeNodeOut :: Monad m => Node d i r s m -> JTMST s m ()
 makeNodeOut node = error "TODO"
 
--- |
+-- |Propagate the retraction of an assumption by finding all other
+-- nodes which used that assumption in their justification.
 --
 -- /Translated from/:
 --
@@ -641,7 +681,14 @@ makeNodeOut node = error "TODO"
 propagateOutness :: Monad m => Node d i r s m -> JTMS d i r s m -> JTMST s m ()
 propagateOutness node jtms = error "TODO"
 
--- |
+-- |Search for support for nodes @outs@ which were disbelieved after an
+-- assumption retraction.
+--
+-- The original Lisp code returns the justification when
+-- short-circuiting from the inner loop.  But this return value is
+-- never used; moreover there is no return value used from callers of
+-- this function.  So this type-checked translation returns the unit
+-- value.
 --
 -- /Translated from/:
 --
@@ -661,7 +708,8 @@ findAlternativeSupport jtms outs = error "TODO"
 
 -- > * Contradiction handling interface
 
--- |
+-- |Pass all believed contradiction nodes to the
+-- @contradictionHandler@.
 --
 -- /Translated from/:
 --
@@ -675,7 +723,7 @@ findAlternativeSupport jtms outs = error "TODO"
 checkForContradictions :: Monad m => JTMS d i r s m -> JTMST s m ()
 checkForContradictions jtms = error "TODO"
 
---
+-- |
 --
 -- /Translated from/:
 --
@@ -686,7 +734,7 @@ withoutContradictionCheck ::
   Monad m => JTMS d i r s m -> JTMST s m () -> JTMST s m ()
 withoutContradictionCheck jtms body = error "TODO"
 
---
+-- |
 --
 -- /Translated from/:
 --
@@ -755,7 +803,8 @@ contradictionCheck jtms flag body = error "TODO"
 -- supportingJustificationForNode :: Monad m => Node d i r s m -> JTMST s m ()
 -- supportingJustificationForNode = error "TODO"
 
--- |
+-- |API command returning the believed assumption nodes used to
+-- justify belief in this node.
 --
 -- /Translated from/:
 --
@@ -774,7 +823,7 @@ contradictionCheck jtms flag body = error "TODO"
 assumptionsOfNode :: Monad m => Node d i r s m -> JTMST s m [Node d i r s m]
 assumptionsOfNode node = error "TODO"
 
--- |
+-- |Returns the list of currently enabled assumptions.
 --
 -- /Translated from/:
 --
@@ -788,7 +837,8 @@ enabledAssumptions jtms = error "TODO"
 
 -- > * Inference engine stub to allow this JTMS to be used standalone
 
--- |
+-- |Print the belief state and any justification of this node.
+-- Requires that the underlying monad @m@ be `MonadIO`.
 --
 -- /Translated from/:
 --
@@ -809,7 +859,8 @@ enabledAssumptions jtms = error "TODO"
 whyNode :: MonadIO m => Node d i r s m -> JTMST s m ()
 whyNode node = error "TODO"
 
--- |
+-- |Prints the justifications of all current nodes.  Requires that the
+-- underlying monad @m@ be `MonadIO`.
 --
 -- /Translated from/:
 --
@@ -857,7 +908,8 @@ askUserHandler jtms contradictions = error "TODO"
 handleOneContradiction :: Monad m => JTMS d i r s m -> JTMST s m ()
 handleOneContradiction node = error "TODO"
 
--- |
+-- |Print a verbose debugging output list of the contradictions in the
+-- JTMS.  Requires that the underlying monad @m@ be `MonadIO`.
 --
 -- /Translated from/:
 --
