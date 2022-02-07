@@ -590,15 +590,13 @@ justifyNode informant consequence antecedents =
     -- We attempt to use this new rule right now if either the
     -- consequence is currently OUT, or if there actually are
     -- antecedents.
-    --
-    -- TODO Wrong condition checking.  Not if both, but if either.
-    when (not $ null antecedents) $ do
-      ifM (jLiftSTT $ notM $ readSTRef $ nodeBelieved consequence)
-        -- If the antecedents are satisfied, add it as a support
-        -- for the consequence.
-        (whenM (checkJustification just) $ installSupport consequence just)
-        -- Otherwise we can install as a support straightaway.
-        (jLiftSTT $ writeSTRef (nodeSupport consequence) $ Just $ ByRule just)
+    ifM ((return $ not $ null antecedents)
+          ||^ (jLiftSTT $ notM $ readSTRef $ nodeBelieved consequence))
+      -- If the antecedents are satisfied, add it as a support
+      -- for the consequence.
+      (whenM (checkJustification just) $ installSupport consequence just)
+      -- Otherwise we can install as a support straightaway.
+      (jLiftSTT $ writeSTRef (nodeSupport consequence) $ Just $ ByRule just)
 
     -- Check for new contradictions introduced with this rule.
     checkForContradictions jtms
