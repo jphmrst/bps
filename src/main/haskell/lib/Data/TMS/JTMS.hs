@@ -75,7 +75,7 @@ type JTMSTInner s m a = Monad m => ExceptT JtmsErr (STT s m) a
 newtype Monad m => JTMST s m a = JtmsT { unwrap :: JTMSTInner s m a }
 
 -- |Errors which can arise from JTMS operations.
-data JtmsErr = JtmsErr
+data JtmsErr = CannotEnableNonassumption String Int
 
 instance (Monad m) => Functor (JTMST s m) where
   fmap f (JtmsT m) = JtmsT $ do
@@ -748,6 +748,25 @@ retractAssumption node = do
         findAlternativeSupport jtms $ node : propagated
     _ -> return ()
 
+isEnabledAssumption :: Monad m => Node d i r s m -> JTMST s m Bool
+isEnabledAssumption node = do
+  support <- jLiftSTT $ readSTRef $ nodeSupport node
+  case support of
+    Just EnabledAssumption -> return True
+    _ -> return False
+
+supportAntecedents :: Monad m => Node d i r s m -> JTMST s m [Node d i r s m]
+supportAntecedents node = do
+  support <- jLiftSTT $ readSTRef $ nodeSupport node
+  case support of
+    Just (ByRule j) -> return $ justAntecedents j
+    _ -> return []
+
+emptySupportAntecedents :: Monad m => Node d i r s m -> JTMST s m Bool
+emptySupportAntecedents node = do
+  ants <- supportAntecedents node
+  return $ null ants
+
 -- |Called when the external system chooses to believe the assumption
 -- represented by @node@.
 --
@@ -758,14 +777,27 @@ retractAssumption node = do
 -- >   (unless (tms-node-assumption? node)
 -- >     (tms-error "Can't enable the non-assumption ~A" node))
 -- >   (debugging-jtms jtms "~%  Enabling assumption ~A." node)
--- >   (cond ((out-node? node) (make-node-in node :ENABLED-ASSUMPTION)
--- >                        (propagate-inness node))
+-- >   (cond
+-- >      ((out-node? node)
+-- >       (make-node-in node :ENABLED-ASSUMPTION)
+-- >       (propagate-inness node))
 -- >      ((or (eq (tms-node-support node) :ENABLED-ASSUMPTION)
 -- >           (null (just-antecedents (tms-node-support node)))))
 -- >      (t (setf (tms-node-support node) :ENABLED-ASSUMPTION)))
 -- >   (check-for-contradictions jtms))
 enableAssumption :: Monad m => Node d i r s m -> JTMST s m ()
-enableAssumption node = error "TODO"
+enableAssumption node =
+  let jtms = nodeJTMS node
+  in do
+    whenM (notM $ jLiftSTT $ readSTRef $ nodeIsAssumption node) $
+      jLiftExcept $ throwError $
+        CannotEnableNonassumption (jtmsTitle jtms) (nodeIndex node)
+    ifM (isOutNode node)
+      (do makeNodeIn node EnabledAssumption
+          propagateInness node)
+      (ifM (isEnabledAssumption node ||^ emptySupportAntecedents node)
+        (return ())
+        (jLiftSTT $ writeSTRef (nodeSupport node) (Just EnabledAssumption)))
 
 -- |Called when the JTMS disbelieves @node@.
 --
@@ -782,7 +814,15 @@ enableAssumption node = error "TODO"
 -- >               (funcall enqueuef out-rule)))
 -- >   (setf (tms-node-out-rules node) nil))
 makeNodeOut :: Monad m => Node d i r s m -> JTMST s m ()
-makeNodeOut node = error "TODO"
+makeNodeOut node =
+  let jtms = nodeJTMS node
+  in do
+    enqueuef <- jLiftSTT $ readSTRef $ jtmsEnqueueProcedure jtms
+    jLiftSTT $ writeSTRef (nodeSupport node) Nothing
+    jLiftSTT $ writeSTRef (nodeBelieved node) False
+    forMM_ (jLiftSTT $ readSTRef (nodeOutRules node)) $ \ outRule ->
+      enqueuef outRule
+    jLiftSTT $ writeSTRef (nodeOutRules node) []
 
 -- |Propagate the retraction of an assumption by finding all other
 -- nodes which used that assumption in their justification.
