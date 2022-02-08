@@ -43,7 +43,21 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Data.TMS.JTMS where
+module Data.TMS.JTMS (
+  JTMST, JtmsErr,
+
+  JTMS, printJTMS, jtmsTitle, createJTMS,
+  setNodeString, setDebugging, setCheckingContradictions,
+  setContradictionHandler, setEnqueueProcedure, whyNodes,
+  printContraList,
+
+  Node, printTmsNode, createNode, assumeNode, makeContradiction,
+  nodeIsPremise, isInNode, isOutNode, retractAssumption, enableAssumption,
+  enabledAssumptions, whyNode,
+
+  Justification, JustRule, printJustRule, justifyNode,
+
+  ) where
 import Control.Monad.State
 import Control.Monad.ST.Trans
 import Control.Monad.Except
@@ -660,10 +674,20 @@ installSupport node just = do
 -- >     (debugging-jtms jtms "~%   Propagating belief in ~A." node)
 -- >     (dolist (justification (tms-node-consequences node))
 -- >       (when (check-justification justification)
--- >      (make-node-in (just-consequence justification) justification)
--- >      (push (just-consequence justification) q)))))
+-- >         (make-node-in (just-consequence justification) justification)
+-- >         (push (just-consequence justification) q)))))
 propagateInness :: Monad m => Node d i r s m -> JTMST s m ()
-propagateInness node = error "TODO"
+propagateInness fromNode =
+  let jtms = nodeJTMS fromNode
+  in do
+    queue <- jLiftSTT $ newSTRef [fromNode]
+    whileReturnJust (jLiftSTT $ pop queue) $ \ node -> do
+      justs <- jLiftSTT $ readSTRef $ nodeConsequences node
+      forM_ justs $ \ j ->
+        let conseq = justConsequence j
+        in do
+          makeNodeIn conseq $ ByRule j
+          jLiftSTT $ push conseq queue
 
 -- |Called when the given @reason@ causes the JTMS to believe @node@.
 --
@@ -686,9 +710,16 @@ propagateInness node = error "TODO"
 -- >     (dolist (in-rule (tms-node-in-rules conseq))
 -- >       (funcall enqueuef in-rule))
 -- >     (setf (tms-node-in-rules conseq) nil)))
-makeNodeIn :: Monad m =>
-                Node d i r s m -> Justification d i r s m -> JTMST s m ()
-makeNodeIn conseq reason = error "TODO"
+makeNodeIn ::
+  Monad m => Node d i r s m -> Justification d i r s m -> JTMST s m ()
+makeNodeIn conseq reason =
+  let jtms = nodeJTMS conseq
+  in do
+    enqueuef <- jLiftSTT $ readSTRef $ jtmsEnqueueProcedure jtms
+    jLiftSTT $ writeSTRef (nodeBelieved conseq) True
+    jLiftSTT $ writeSTRef (nodeSupport conseq) $ Just reason
+    forMM_ (jLiftSTT $ readSTRef $ nodeInRules conseq) enqueuef
+    jLiftSTT $ writeSTRef (nodeInRules conseq) []
 
 -- > * Assumption Manipulation
 
@@ -703,9 +734,19 @@ makeNodeIn conseq reason = error "TODO"
 -- >     (setq jtms (tms-node-jtms node))
 -- >     (debugging-jtms jtms "~%  Retracting assumption ~A." node)
 -- >     (make-node-out node)
--- >     (find-alternative-support jtms (cons node (propagate-outness node jtms)))))
+-- >     (find-alternative-support jtms
+-- >                               (cons node (propagate-outness node jtms)))))
 retractAssumption :: Monad m => Node d i r s m -> JTMST s m ()
-retractAssumption node = error "TODO"
+retractAssumption node = do
+  support <- jLiftSTT $ readSTRef (nodeSupport node)
+  case support of
+    Just EnabledAssumption ->
+      let jtms = nodeJTMS node
+      in do
+        makeNodeOut node
+        propagated <- propagateOutness node jtms
+        findAlternativeSupport jtms $ node : propagated
+    _ -> return ()
 
 -- |Called when the external system chooses to believe the assumption
 -- represented by @node@.
@@ -763,7 +804,8 @@ makeNodeOut node = error "TODO"
 -- >       (make-node-out conseq)
 -- >       (push conseq out-queue)
 -- >       (setq new (tms-node-consequences conseq)))))
-propagateOutness :: Monad m => Node d i r s m -> JTMS d i r s m -> JTMST s m ()
+propagateOutness ::
+  Monad m => Node d i r s m -> JTMS d i r s m -> JTMST s m [Node d i r s m]
 propagateOutness node jtms = error "TODO"
 
 -- |Search for support for nodes @outs@ which were disbelieved after an
@@ -1077,3 +1119,27 @@ push :: Monad m => a -> STRef s [a] -> STT s m ()
 push v r = do
   prev <- readSTRef r
   writeSTRef r $ v : prev
+
+-- |Pop a value from the given reference to a list if one exists.
+pop :: Monad m => STRef s [a] -> STT s m (Maybe a)
+pop queue = do
+  queueList <- readSTRef queue
+  case queueList of
+    [] -> return Nothing
+    (x : xs) -> do
+      writeSTRef queue xs
+      return $ Just x
+
+whileReturnJust :: Monad m => m (Maybe a) -> (a -> m ()) -> m ()
+whileReturnJust gen f = do
+  res <- gen
+  case res of
+    Nothing -> return ()
+    Just x  -> do
+      f x
+      whileReturnJust gen f
+
+forMM_ :: Monad m => m [a] -> (a -> m ()) -> m ()
+forMM_ srcM f = do
+  src <- srcM
+  forM_ src f
