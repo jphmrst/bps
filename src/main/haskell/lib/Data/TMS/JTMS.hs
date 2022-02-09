@@ -836,9 +836,9 @@ makeNodeOut node =
 -- >        (new nil nil)
 -- >        (conseq nil))
 -- >       ((null js) out-queue)
--- >     ;;For each justification using the node, check to see if
--- >     ;;it supports some other node.  If so, forget that node,
--- >     ;;queue up the node to look for other support, and recurse
+-- >     ;; For each justification using the node, check to see if
+-- >     ;; it supports some other node.  If so, forget that node,
+-- >     ;; queue up the node to look for other support, and recurse
 -- >     (setq conseq (just-consequence (car js)))
 -- >     (when (eq (tms-node-support conseq) (car js))
 -- >       (make-node-out conseq)
@@ -865,13 +865,19 @@ propagateOutness node jtms = error "TODO"
 -- >   (dolist (node out-queue)
 -- >     (unless (in-node? node)
 -- >       (dolist (just (tms-node-justs node))
--- >      (when (check-justification just)
--- >        (install-support (just-consequence just)
--- >                               just)
--- >        (return just))))))
+-- >         (when (check-justification just)
+-- >           (install-support (just-consequence just) just)
+-- >           (return just))))))
 findAlternativeSupport ::
   Monad m => JTMS d i r s m -> [Node d i r s m] -> JTMST s m ()
-findAlternativeSupport jtms outs = error "TODO"
+findAlternativeSupport jtms outs = do
+  stack <- jLiftSTT $ newSTRef outs
+  whileListM_ jLiftSTT stack $ \ node ->
+    unlessMM (isInNode node) $
+      forMM_ (jLiftSTT $ readSTRef $ nodeJusts node) $ \ just ->
+        whenM (checkJustification just) $ do
+          installSupport (justConsequence just) (ByRule just)
+          propagateInness node
 
 -- > * Contradiction handling interface
 
@@ -886,9 +892,14 @@ findAlternativeSupport jtms outs = error "TODO"
 -- >     (dolist (cnode (jtms-contradictions jtms))
 -- >       (if (in-node? cnode) (push cnode contradictions)))
 -- >     (if contradictions
--- >      (funcall (jtms-contradiction-handler jtms) jtms contradictions))))
+-- >       (funcall (jtms-contradiction-handler jtms) jtms contradictions))))
 checkForContradictions :: Monad m => JTMS d i r s m -> JTMST s m ()
-checkForContradictions jtms = error "TODO"
+checkForContradictions jtms = do
+  localContras <- jLiftSTT $ newSTRef []
+  whenM (jLiftSTT $ readSTRef $ jtmsCheckingContradictions jtms) $ do
+    forMM_ (jLiftSTT $ readSTRef $ jtmsContradictions jtms) $ \ cnode ->
+      whenM (isInNode cnode) $ (jLiftSTT $ push cnode localContras)
+    error "TODO"
 
 -- |
 --
@@ -1183,3 +1194,18 @@ forMM_ :: Monad m => m [a] -> (a -> m ()) -> m ()
 forMM_ srcM f = do
   src <- srcM
   forM_ src f
+
+whileListM_ :: (Monad m0, Monad m) =>
+  (forall r . STT s m0 r -> m r) -> STRef s [a] -> (a -> m ()) -> m ()
+whileListM_ lifter listRef bodyf = whileListM_'
+  where whileListM_' = do
+          top <- lifter $ pop listRef
+          case top of
+            Nothing -> return ()
+            Just x -> do
+              bodyf x
+              whileListM_'
+
+unlessMM :: Monad m => m Bool -> m () -> m ()
+unlessMM cnd body = whenM (notM cnd) body
+
