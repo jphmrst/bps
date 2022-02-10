@@ -40,7 +40,6 @@ language governing permissions and limitations under the License.
 
 -}
 
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 
 module Data.TMS.JTMS (
