@@ -43,7 +43,7 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE RankNTypes #-}
 
 module Data.TMS.JTMS (
-  JTMST, JtmsErr,
+  JTMST, JtmsErr, runJTMST,
 
   JTMS, printJTMS, jtmsTitle, createJTMS,
   setNodeString, setDebugging, setCheckingContradictions,
@@ -370,12 +370,11 @@ defaultNodeString node = show $ nodeDatum node
 -- >                                (contradiction-handler 'ask-user-handler)
 -- >                                enqueue-procedure)
 -- >   (make-jtms :TITLE title
--- >           :NODE-STRING node-string
--- >           :DEBUGGING debugging
--- >           :CHECKING-CONTRADICTIONS checking-contradictions
--- >           :CONTRADICTION-HANDLER contradiction-handler
--- >           :ENQUEUE-PROCEDURE enqueue-procedure
--- >           ))
+-- >              :NODE-STRING node-string
+-- >              :DEBUGGING debugging
+-- >              :CHECKING-CONTRADICTIONS checking-contradictions
+-- >              :CONTRADICTION-HANDLER contradiction-handler
+-- >              :ENQUEUE-PROCEDURE enqueue-procedure))
 createJTMS :: Monad m => String -> JTMST s m (JTMS d i r s m)
 createJTMS title = JtmsT $ lift $ do
   nc <- newSTRef 0
@@ -485,10 +484,10 @@ isOutNode node = do
 -- > ;; In jtms.lisp:
 -- > (defun tms-create-node (jtms datum &key assumptionp contradictoryp)
 -- >   (let ((node (make-tms-node :INDEX (incf (jtms-node-counter jtms))
--- >                           :DATUM datum
--- >                           :ASSUMPTION? assumptionp
--- >                           :CONTRADICTORY? contradictoryp
--- >                           :JTMS jtms)))
+-- >                              :DATUM datum
+-- >                              :ASSUMPTION? assumptionp
+-- >                              :CONTRADICTORY? contradictoryp
+-- >                              :JTMS jtms)))
 -- >     (if assumptionp (push node (jtms-assumptions jtms)))
 -- >     (if contradictoryp (push node (jtms-contradictions jtms)))
 -- >     (push node (jtms-nodes jtms))
