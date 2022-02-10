@@ -899,7 +899,9 @@ checkForContradictions jtms = do
   whenM (jLiftSTT $ readSTRef $ jtmsCheckingContradictions jtms) $ do
     forMM_ (jLiftSTT $ readSTRef $ jtmsContradictions jtms) $ \ cnode ->
       whenM (isInNode cnode) $ (jLiftSTT $ push cnode localContras)
-    error "TODO"
+    whenNonnullR jLiftSTT localContras $ \ contras -> do
+      handler <- jLiftSTT $ readSTRef $ jtmsContradictionHandler jtms
+      handler contras
 
 -- |
 --
@@ -910,7 +912,7 @@ checkForContradictions jtms = do
 -- >   (contradiction-check jtms nil body))
 withoutContradictionCheck ::
   Monad m => JTMS d i r s m -> JTMST s m () -> JTMST s m ()
-withoutContradictionCheck jtms body = error "TODO"
+withoutContradictionCheck jtms = contradictionCheck jtms False
 
 -- |
 --
@@ -921,7 +923,7 @@ withoutContradictionCheck jtms body = error "TODO"
 -- >   (contradiction-check jtms t body))
 withContradictionCheck ::
   Monad m => JTMS d i r s m -> JTMST s m () -> JTMST s m ()
-withContradictionCheck jtms body = error "TODO"
+withContradictionCheck jtms = contradictionCheck jtms True
 
 -- |
 --
@@ -937,7 +939,11 @@ withContradictionCheck jtms body = error "TODO"
 -- >       (setf (jtms-checking-contradictions ,jtmsv) ,old-value)))))
 contradictionCheck ::
   Monad m => JTMS d i r s m -> Bool -> JTMST s m () -> JTMST s m ()
-contradictionCheck jtms flag body = error "TODO"
+contradictionCheck jtms flag body = do
+  oldFlag <- jLiftSTT $ readSTRef $ jtmsCheckingContradictions jtms
+  jLiftSTT $ writeSTRef (jtmsCheckingContradictions jtms) flag
+  body
+  jLiftSTT $ writeSTRef (jtmsCheckingContradictions jtms) oldFlag
 
 --
 --
@@ -1209,3 +1215,24 @@ whileListM_ lifter listRef bodyf = whileListM_'
 unlessMM :: Monad m => m Bool -> m () -> m ()
 unlessMM cnd body = whenM (notM cnd) body
 
+-- |Monadic version of @null@ for a list stored in an `STRef`: returns
+-- `True` when the list is empty.
+nullR :: Monad m => STRef s [a] -> STT s m Bool
+nullR ref = do
+  xs <- readSTRef ref
+  return $ null xs
+
+-- |Opposite of `nullR`, returning `False` when the referenced list is
+-- empty.
+nonnullR :: Monad m => STRef s [a] -> STT s m Bool
+nonnullR ref = do
+  xs <- readSTRef ref
+  return $ not $ null xs
+
+-- |Combinations of `whenM` and `nonnullR`, where the body receives
+-- the non-null list as an argument.
+whenNonnullR :: (Monad m0, Monad m) =>
+  (forall r . STT s m0 r -> m r) -> STRef s [a] -> ([a] -> m ()) -> m ()
+whenNonnullR lifter ref bodyf = do
+  xs <- lifter $ readSTRef ref
+  if (null xs) then return () else bodyf xs
