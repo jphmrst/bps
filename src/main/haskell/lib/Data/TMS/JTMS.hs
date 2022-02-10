@@ -74,6 +74,11 @@ type JTMSTInner s m a = Monad m => ExceptT JtmsErr (STT s m) a
 -- |The process of building and using a mutable JTMS.
 newtype Monad m => JTMST s m a = JtmsT { unwrap :: JTMSTInner s m a }
 
+-- |Internal unwrapper preserving rank-2 polymorphism of the state
+-- thread in the wrapper `STT`.
+unwrap2 :: Monad m => (forall s . JTMST s m a) -> (forall s . JTMSTInner s m a)
+unwrap2 (JtmsT m) = m
+
 -- |Errors which can arise from JTMS operations.
 data JtmsErr = CannotEnableNonassumption String Int
 
@@ -112,6 +117,10 @@ jLiftSTT md = JtmsT $ lift $ md
 -- |Lift `ExceptT` behavior to the `JTMST` level.
 jLiftExcept :: Monad m => ExceptT JtmsErr (STT s m) r -> JTMST s m r
 jLiftExcept md = JtmsT $ md
+
+-- |Execute a computation in the `JTMST` monad transformer.
+runJTMST :: Monad m => (forall s . JTMST s m r) -> m (Either JtmsErr r)
+runJTMST jtmst = runSTT $ runExceptT $ unwrap2 jtmst
 
 -- * JTMS elements
 
@@ -966,13 +975,17 @@ contradictionCheck jtms flag body = do
 -- > (defun default-assumptions (jtms)
 -- >   (with-contradiction-check jtms
 -- >     (with-contradiction-handler jtms #'(lambda (&rest ignore)
--- >                                       (declare (ignore ignore))
--- >                                       (throw 'CONTRADICTION t))
+-- >                                          (declare (ignore ignore))
+-- >                                          (throw 'CONTRADICTION t))
 -- >       (dolist (assumption (jtms-assumptions jtms))
--- >      (cond ((eq (tms-node-support assumption) :ENABLED-ASSUMPTION))
--- >            ((not (eq :DEFAULT (tms-node-assumption? assumption))))
--- >            ((catch 'CONTRADICTION (enable-assumption assumption))
--- >             (retract-assumption assumption)))))))
+-- >         (cond ((eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
+-- >                ;; No-op
+-- >               )
+-- >               ((not (eq :DEFAULT (tms-node-assumption? assumption)))
+-- >                ;; No-op
+-- >               )
+-- >               ((catch 'CONTRADICTION (enable-assumption assumption))
+-- >                (retract-assumption assumption)))))))
 -- defaultAssumptions :: Monad m => JTMS d i r s m -> JTMST s m ()
 -- defaultAssumptions jtms = error "TODO"
 
@@ -984,8 +997,9 @@ contradictionCheck jtms flag body = do
 --
 -- > ;; In jtms.lisp:
 -- > (defun supporting-justification-for-node (node) (tms-node-support node))
--- supportingJustificationForNode :: Monad m => Node d i r s m -> JTMST s m ()
--- supportingJustificationForNode = error "TODO"
+supportingJustificationForNode ::
+  Monad m => Node d i r s m -> JTMST s m (Maybe (Justification d i r s m))
+supportingJustificationForNode node = jLiftSTT $ readSTRef $ nodeSupport node
 
 -- |API command returning the believed assumption nodes used to
 -- justify belief in this node.
