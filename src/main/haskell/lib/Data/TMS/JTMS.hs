@@ -80,6 +80,7 @@ unwrap2 (JtmsT m) = m
 
 -- |Errors which can arise from JTMS operations.
 data JtmsErr = CannotEnableNonassumption String Int
+  deriving Show
 
 instance (Monad m) => Functor (JTMST s m) where
   fmap f (JtmsT m) = JtmsT $ do
