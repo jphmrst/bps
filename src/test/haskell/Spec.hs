@@ -44,26 +44,33 @@ language governing permissions and limitations under the License.
 import Data.Symbol
 import Data.Void
 import Data.TMS.JTMS
+import Control.Monad
 import Control.Monad.IO.Class
-import Test.HUnit
+import Control.Monad.ST.Trans
+import Control.Monad.Trans.Class
 import Test.TLT
 
 main :: IO ()
 main = do
-  runJTMST $ do
-    counts <- testEx1
-    liftIO $ putStrLn $ show counts
-  putStrLn "Test run completed"
-
+  runJTMST $ tlt $ do
+    testEx1
+  return ()
 
 -- Prints result of the string length calculation.
 report :: Either JtmsErr () -> IO ()
 report (Right _) = putStrLn ("Tests passed")
 report (Left e) = putStrLn ("Caught exception: " ++ (show e))
 
--- ex1 :: Monad m => forall s . JTMST s m (JTMS Symbol String Void s m)
+type JTMS1ty s m = JTMS Symbol String Void s m
+type Node1ty s m = Node Symbol String Void s m
+ex1 :: Monad m => JTMST s m (JTMS1ty s m,
+                             Node1ty s m, Node1ty s m, Node1ty s m,
+                             Node1ty s m, Node1ty s m, Node1ty s m,
+                             Node1ty s m)
+
 ex1 = do
   j <- createJTMS "Ex1"
+  setNodeString j (show . nodeDatum)
   na <- createNode j (intern "a") True False
   nb <- createNode j (intern "b") True False
   nc <- createNode j (intern "c") True False
@@ -77,19 +84,30 @@ ex1 = do
   justifyNode "j4" ng [nd, ne]
   return (j, na, nb, nc, nd, ne, nf, ng)
 
--- testEx1 :: Monad m => JTMS Symbol String Void s m -> JTMST s m ()
+testEx1 :: Monad m => TLT (JTMST s m) ()
 testEx1 = do
-  (jtms, na, nb, nc, nd, ne, nf, ng) <- ex1
+  (jtms, na, nb, nc, nd, ne, nf, ng) <- lift ex1
+  assertInsOuts "Fresh JTMS" jtms [] [na, nb, nc, nd, ne, nf, ng]
 
-  enableAssumption na
-  ba1 <- isInNode na
-  bb1 <- isInNode nb
-  bc1 <- isInNode nc
-  bd1 <- isInNode nd
-  be1 <- isInNode ne
-  bf1 <- isInNode nf
-  bg1 <- isInNode ng
+  lift $ enableAssumption na
+  assertInsOuts "After asserting A" jtms [na] [nb, nc, nd, ne, nf, ng]
+
+{- Local assertions. -}
+
+assertInsOuts ::
+  Monad m => String ->
+               (JTMS d i r s m) -> [Node d i r s m] -> [Node d i r s m] ->
+                 TLT (JTMST s m) ()
+assertInsOuts name jtms ins outs = do -- inGroup name $ do
+  forM_ ins  $ \ node -> do
+    name <- lift $ nodeString node
+    ("Node " ++ name ++ " is in") ~:: isInNode node
+  forM_ outs $ \ node -> do
+    name <- lift $ nodeString node
+    ("Node " ++ name ++ " is out") ~:: isOutNode node
+{-
   liftIO $ runTestTT $ TestList [
     TestCase $ assertBool "a believed" ba1,
     "2 is 2" Test.HUnit.~: 2 @=? 2
     ]
+-}

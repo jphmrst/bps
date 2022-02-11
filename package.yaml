@@ -29,7 +29,7 @@ library:
   source-dirs: src/main/haskell/lib
 
 executables:
-  BPS-exe:
+  hbps:
     main:                Main.hs
     source-dirs:         src/main/haskell/app
     ghc-options:
@@ -38,6 +38,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - BPS
+    - symbol
 
 tests:
   BPS-test:
@@ -52,4 +53,5 @@ tests:
     - HUnit
     - symbol
     - transformers
-    - TLT >= 0.0.0.1
+    - TLT >= 0.0.0.1  ## Remember to remove the extra-deps in
+                      ## stack.yaml when TLT goes external.
