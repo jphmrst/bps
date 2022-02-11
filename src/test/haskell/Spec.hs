@@ -105,9 +105,3 @@ assertInsOuts name jtms ins outs = do -- inGroup name $ do
   forM_ outs $ \ node -> do
     name <- lift $ nodeString node
     ("Node " ++ name ++ " is out") ~:: isOutNode node
-{-
-  liftIO $ runTestTT $ TestList [
-    TestCase $ assertBool "a believed" ba1,
-    "2 is 2" Test.HUnit.~: 2 @=? 2
-    ]
--}
