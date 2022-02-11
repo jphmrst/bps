@@ -46,6 +46,7 @@ import Data.Void
 import Data.TMS.JTMS
 import Control.Monad.IO.Class
 import Test.HUnit
+import Test.TLT
 
 main :: IO ()
 main = do
@@ -79,6 +80,16 @@ ex1 = do
 -- testEx1 :: Monad m => JTMS Symbol String Void s m -> JTMST s m ()
 testEx1 = do
   (jtms, na, nb, nc, nd, ne, nf, ng) <- ex1
+
+  enableAssumption na
+  ba1 <- isInNode na
+  bb1 <- isInNode nb
+  bc1 <- isInNode nc
+  bd1 <- isInNode nd
+  be1 <- isInNode ne
+  bf1 <- isInNode nf
+  bg1 <- isInNode ng
   liftIO $ runTestTT $ TestList [
-    "2 is 2" ~: 2 @=? 2
+    TestCase $ assertBool "a believed" ba1,
+    "2 is 2" Test.HUnit.~: 2 @=? 2
     ]
