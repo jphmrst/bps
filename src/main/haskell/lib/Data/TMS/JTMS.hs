@@ -50,9 +50,10 @@ module Data.TMS.JTMS (
   setContradictionHandler, setEnqueueProcedure, whyNodes,
   printContraList,
 
-  Node, printTmsNode, createNode, assumeNode, makeContradiction,
+  Node, createNode, nodeDatum,
+  printTmsNode, assumeNode, makeContradiction,
   nodeIsPremise, isInNode, isOutNode, retractAssumption, enableAssumption,
-  enabledAssumptions, whyNode,
+  enabledAssumptions, whyNode, nodeString,
 
   Justification, JustRule, printJustRule, justifyNode,
 
