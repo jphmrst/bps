@@ -67,6 +67,9 @@ import Control.Monad.Extra
 -- Construction and manipulation of a JTMS happens inside this monad
 -- wrapper.
 
+-- |Errors which can arise from JTMS operations.
+data JtmsErr = CannotEnableNonassumption String Int deriving Show
+
 -- |The process of building and using a mutable JTMS.
 type JTMSTInner s m a = Monad m => ExceptT JtmsErr (STT s m) a
 
@@ -77,10 +80,6 @@ newtype Monad m => JTMST s m a = JtmsT { unwrap :: JTMSTInner s m a }
 -- thread in the wrapper `STT`.
 unwrap2 :: Monad m => (forall s . JTMST s m a) -> (forall s . JTMSTInner s m a)
 unwrap2 (JtmsT m) = m
-
--- |Errors which can arise from JTMS operations.
-data JtmsErr = CannotEnableNonassumption String Int
-  deriving Show
 
 instance (Monad m) => Functor (JTMST s m) where
   fmap f (JtmsT m) = JtmsT $ do
