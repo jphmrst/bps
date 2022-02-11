@@ -1,7 +1,7 @@
 name:                BPS
 version:             0.1.0.0
 github:              "githubuser/bps-scala"
-license:             file
+license:             AllRightsReserved
 author:              "Author name here"
 maintainer:          "example@example.com"
 copyright:           "2022 Author name here"
@@ -52,3 +52,4 @@ tests:
     - HUnit
     - symbol
     - transformers
+    - TLT >= 0.0.0.1
