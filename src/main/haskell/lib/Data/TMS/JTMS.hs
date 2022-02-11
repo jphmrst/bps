@@ -41,7 +41,7 @@ language governing permissions and limitations under the License.
 -}
 
 {-# LANGUAGE RankNTypes #-}
-
+
 module Data.TMS.JTMS (
   -- * The JTMST monad
   JTMST, JtmsErr, runJTMST,
@@ -87,11 +87,12 @@ module Data.TMS.JTMS (
   whyNodes, whyNode, printContraList
 
   ) where
+
 import Control.Monad.State
 import Control.Monad.ST.Trans
 import Control.Monad.Except
 import Control.Monad.Extra
-
+
 -- * The @JTMST@ monad transformer
 --
 -- Construction and manipulation of a JTMS happens inside this monad
@@ -150,7 +151,7 @@ jLiftExcept md = JtmsT $ md
 -- |Execute a computation in the `JTMST` monad transformer.
 runJTMST :: Monad m => (forall s . JTMST s m r) -> m (Either JtmsErr r)
 runJTMST jtmst = runSTT $ runExceptT $ unwrap2 jtmst
-
+
 -- * JTMS elements
 
 -- ** The JTMS structure
@@ -165,7 +166,7 @@ runJTMST jtmst = runSTT $ runExceptT $ unwrap2 jtmst
 --  - @s@ is the (phantom) type of the state thread.
 --  - @m@ is the monad in which this computation lives.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defstruct (jtms (:PRINT-FUNCTION print-jtms))
@@ -203,7 +204,7 @@ data Monad m => JTMS d i r s m = JTMS {
   jtmsContradictionHandler :: STRef s ([Node d i r s m] -> JTMST s m ()),
   jtmsDebugging :: STRef s Bool
 }
-
+
 -- |Get the next node counter value, incrementing for future accesses.
 nextNodeCounter :: Monad m => JTMS d i r s m -> JTMSTInner s m Int
 nextNodeCounter jtms = lift $
@@ -226,19 +227,19 @@ nextJustCounter jtms = lift $
 -- |Print a simple tag with the title of this JTMS.  Forces the
 -- enclosed monad to be `MonadIO`.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun print-jtms (jtms stream ignore)
 -- >   (declare (ignore ignore))
 -- >   (format stream "#<JTMS: ~A>" (jtms-title jtms)))
 printJTMS jtms = liftIO $ putStr $ "#<JTMS: " ++ jtmsTitle jtms ++ ">"
-
+
 -- ** Individual nodes
 
 -- |Wrapper for one possible belief known to the TMS.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
@@ -271,7 +272,7 @@ data Monad m => Node d i r s m = Node {
 -- |Write one node in the standard way for this JTMS.  Forces the
 -- wrapped monad to be `MonadIO`.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun print-tms-node (node stream ignore)
@@ -281,13 +282,13 @@ printTmsNode :: MonadIO m => Node d i r s m -> JTMST s m ()
 printTmsNode node = do
   s <- nodeString node
   liftIO $ putStr $ "#<Node: " ++ s ++ ">"
-
+
 -- ** Justifications
 
 -- |Wrapper for one justification relationship between many antecedent
 -- nodes and one consequent node.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defstruct (just (:PRINT-FUNCTION print-just))
@@ -304,7 +305,7 @@ data Monad m => JustRule d i r s m = JustRule {
 
 -- |Print the tag of a JTMS justification.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun print-just (just stream ignore)
@@ -323,7 +324,7 @@ data Monad m => Justification d i r s m =
 -- |Returns @True@ when the node is supported by a `JustRule` with no
 -- antecedents.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun tms-node-premise? (node &aux support)
@@ -336,13 +337,13 @@ nodeIsPremise node = JtmsT $ lift $ do
   case support of
     Just (ByRule (JustRule _ _ _ antecedents)) -> return $ null antecedents
     _ -> return False
-
+
 -- * Simple utilities
 
 -- |Produce a representation of the node in the default manner for its
 -- JTMS.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun node-string (node)
@@ -363,7 +364,7 @@ nodeString node = JtmsT $ lift $ do
 -- instance MonadIO m => JTMSDebugger (JTMST s m) where
 --   debuggingJtms s = liftIO $ print s
 --
--- -- === __Lisp origins:__
+-- -- ===== __Lisp origins:__
 -- --
 -- -- > ;; In jtms.lisp:
 -- -- > (defmacro debugging-jtms (jtms msg &optional node &rest args)
@@ -373,7 +374,7 @@ nodeString node = JtmsT $ lift $ do
 
 -- |Raise a JTMS-related error.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun tms-error (string node) (error string (node-string node)))
@@ -383,16 +384,16 @@ tmsError e = JtmsT $ throwError e
 -- |The default representation of a node is by @show@ing its datum.
 -- Requires that @d@ is in class `Show`.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
 defaultNodeString :: (Show d, Monad m) => Node d i r s m -> String
 defaultNodeString node = show $ nodeDatum node
-
+
 -- |Create and return a new JTMS.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun create-jtms (title &key (node-string 'default-node-string)
@@ -422,7 +423,7 @@ createJTMS title = JtmsT $ lift $ do
   return (JTMS title nc jc nodes justs contradictions assumptions
                checkingContradictions nodeString enqueueProcedure
                contradictionHandler debugging)
-
+
 -- |Helper function for writing setter command for `JTMS` components.
 --
 -- Not part of the original Lisp.
@@ -466,14 +467,13 @@ setContradictionHandler = jtmsSetter jtmsContradictionHandler
 setEnqueueProcedure :: Monad m =>
   JTMS d i r s m -> (r -> JTMST s m ()) -> JTMST s m ()
 setEnqueueProcedure = jtmsSetter jtmsEnqueueProcedure
-
-
+
 -- * Basic inference-engine interface
 
 -- |Returns @True@ if the current believed assumptions justify the
 -- fact represented by the given node.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun in-node? (node) (eq (tms-node-label node) :IN))
@@ -485,7 +485,7 @@ isInNode node = JtmsT $ do
 -- |Returns @True@ if the current believed assumptions do not justify
 -- the fact represented by the given node.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun out-node? (node) (eq (tms-node-label node) :OUT))
@@ -493,10 +493,10 @@ isOutNode :: Monad m => Node d i r s m -> JTMST s m Bool
 isOutNode node = do
   believed <- isInNode node
   return $ not believed
-
+
 -- |Add a node to a JTMS.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun tms-create-node (jtms datum &key assumptionp contradictoryp)
@@ -538,11 +538,11 @@ createNode jtms datum isAssumption isContradictory = JtmsT $ do
         push node nodeListRef
 
         return node
-
+
 -- |Internal method used to flag this node as an assumption, and to
 -- enable belief in this assumption.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > ;;; Converts a regular node to an assumption and enables it.
@@ -567,7 +567,7 @@ assumeNode node =
 -- |API command used when the external system categorizes this node as
 -- representing a contradiction.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun make-contradiction (node &aux (jtms (tms-node-jtms node)))
@@ -585,12 +585,12 @@ makeContradiction node =
           jLiftSTT $ push node $ jtmsContradictions jtms
           checkForContradictions jtms)
       (return ())
-
+
 -- |Add a rule for concluding belief in the @consequence@.  The rule
 -- is triggered when the @antecedents@ are all believed, and is
 -- associated with (perhaps named as) the @informant@.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun justify-node (informant consequence antecedents &aux just jtms)
@@ -645,13 +645,13 @@ justifyNode informant consequence antecedents =
 
     -- Check for new contradictions introduced with this rule.
     checkForContradictions jtms
-
+
 -- * Support for adding justifications
 
 -- |Detect the case when justification @just@ is satisfied, but the
 -- `JTMS` does not believe its consequence.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun check-justification (just)
@@ -664,7 +664,7 @@ checkJustification just =
 -- |Returns @True@ when all of the antecedents of justification @j@
 -- are believed by the `JTMS`.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun justification-satisfied? (just)
@@ -674,7 +674,7 @@ isJustificationSatisfied j = allM isInNode $ justAntecedents j
 
 -- |Add a reason for this @conseq@ node to be believed.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun install-support (conseq just)
@@ -689,7 +689,7 @@ installSupport node just = do
 -- |Trigger justifications which rely (directly or indirectly) on the
 -- @node@ as an antecedent when @node@ becomes believed.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun propagate-inness (node &aux (jtms (tms-node-jtms node))
@@ -712,10 +712,10 @@ propagateInness fromNode =
         in do
           makeNodeIn conseq $ ByRule j
           jLiftSTT $ push conseq queue
-
+
 -- |Called when the given @reason@ causes the JTMS to believe @node@.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun make-node-in (conseq reason &aux jtms enqueuef)
@@ -744,13 +744,13 @@ makeNodeIn conseq reason =
     jLiftSTT $ writeSTRef (nodeSupport conseq) $ Just reason
     forMM_ (jLiftSTT $ readSTRef $ nodeInRules conseq) enqueuef
     jLiftSTT $ writeSTRef (nodeInRules conseq) []
-
+
 -- > * Assumption Manipulation
 
 -- |This command is called when the external system chooses to
 -- disbelieve the assumption represented by @node@.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun retract-assumption (node &aux jtms)
@@ -790,11 +790,11 @@ emptySupportAntecedents :: Monad m => Node d i r s m -> JTMST s m Bool
 emptySupportAntecedents node = do
   ants <- supportAntecedents node
   return $ null ants
-
+
 -- |Called when the external system chooses to believe the assumption
 -- represented by @node@.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun enable-assumption (node &aux (jtms (tms-node-jtms node)))
@@ -821,11 +821,12 @@ enableAssumption node =
           propagateInness node)
       (ifM (isEnabledAssumption node ||^ emptySupportAntecedents node)
         (return ())
-        (jLiftSTT $ writeSTRef (nodeSupport node) (Just EnabledAssumption)))
+        (jLiftSTT $ writeSTRef (nodeSupport node) $ Just EnabledAssumption))
+    checkForContradictions jtms
 
 -- |Called when the JTMS disbelieves @node@.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun make-node-out (node &aux jtms enqueuef)
@@ -847,11 +848,11 @@ makeNodeOut node =
     forMM_ (jLiftSTT $ readSTRef (nodeOutRules node)) $ \ outRule ->
       enqueuef outRule
     jLiftSTT $ writeSTRef (nodeOutRules node) []
-
+
 -- |Propagate the retraction of an assumption by finding all other
 -- nodes which used that assumption in their justification.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun propagate-outness (node jtms &aux out-queue)
@@ -881,7 +882,7 @@ propagateOutness node jtms = error "TODO"
 -- this function.  So this type-checked translation returns the unit
 -- value.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun find-alternative-support (jtms out-queue)
@@ -902,13 +903,13 @@ findAlternativeSupport jtms outs = do
         whenM (checkJustification just) $ do
           installSupport (justConsequence just) (ByRule just)
           propagateInness node
-
+
 -- > * Contradiction handling interface
 
 -- |Pass all believed contradiction nodes to the
 -- @contradictionHandler@.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun check-for-contradictions (jtms &aux contradictions)
@@ -929,7 +930,7 @@ checkForContradictions jtms = do
 
 -- |
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defmacro without-contradiction-check (jtms &body body)
@@ -940,7 +941,7 @@ withoutContradictionCheck jtms = contradictionCheck jtms False
 
 -- |
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defmacro with-contradiction-check (jtms &body body)
@@ -951,7 +952,7 @@ withContradictionCheck jtms = contradictionCheck jtms True
 
 -- |
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun contradiction-check (jtms flag body)
@@ -968,9 +969,9 @@ contradictionCheck jtms flag body = do
   jLiftSTT $ writeSTRef (jtmsCheckingContradictions jtms) flag
   body
   jLiftSTT $ writeSTRef (jtmsCheckingContradictions jtms) oldFlag
-
+
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defmacro with-contradiction-handler (jtms handler &body body)
@@ -982,7 +983,7 @@ contradictionCheck jtms flag body = do
 -- >        (setf (jtms-contradiction-handler ,jtmsv) ,old-handler)))))
 
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun default-assumptions (jtms)
@@ -1005,7 +1006,7 @@ contradictionCheck jtms flag body = do
 -- > * Well-founded support inqueries
 
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun supporting-justification-for-node (node) (tms-node-support node))
@@ -1016,7 +1017,7 @@ supportingJustificationForNode node = jLiftSTT $ readSTRef $ nodeSupport node
 -- |API command returning the believed assumption nodes used to
 -- justify belief in this node.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun assumptions-of-node (node &aux assumptions (marker (list :MARK)))
@@ -1032,10 +1033,10 @@ supportingJustificationForNode node = jLiftSTT $ readSTRef $ nodeSupport node
 -- >       (setf (tms-node-mark node) marker))))
 assumptionsOfNode :: Monad m => Node d i r s m -> JTMST s m [Node d i r s m]
 assumptionsOfNode node = error "TODO"
-
+
 -- |Returns the list of currently enabled assumptions.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun enabled-assumptions (jtms &aux result)
@@ -1050,7 +1051,7 @@ enabledAssumptions jtms = error "TODO"
 -- |Print the belief state and any justification of this node.
 -- Requires that the underlying monad @m@ be `MonadIO`.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun why-node (node &aux justification)
@@ -1072,7 +1073,7 @@ whyNode node = error "TODO"
 -- |Prints the justifications of all current nodes.  Requires that the
 -- underlying monad @m@ be `MonadIO`.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun why-nodes (jtms)
@@ -1082,7 +1083,7 @@ whyNodes jtms = error "TODO"
 
 -- |
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (proclaim '(special *contra-assumptions*))
@@ -1093,10 +1094,10 @@ whyNodes jtms = error "TODO"
 askUserHandler ::
   MonadIO m => JTMS d i r s m -> [Node d i r s m] -> JTMST s m ()
 askUserHandler jtms contradictions = error "TODO"
-
+
 -- |
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun handle-one-contradiction (contra-node
@@ -1121,7 +1122,7 @@ handleOneContradiction node = error "TODO"
 -- |Print a verbose debugging output list of the contradictions in the
 -- JTMS.  Requires that the underlying monad @m@ be `MonadIO`.
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun print-contra-list (nodes)
@@ -1134,7 +1135,7 @@ printContraList :: MonadIO m => [Node d i r s m] -> JTMST s m ()
 printContraList nodes = error "TODO"
 
 -- |
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
 -- > (defun tms-answer (num)
@@ -1147,12 +1148,12 @@ printContraList nodes = error "TODO"
 -- >       (format t "~%Ignoring answer, must be an integer.")))
 tmsAnswer :: MonadIO m => Int -> JTMST s m ()
 tmsAnswer = error "TODO"
-
+
 --
--- === __Lisp origins:__
+-- ===== __Lisp origins:__
 --
 -- > ;; In jtms.lisp:
--- > 
+-- >
 -- > (defun explore-network (node)
 -- >   (unless (in-node? node)
 -- >        (format t "~% Sorry, ~A not believed." (node-string node))
@@ -1186,7 +1187,7 @@ tmsAnswer = error "TODO"
 -- >              (t (format t
 -- >                  "~% Must be q or an integer from 0 to ~D."
 -- >                  olen))))))
-
+
 -- * Other helpers
 
 -- |This instance declaration is not part of `STT`, but it is
@@ -1238,7 +1239,7 @@ whileListM_ lifter listRef bodyf = whileListM_'
 
 unlessMM :: Monad m => m Bool -> m () -> m ()
 unlessMM cnd body = whenM (notM cnd) body
-
+
 -- |Monadic version of @null@ for a list stored in an `STRef`: returns
 -- `True` when the list is empty.
 nullR :: Monad m => STRef s [a] -> STT s m Bool
