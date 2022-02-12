@@ -87,7 +87,7 @@ module Data.TMS.JTMS (
   -- ** Control of assumptions
   enableAssumption, retractAssumption, makeContradiction,
   -- ** Conclusions from current assumption belief
-  isInNode, isOutNode, enabledAssumptions, nodeIsPremise,
+  isInNode, isOutNode, enabledAssumptions, nodeIsPremise, assumptionsOfNode,
   -- ** Output from the current belief state
   whyNodes, whyNode, printContraList,
 
@@ -218,6 +218,14 @@ data Monad m => JTMS d i r s m = JTMS {
   jtmsContradictionHandler :: STRef s ([Node d i r s m] -> JTMST s m ()),
   jtmsDebugging :: STRef s Bool
 }
+
+-- |For the moment equality on JTMSes in by comparing their names, but
+-- this is an ugly and stupid hack.  Need something like: an index for
+-- JTMSes generated from JTMST.  Really, this is just for a way to
+-- enable nodes from different JTMSes to be seen as unequal.
+instance Monad m => Eq (JTMS d i r s m) where
+  j1 == j2 = jtmsTitle j1 == jtmsTitle j2
+
 
 -- |Get the next node counter value, incrementing for future accesses.
 nextNodeCounter :: Monad m => JTMS d i r s m -> JTMSTInner s m Int
@@ -282,6 +290,11 @@ data Monad m => Node d i r s m = Node {
   nodeOutRules :: STRef s [r],
   nodeJusts :: STRef s [JustRule d i r s m]
 }
+
+-- |Equality on `Node`s is based simply on comparing their JTMS and
+-- index number.
+instance Monad m => Eq (Node d i r s m) where
+  n1 == n2 = nodeJTMS n1 == nodeJTMS n2 && nodeIndex n1 == nodeIndex n2
 
 -- |Write one node in the standard way for this JTMS.  Forces the
 -- wrapped monad to be `MonadIO`.
@@ -947,7 +960,7 @@ makeNodeOut node =
 -- >       (setq new (tms-node-consequences conseq)))))
 propagateOutness ::
   Monad m => Node d i r s m -> JTMS d i r s m -> JTMST s m [Node d i r s m]
-propagateOutness node jtms = error "TODO"
+propagateOutness node jtms = error "<TODO unimplemented>"
 
 -- |Search for support for nodes @outs@ which were disbelieved after an
 -- assumption retraction.
@@ -1077,7 +1090,7 @@ contradictionCheck jtms flag body = do
 -- >               ((catch 'CONTRADICTION (enable-assumption assumption))
 -- >                (retract-assumption assumption)))))))
 -- defaultAssumptions :: Monad m => JTMS d i r s m -> JTMST s m ()
--- defaultAssumptions jtms = error "TODO"
+-- defaultAssumptions jtms = error "<TODO unimplemented>"
 
 -- > * Well-founded support inqueries
 
@@ -1108,7 +1121,7 @@ supportingJustificationForNode node = jLiftSTT $ readSTRef $ nodeSupport node
 -- >           (setq new (just-antecedents (tms-node-support node)))))
 -- >       (setf (tms-node-mark node) marker))))
 assumptionsOfNode :: Monad m => Node d i r s m -> JTMST s m [Node d i r s m]
-assumptionsOfNode node = error "TODO"
+assumptionsOfNode node = error "<TODO unimplemented>"
 
 -- |Returns the list of currently enabled assumptions.
 --
@@ -1120,7 +1133,7 @@ assumptionsOfNode node = error "TODO"
 -- >     (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
 -- >      (push assumption result))))
 enabledAssumptions :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
-enabledAssumptions jtms = error "TODO"
+enabledAssumptions jtms = error "<TODO unimplemented>"
 
 -- > * Inference engine stub to allow this JTMS to be used standalone
 
@@ -1144,7 +1157,7 @@ enabledAssumptions jtms = error "TODO"
 -- >      (T (format t "~%~A is OUT." (node-string node))))
 -- >   node)
 whyNode :: MonadIO m => Node d i r s m -> JTMST s m ()
-whyNode node = error "TODO"
+whyNode node = error "<TODO unimplemented>"
 
 -- |Prints the justifications of all current nodes.  Requires that the
 -- underlying monad @m@ be `MonadIO`.
@@ -1155,7 +1168,7 @@ whyNode node = error "TODO"
 -- > (defun why-nodes (jtms)
 -- >   (dolist (node (jtms-nodes jtms)) (why-node node)))
 whyNodes :: MonadIO m => JTMS d i r s m -> JTMST s m ()
-whyNodes jtms = error "TODO"
+whyNodes jtms = error "<TODO unimplemented>"
 
 -- |
 --
@@ -1169,7 +1182,7 @@ whyNodes jtms = error "TODO"
 -- >   (check-for-contradictions jtms))
 askUserHandler ::
   MonadIO m => JTMS d i r s m -> [Node d i r s m] -> JTMST s m ()
-askUserHandler jtms contradictions = error "TODO"
+askUserHandler jtms contradictions = error "<TODO unimplemented>"
 
 -- |
 --
@@ -1193,7 +1206,7 @@ askUserHandler jtms contradictions = error "TODO"
 -- >       (retract-assumption (nth (1- the-answer)
 -- >                             *contra-assumptions*))))
 handleOneContradiction :: Monad m => JTMS d i r s m -> JTMST s m ()
-handleOneContradiction node = error "TODO"
+handleOneContradiction node = error "<TODO unimplemented>"
 
 -- |Print a verbose debugging output list of the contradictions in the
 -- JTMS.  Requires that the underlying monad @m@ be `MonadIO`.
@@ -1208,7 +1221,7 @@ handleOneContradiction node = error "TODO"
 -- >     (format t "~%~A ~A" counter
 -- >          (node-string (car nn)))))
 printContraList :: MonadIO m => [Node d i r s m] -> JTMST s m ()
-printContraList nodes = error "TODO"
+printContraList nodes = error "<TODO unimplemented>"
 
 -- |
 -- ===== __Lisp origins:__
@@ -1223,7 +1236,7 @@ printContraList nodes = error "TODO"
 -- >        (format t "~%Ignoring answer, too small"))
 -- >       (format t "~%Ignoring answer, must be an integer.")))
 tmsAnswer :: MonadIO m => Int -> JTMST s m ()
-tmsAnswer = error "TODO"
+tmsAnswer = error "<TODO unimplemented>"
 
 debugJTMS :: MonadIO m => String -> JTMS d i r s m -> JTMST s m ()
 debugJTMS desc jtms = do
