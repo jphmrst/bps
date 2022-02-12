@@ -783,10 +783,11 @@ propagateInness fromNode =
     whileReturnJust (jLiftSTT $ pop queue) $ \ node -> do
       justs <- jLiftSTT $ readSTRef $ nodeConsequences node
       forM_ justs $ \ j ->
-        let conseq = justConsequence j
-        in do
-          makeNodeIn conseq $ ByRule j
-          jLiftSTT $ push conseq queue
+        whenM (checkJustification j) $
+          let conseq = justConsequence j
+          in do
+            makeNodeIn conseq $ ByRule j
+            jLiftSTT $ push conseq queue
 
 -- |Called when the given @reason@ causes the JTMS to believe @node@.
 --
