@@ -69,7 +69,12 @@ module Data.TMS.JTMS (
   -- >       (setf (jtms-contradiction-handler jtms) contradiction-handler))
   -- >   (if enqueue-procedure
   -- >       (setf (jtms-enqueue-procedure jtms) enqueue-procedure)))
-  setNodeString, setDebugging, setCheckingContradictions,
+  setNodeString, nodeStringByDatum, nodeStringByIndex, nodeStringByIndexDatum,
+  setDatumString, datumStringByShow,
+  setInformantString, informantStringByShow,
+  setJustString,
+  justStringByIndex, justStringByInformant, justStringByIndexInformant,
+  setDebugging, setCheckingContradictions,
   setContradictionHandler, setEnqueueProcedure,
 
   -- ** Nodes
@@ -84,7 +89,13 @@ module Data.TMS.JTMS (
   -- ** Conclusions from current assumption belief
   isInNode, isOutNode, enabledAssumptions, nodeIsPremise,
   -- ** Output from the current belief state
-  whyNodes, whyNode, printContraList
+  whyNodes, whyNode, printContraList,
+
+  -- * Debugging utilities
+
+  -- |Note that these functions are based on `MonadIO`, not just
+  -- `Monad`, for printing debugging output.
+  debugJTMS, debugNodes, debugNode, debugJusts, debugJust
 
   ) where
 
@@ -200,6 +211,9 @@ data Monad m => JTMS d i r s m = JTMS {
   -- |For external systems.
   jtmsCheckingContradictions :: STRef s Bool,
   jtmsNodeString :: STRef s (Node d i r s m -> String),
+  jtmsJustString :: STRef s (JustRule d i r s m -> String),
+  jtmsDatumString :: STRef s (d -> String),
+  jtmsInformantString :: STRef s (i -> String),
   jtmsEnqueueProcedure :: STRef s (r -> JTMST s m ()),
   jtmsContradictionHandler :: STRef s ([Node d i r s m] -> JTMST s m ()),
   jtmsDebugging :: STRef s Bool
@@ -416,13 +430,17 @@ createJTMS title = JtmsT $ lift $ do
   contradictions <- newSTRef ([] :: [Node d i r s m])
   assumptions <- newSTRef ([] :: [Node d i r s m])
   checkingContradictions <- newSTRef True
-  nodeString <- newSTRef (\ node -> "?")
+  nodeString <- newSTRef (show . nodeIndex)
+  justString <- newSTRef (show . justIndex)
+  datumString <- newSTRef (\ datum -> "?")
+  informantString <- newSTRef (\ inf -> "?")
   enqueueProcedure <- newSTRef (\ _ -> return ())
   contradictionHandler <- newSTRef (\ _ -> return ())
   debugging <- newSTRef False
   return (JTMS title nc jc nodes justs contradictions assumptions
-               checkingContradictions nodeString enqueueProcedure
-               contradictionHandler debugging)
+               checkingContradictions
+               nodeString justString datumString informantString
+               enqueueProcedure contradictionHandler debugging)
 
 -- |Helper function for writing setter command for `JTMS` components.
 --
@@ -437,6 +455,63 @@ jtmsSetter field jtms = JtmsT . lift . writeSTRef (field jtms)
 setNodeString ::
   Monad m => JTMS d i r s m -> (Node d i r s m -> String) -> JTMST s m ()
 setNodeString = jtmsSetter jtmsNodeString
+
+-- |When the node type @d@ implements `Show`, use this display method
+-- as the standard for printing the node.
+nodeStringByDatum :: (Monad m, Show d) => JTMS d i r s m -> JTMST s m ()
+nodeStringByDatum jtms = setNodeString jtms $ show . nodeDatum
+
+-- |Use the node index for its display.
+nodeStringByIndex :: (Monad m) => JTMS d i r s m -> JTMST s m ()
+nodeStringByIndex jtms = setNodeString jtms $ show . nodeIndex
+
+-- |When the node type @d@ implements `Show`, use both the node index
+-- and this display method as the standard for printing the node.
+nodeStringByIndexDatum :: (Monad m, Show d) => JTMS d i r s m -> JTMST s m ()
+nodeStringByIndexDatum jtms = setNodeString jtms $ \ n ->
+  (show $ nodeIndex n) ++ " " ++ (show $ nodeDatum n)
+
+-- |Set the display function for the datum associated with each `Node`
+-- in a `JTMS`.
+setDatumString ::
+  Monad m => JTMS d i r s m -> (d -> String) -> JTMST s m ()
+setDatumString = jtmsSetter jtmsDatumString
+
+-- |When the datum type @d@ implements `Show`, use this display method
+-- as the standard for printing the datum.
+datumStringByShow :: (Monad m, Show d) => JTMS d i r s m -> JTMST s m ()
+datumStringByShow jtms = setDatumString jtms show
+
+-- |Set the display function for informants in a `JTMS`.
+setInformantString ::
+  Monad m => JTMS d i r s m -> (i -> String) -> JTMST s m ()
+setInformantString = jtmsSetter jtmsInformantString
+
+-- |When the informant type @i@ implements `Show`, use this display method
+-- as the standard for printing the informant.
+informantStringByShow :: (Monad m, Show i) => JTMS d i r s m -> JTMST s m ()
+informantStringByShow jtms = setInformantString jtms show
+
+-- |Set the display function for `JustRule`s in a `JTMS`.
+--
+-- After @change-jtms@ in @jtms.lisp@.
+setJustString ::
+  Monad m => JTMS d i r s m -> (JustRule d i r s m -> String) -> JTMST s m ()
+setJustString = jtmsSetter jtmsJustString
+
+-- |Use the `JustRule` index when printing the just.
+justStringByIndex :: (Monad m) => JTMS d i r s m -> JTMST s m ()
+justStringByIndex jtms = setJustString jtms $ show . justIndex
+
+-- |When the informant type @i@ implements `Show`, use the `JustRule` index when printing the just.
+justStringByInformant :: (Monad m, Show i) => JTMS d i r s m -> JTMST s m ()
+justStringByInformant jtms = setJustString jtms $ show . justInformant
+
+-- |When the informant type @i@ implements `Show`, use the `JustRule` index when printing the just.
+justStringByIndexInformant ::
+  (Monad m, Show i) => JTMS d i r s m -> JTMST s m ()
+justStringByIndexInformant jtms = setJustString jtms $ \j ->
+  show (justIndex j) ++ " " ++ show (justInformant j)
 
 -- |Turn on or turn off debugging in a JTMS.  This setting currently
 -- has no effect.
@@ -1148,6 +1223,78 @@ printContraList nodes = error "TODO"
 -- >       (format t "~%Ignoring answer, must be an integer.")))
 tmsAnswer :: MonadIO m => Int -> JTMST s m ()
 tmsAnswer = error "TODO"
+
+debugJTMS :: MonadIO m => String -> JTMS d i r s m -> JTMST s m ()
+debugJTMS desc jtms = do
+  liftIO $ putStrLn $ "----- " ++ desc
+  debugJusts jtms
+  debugNodes jtms
+  liftIO $ putStrLn "-----"
+
+debugNodes :: MonadIO m => JTMS d i r s m -> JTMST s m ()
+debugNodes jtms = forMM_ (jLiftSTT $ readSTRef $ jtmsNodes jtms) $
+  \ node -> debugNode node
+
+debugNode :: MonadIO m => Node d i r s m -> JTMST s m ()
+debugNode node = let jtms = nodeJTMS node
+  in do
+    nodeFmt <- jLiftSTT $ readSTRef $ jtmsNodeString $ jtms
+    justFmt <- jLiftSTT $ readSTRef $ jtmsJustString $ jtms
+    datumFmt <- jLiftSTT $ readSTRef $ jtmsDatumString $ nodeJTMS node
+    informantFmt <- jLiftSTT $ readSTRef $ jtmsInformantString $ nodeJTMS node
+    isAssumption <- jLiftSTT $ readSTRef $ nodeIsAssumption node
+    isContradictory <- jLiftSTT $ readSTRef $ nodeIsContradictory node
+    support <- jLiftSTT $ readSTRef $ nodeSupport node
+    believed <- jLiftSTT $ readSTRef $ nodeBelieved node
+    justs <- jLiftSTT $ readSTRef $ nodeJusts node
+    consequences <- jLiftSTT $ readSTRef $ nodeConsequences node
+
+    liftIO $ do
+      putStrLn $ "Node " ++ (show $ nodeIndex node)
+        ++ " [" ++ (nodeFmt node) ++ "] "
+        ++ "(isAssumption " ++ show isAssumption
+        ++ ", isContradictory " ++ show isContradictory ++ ", "
+        ++ (if believed then "" else "not ") ++ "believed)"
+
+      case support of
+        Just EnabledAssumption -> putStrLn "- Supported: enabled assumption"
+        Just UserStipulation   -> putStrLn "- Supported: user stipulation"
+        Just (ByRule j) ->
+          putStrLn $ "- IN via {j.informant} (" ++ (justFmt j) ++ ")"
+        Nothing -> putStrLn "- OUT"
+
+      if null justs
+        then putStrLn "- Concluded by no justification rules"
+        else do
+          putStrLn $ "- Concluded by " ++ (show $ length justs)
+            ++ " justification rule" ++ (if length justs == 1 then "" else "s")
+            ++ ": " ++ (foldl1 (\ x y -> x ++ ", " ++ y) $ map justFmt justs)
+
+      if null consequences
+        then putStrLn "- Antecedent to no rules"
+        else do
+          putStrLn $ "- Antecedent to " ++ (show $ length consequences)
+            ++ " justification rule"
+            ++ (if length consequences == 1 then "" else "s")
+            ++ ": " ++ commaList justFmt consequences
+
+debugJusts :: MonadIO m => JTMS d i r s m -> JTMST s m ()
+debugJusts jtms = forMM_ (jLiftSTT $ readSTRef $ jtmsJusts jtms) $
+  \ just -> debugJust jtms just
+
+debugJust :: MonadIO m => JTMS d i r s m -> JustRule d i r s m -> JTMST s m ()
+debugJust jtms just = do
+  nodeFmt <- jLiftSTT $ readSTRef $ jtmsNodeString jtms
+  justFmt <- jLiftSTT $ readSTRef $ jtmsJustString jtms
+  nodeFmt <- jLiftSTT $ readSTRef $ jtmsNodeString jtms
+  liftIO $ putStrLn $
+    "JustRule (" ++ (justFmt just) ++ ") "
+      ++ (nodeFmt $ justConsequence just) ++ " <= "
+      ++ (commaList nodeFmt $ justAntecedents just)
+
+commaList :: (a -> String) -> [a] -> String
+commaList f [] = ""
+commaList f xs = foldl1 (\ x y -> x ++ ", " ++ y) $ map f xs
 
 --
 -- ===== __Lisp origins:__

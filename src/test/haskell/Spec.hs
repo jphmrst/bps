@@ -70,6 +70,10 @@ ex1 :: Monad m => JTMST s m (JTMS1ty s m,
 
 ex1 = do
   j <- createJTMS "Ex1"
+  nodeStringByDatum j
+  datumStringByShow j
+  informantStringByShow j
+  justStringByIndexInformant j
   setNodeString j (show . nodeDatum)
   na <- createNode j (intern "a") True False
   nb <- createNode j (intern "b") True False
@@ -84,12 +88,15 @@ ex1 = do
   justifyNode "j4" ng [nd, ne]
   return (j, na, nb, nc, nd, ne, nf, ng)
 
-testEx1 :: Monad m => TLT (JTMST s m) ()
+testEx1 :: MonadIO m => TLT (JTMST s m) ()
 testEx1 = do
   (jtms, na, nb, nc, nd, ne, nf, ng) <- lift ex1
+  lift $ datumStringByShow jtms
   assertInsOuts "Fresh JTMS" jtms [] [na, nb, nc, nd, ne, nf, ng]
 
+  lift $ debugJTMS "fresh" jtms
   lift $ enableAssumption na
+  lift $ debugJTMS "after (enableAssumption na)" jtms
   assertInsOuts "After asserting A" jtms [na] [nb, nc, nd, ne, nf, ng]
 
 {- Local assertions. -}
