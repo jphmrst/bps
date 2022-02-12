@@ -92,23 +92,48 @@ testEx1 :: MonadIO m => TLT (JTMST s m) ()
 testEx1 = do
   (jtms, na, nb, nc, nd, ne, nf, ng) <- lift ex1
   lift $ datumStringByShow jtms
-  assertBeliefs "Fresh JTMS" jtms [] [na, nb, nc, nd, ne, nf, ng]
+  inGroup "Fresh JTMS" $ do
+    assertBeliefs jtms [] [na, nb, nc, nd, ne, nf, ng]
+    assertNoAssumptionsOfNodes jtms [na, nb, nc, nd, ne, nf, ng]
 
   -- lift $ debugJTMS "fresh" jtms
   lift $ enableAssumption na
   -- lift $ debugJTMS "after (enableAssumption na)" jtms
-  assertBeliefs "After asserting A" jtms [na] [nb, nc, nd, ne, nf, ng]
+  inGroup "Enabled a as assumption" $ do
+    assertBeliefs jtms [na] [nb, nc, nd, ne, nf, ng]
+    assertAssumptionsOfNode jtms na [na]
+    assertNoAssumptionsOfNodes jtms [nb, nc, nd, ne, nf, ng]
 
 {- Local assertions. -}
 
 assertBeliefs ::
-  Monad m => String ->
-               (JTMS d i r s m) -> [Node d i r s m] -> [Node d i r s m] ->
-                 TLT (JTMST s m) ()
-assertBeliefs name jtms ins outs = do -- inGroup name $ do
+  Monad m => (JTMS d i r s m) -> [Node d i r s m] -> [Node d i r s m] ->
+               TLT (JTMST s m) ()
+assertBeliefs jtms ins outs = inGroup "Node belief" $ do
   forM_ ins  $ \ node -> do
     name <- lift $ nodeString node
     ("Node " ++ name ++ " is in") ~:: isInNode node
   forM_ outs $ \ node -> do
     name <- lift $ nodeString node
     ("Node " ++ name ++ " is out") ~:: isOutNode node
+
+assertAssumptionsOfNode ::
+  Monad m => (JTMS d i r s m) -> Node d i r s m -> [Node d i r s m] ->
+               TLT (JTMST s m) ()
+assertAssumptionsOfNode jtms node assumptions = do
+  actuals <- lift $ assumptionsOfNode node
+  name <- lift $ nodeString node
+  inGroup ("assumptionsOfNode " ++ name) $ do
+    ("Same number of expected and actual assumptions")
+      ~: length assumptions !==- length actuals
+    forM_ assumptions $ \ expected -> do
+      expName <- lift $ nodeString expected
+      ("Contains expected node " ++ expName) ~::- (expected `elem` actuals)
+
+assertNoAssumptionsOfNodes ::
+  Monad m => (JTMS d i r s m) -> [Node d i r s m] -> TLT (JTMST s m) ()
+assertNoAssumptionsOfNodes jtms nodes =
+  forM_ nodes $ \ node -> do
+    name <- lift $ nodeString node
+    ("Node " ++ name ++ " has no assuptions") ~:
+      (empty $ assumptionsOfNode node)
