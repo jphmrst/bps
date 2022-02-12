@@ -92,20 +92,20 @@ testEx1 :: MonadIO m => TLT (JTMST s m) ()
 testEx1 = do
   (jtms, na, nb, nc, nd, ne, nf, ng) <- lift ex1
   lift $ datumStringByShow jtms
-  assertInsOuts "Fresh JTMS" jtms [] [na, nb, nc, nd, ne, nf, ng]
+  assertBeliefs "Fresh JTMS" jtms [] [na, nb, nc, nd, ne, nf, ng]
 
-  lift $ debugJTMS "fresh" jtms
+  -- lift $ debugJTMS "fresh" jtms
   lift $ enableAssumption na
-  lift $ debugJTMS "after (enableAssumption na)" jtms
-  assertInsOuts "After asserting A" jtms [na] [nb, nc, nd, ne, nf, ng]
+  -- lift $ debugJTMS "after (enableAssumption na)" jtms
+  assertBeliefs "After asserting A" jtms [na] [nb, nc, nd, ne, nf, ng]
 
 {- Local assertions. -}
 
-assertInsOuts ::
+assertBeliefs ::
   Monad m => String ->
                (JTMS d i r s m) -> [Node d i r s m] -> [Node d i r s m] ->
                  TLT (JTMST s m) ()
-assertInsOuts name jtms ins outs = do -- inGroup name $ do
+assertBeliefs name jtms ins outs = do -- inGroup name $ do
   forM_ ins  $ \ node -> do
     name <- lift $ nodeString node
     ("Node " ++ name ++ " is in") ~:: isInNode node
