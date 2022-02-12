@@ -103,6 +103,7 @@ import Control.Monad.State
 import Control.Monad.ST.Trans
 import Control.Monad.Except
 import Control.Monad.Extra
+import Data.TMS.Helpers
 
 -- * The @JTMST@ monad transformer
 --
@@ -219,7 +220,7 @@ data Monad m => JTMS d i r s m = JTMS {
   jtmsDebugging :: STRef s Bool
 }
 
--- |For the moment equality on JTMSes in by comparing their names, but
+-- |TODO For the moment equality on JTMSes in by comparing their names, but
 -- this is an ugly and stupid hack.  Need something like: an index for
 -- JTMSes generated from JTMST.  Really, this is just for a way to
 -- enable nodes from different JTMSes to be seen as unequal.
@@ -1121,7 +1122,13 @@ supportingJustificationForNode node = jLiftSTT $ readSTRef $ nodeSupport node
 -- >           (setq new (just-antecedents (tms-node-support node)))))
 -- >       (setf (tms-node-mark node) marker))))
 assumptionsOfNode :: Monad m => Node d i r s m -> JTMST s m [Node d i r s m]
-assumptionsOfNode node = error "<TODO unimplemented>"
+assumptionsOfNode node =
+  let jtms = nodeJTMS node
+  in do
+    nodes <- jLiftSTT $ readSTRef $ jtmsNodes jtms
+    marking <- jLiftSTT $ newSTArray (0, length nodes - 1) False
+    assumptions <- jLiftSTT $ newSTRef []
+    error "<TODO unimplemented>"
 
 -- |Returns the list of currently enabled assumptions.
 --
@@ -1355,70 +1362,3 @@ commaList f xs = foldl1 (\ x y -> x ++ ", " ++ y) $ map f xs
 -- convenient.
 instance MonadIO m => MonadIO (STT s m) where
   liftIO = lift . liftIO
-
--- |Push a value onto the front of the list at the given `STT`
--- reference.
-push :: Monad m => a -> STRef s [a] -> STT s m ()
-push v r = do
-  prev <- readSTRef r
-  writeSTRef r $ v : prev
-
--- |Pop a value from the given reference to a list if one exists.
-pop :: Monad m => STRef s [a] -> STT s m (Maybe a)
-pop queue = do
-  queueList <- readSTRef queue
-  case queueList of
-    [] -> return Nothing
-    (x : xs) -> do
-      writeSTRef queue xs
-      return $ Just x
-
-whileReturnJust :: Monad m => m (Maybe a) -> (a -> m ()) -> m ()
-whileReturnJust gen f = do
-  res <- gen
-  case res of
-    Nothing -> return ()
-    Just x  -> do
-      f x
-      whileReturnJust gen f
-
-forMM_ :: Monad m => m [a] -> (a -> m ()) -> m ()
-forMM_ srcM f = do
-  src <- srcM
-  forM_ src f
-
-whileListM_ :: (Monad m0, Monad m) =>
-  (forall r . STT s m0 r -> m r) -> STRef s [a] -> (a -> m ()) -> m ()
-whileListM_ lifter listRef bodyf = whileListM_'
-  where whileListM_' = do
-          top <- lifter $ pop listRef
-          case top of
-            Nothing -> return ()
-            Just x -> do
-              bodyf x
-              whileListM_'
-
-unlessMM :: Monad m => m Bool -> m () -> m ()
-unlessMM cnd body = whenM (notM cnd) body
-
--- |Monadic version of @null@ for a list stored in an `STRef`: returns
--- `True` when the list is empty.
-nullR :: Monad m => STRef s [a] -> STT s m Bool
-nullR ref = do
-  xs <- readSTRef ref
-  return $ null xs
-
--- |Opposite of `nullR`, returning `False` when the referenced list is
--- empty.
-nonnullR :: Monad m => STRef s [a] -> STT s m Bool
-nonnullR ref = do
-  xs <- readSTRef ref
-  return $ not $ null xs
-
--- |Combinations of `whenM` and `nonnullR`, where the body receives
--- the non-null list as an argument.
-whenNonnullR :: (Monad m0, Monad m) =>
-  (forall r . STT s m0 r -> m r) -> STRef s [a] -> ([a] -> m ()) -> m ()
-whenNonnullR lifter ref bodyf = do
-  xs <- lifter $ readSTRef ref
-  if (null xs) then return () else bodyf xs
