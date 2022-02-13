@@ -152,6 +152,21 @@ testEx1 = do
     assertNodeSupportInformant jtms nf "j1"
     assertNodeSupportInformant jtms ng "j3"
 
+  lift $ retractAssumption na
+  -- lift $ debugJTMS "after (retractAssumption na)" jtms
+  inGroup "Retracted a as assumption" $ do
+    assertBeliefs jtms [nb, nc, nd, ne, ng] [na, nf]
+    assertAssumptionsOfNode jtms nb [nb]
+    assertAssumptionsOfNode jtms nc [nc]
+    assertAssumptionsOfNode jtms nd [nd]
+    assertAssumptionsOfNode jtms ne [nb, nc]
+    assertAssumptionsOfNode jtms ng [na, nb, nc]
+    assertNoAssumptionsOfNodes jtms [na, nf]
+    assertNodesUnsupported jtms [na, nf]
+    assertNodesSupportEnabledAssumption jtms [nb, nc, nd]
+    assertNodeSupportInformant jtms ne "j2"
+    assertNodeSupportInformant jtms ng "j4"
+
 {- Local assertions. -}
 
 assertBeliefs ::
