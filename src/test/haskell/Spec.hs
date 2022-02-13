@@ -160,7 +160,7 @@ testEx1 = do
     assertAssumptionsOfNode jtms nc [nc]
     assertAssumptionsOfNode jtms nd [nd]
     assertAssumptionsOfNode jtms ne [nb, nc]
-    assertAssumptionsOfNode jtms ng [na, nb, nc]
+    assertAssumptionsOfNode jtms ng [nb, nc, nd]
     assertNoAssumptionsOfNodes jtms [na, nf]
     assertNodesUnsupported jtms [na, nf]
     assertNodesSupportEnabledAssumption jtms [nb, nc, nd]
