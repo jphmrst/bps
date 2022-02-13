@@ -94,6 +94,8 @@ pop queue = do
 -- |Consumes the elements of a referenced list, one at a time, until
 -- the list is empty.  The first argument is a @lift@-style function
 -- which brings `STT` operations into the top-level monad of interest.
+-- Intended to be compatible with stack-like behavior (such as with
+-- `push`) where the body of the loop may add elements.
 whileListM_ :: (Monad m0, Monad m) =>
   (forall r . STT s m0 r -> m r) -> STRef s [a] -> (a -> m ()) -> m ()
 whileListM_ lifter listRef bodyf = whileListM_'
