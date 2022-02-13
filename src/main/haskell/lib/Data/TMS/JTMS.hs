@@ -77,6 +77,12 @@ module Data.TMS.JTMS (
   setDebugging, setCheckingContradictions,
   setContradictionHandler, setEnqueueProcedure,
 
+  -- *** Accessors for a `JTMS`'s current state
+  getJtmsNodes, getJtmsJusts, getJtmsContradictions, getJtmsAssumptions,
+  getJtmsCheckingContradictions, getJtmsNodeString, getJtmsJustString,
+  getJtmsDatumString, getJtmsInformantString, getJtmsEnqueueProcedure,
+  getJtmsContradictionHandler, getJtmsDebugging,
+
   -- ** Nodes
   Node, createNode, nodeDatum, printTmsNode, assumeNode, nodeString,
 
@@ -85,7 +91,10 @@ module Data.TMS.JTMS (
   getNodeConsequences, getNodeInRules, getNodeOutRules, getNodeJusts,
 
   -- ** Justifications
-  Justification, JustRule, printJustRule, justifyNode,
+  justifyNode,
+  Justification(ByRule, EnabledAssumption, UserStipulation),
+  JustRule(justInformant, justConsequence, justAntecedents),
+  printJustRule,
 
   -- * Reasoning tools
   -- ** Control of assumptions
@@ -251,6 +260,44 @@ nextJustCounter jtms = lift $
     writeSTRef justCounter $ 1 + justId
     return justId
 
+getJtmsNodes :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
+getJtmsNodes = jLiftSTT . readSTRef . jtmsNodes
+
+getJtmsJusts :: Monad m => JTMS d i r s m -> JTMST s m [JustRule d i r s m]
+getJtmsJusts = jLiftSTT . readSTRef . jtmsJusts
+
+getJtmsContradictions :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
+getJtmsContradictions = jLiftSTT . readSTRef . jtmsContradictions
+
+getJtmsAssumptions :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
+getJtmsAssumptions = jLiftSTT . readSTRef . jtmsAssumptions
+
+getJtmsCheckingContradictions :: Monad m => JTMS d i r s m -> JTMST s m Bool
+getJtmsCheckingContradictions = jLiftSTT . readSTRef . jtmsCheckingContradictions
+
+getJtmsNodeString ::
+  Monad m => JTMS d i r s m -> JTMST s m (Node d i r s m -> String)
+getJtmsNodeString = jLiftSTT . readSTRef . jtmsNodeString
+
+getJtmsJustString ::
+  Monad m => JTMS d i r s m -> JTMST s m (JustRule d i r s m -> String)
+getJtmsJustString = jLiftSTT . readSTRef . jtmsJustString
+
+getJtmsDatumString :: Monad m => JTMS d i r s m -> JTMST s m (d -> String)
+getJtmsDatumString = jLiftSTT . readSTRef . jtmsDatumString
+
+getJtmsInformantString :: Monad m => JTMS d i r s m -> JTMST s m (i -> String)
+getJtmsInformantString = jLiftSTT . readSTRef . jtmsInformantString
+
+getJtmsEnqueueProcedure :: Monad m => JTMS d i r s m -> JTMST s m (r -> JTMST s m ())
+getJtmsEnqueueProcedure = jLiftSTT . readSTRef . jtmsEnqueueProcedure
+
+getJtmsContradictionHandler :: Monad m => JTMS d i r s m -> JTMST s m ([Node d i r s m] -> JTMST s m ())
+getJtmsContradictionHandler = jLiftSTT . readSTRef . jtmsContradictionHandler
+
+getJtmsDebugging :: Monad m => JTMS d i r s m -> JTMST s m Bool
+getJtmsDebugging = jLiftSTT . readSTRef . jtmsDebugging
+
 -- |Print a simple tag with the title of this JTMS.  Forces the
 -- enclosed monad to be `MonadIO`.
 --
@@ -372,6 +419,11 @@ data Monad m => JustRule d i r s m = JustRule {
   justConsequence :: Node d i r s m,
   justAntecedents :: [Node d i r s m]
 }
+
+-- |Equality on `JustRule`s is based simply on comparing their index
+-- number.
+instance Monad m => Eq (JustRule d i r s m) where
+  n1 == n2 = justIndex n1 == justIndex n2
 
 -- |Print the tag of a JTMS justification.
 --
