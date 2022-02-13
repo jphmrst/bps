@@ -260,41 +260,57 @@ nextJustCounter jtms = lift $
     writeSTRef justCounter $ 1 + justId
     return justId
 
+-- | Return the current list of `Node`s of a `JTMS`.
 getJtmsNodes :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
 getJtmsNodes = jLiftSTT . readSTRef . jtmsNodes
 
+-- | Return the current `JustRule`s of a `JTMS`.
 getJtmsJusts :: Monad m => JTMS d i r s m -> JTMST s m [JustRule d i r s m]
 getJtmsJusts = jLiftSTT . readSTRef . jtmsJusts
 
+-- | Return the current designated contradictory `Node`s of a `JTMS`.
 getJtmsContradictions :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
 getJtmsContradictions = jLiftSTT . readSTRef . jtmsContradictions
 
+-- | Return the current possible assumption `Node`s of a `JTMS`.  Note
+-- that these nodes will not be used as assumptions unless activated
+-- by `enableAssumption`.
 getJtmsAssumptions :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
 getJtmsAssumptions = jLiftSTT . readSTRef . jtmsAssumptions
 
+-- | Return whether a `JTMS` is currently invoking its external
+-- handler for deduced contradictions.
 getJtmsCheckingContradictions :: Monad m => JTMS d i r s m -> JTMST s m Bool
 getJtmsCheckingContradictions = jLiftSTT . readSTRef . jtmsCheckingContradictions
 
+-- | Return the current `Node` formatter of a `JTMS`.
 getJtmsNodeString ::
   Monad m => JTMS d i r s m -> JTMST s m (Node d i r s m -> String)
 getJtmsNodeString = jLiftSTT . readSTRef . jtmsNodeString
 
+-- | Return the current `JustRule` formatter of a `JTMS`.
 getJtmsJustString ::
   Monad m => JTMS d i r s m -> JTMST s m (JustRule d i r s m -> String)
 getJtmsJustString = jLiftSTT . readSTRef . jtmsJustString
 
+-- | Return the current @d@ datum formatter of a `JTMS`.
 getJtmsDatumString :: Monad m => JTMS d i r s m -> JTMST s m (d -> String)
 getJtmsDatumString = jLiftSTT . readSTRef . jtmsDatumString
 
+-- | Return the current @i@ informant formatter of a `JTMS`.
 getJtmsInformantString :: Monad m => JTMS d i r s m -> JTMST s m (i -> String)
 getJtmsInformantString = jLiftSTT . readSTRef . jtmsInformantString
 
+-- | Return the current external queuing procedure of a `JTMS`.
 getJtmsEnqueueProcedure :: Monad m => JTMS d i r s m -> JTMST s m (r -> JTMST s m ())
 getJtmsEnqueueProcedure = jLiftSTT . readSTRef . jtmsEnqueueProcedure
 
+-- | Return the current external handler of a `JTMS` for reacting to a
+-- deduced contradiction.
 getJtmsContradictionHandler :: Monad m => JTMS d i r s m -> JTMST s m ([Node d i r s m] -> JTMST s m ())
 getJtmsContradictionHandler = jLiftSTT . readSTRef . jtmsContradictionHandler
 
+-- | Return the current debugging flag setting of a `JTMS`.
 getJtmsDebugging :: Monad m => JTMS d i r s m -> JTMST s m Bool
 getJtmsDebugging = jLiftSTT . readSTRef . jtmsDebugging
 
