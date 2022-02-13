@@ -80,6 +80,10 @@ module Data.TMS.JTMS (
   -- ** Nodes
   Node, createNode, nodeDatum, printTmsNode, assumeNode, nodeString,
 
+  -- *** Accessors for a `Node`'s current state
+  getNodeIsAssumption, getNodeIsContradictory, getNodeSupport, getNodeBelieved,
+  getNodeConsequences, getNodeInRules, getNodeOutRules, getNodeJusts,
+
   -- ** Justifications
   Justification, JustRule, printJustRule, justifyNode,
 
@@ -310,6 +314,44 @@ printTmsNode :: MonadIO m => Node d i r s m -> JTMST s m ()
 printTmsNode node = do
   s <- nodeString node
   liftIO $ putStr $ "#<Node: " ++ s ++ ">"
+
+-- *** Readers of current `Node` state
+
+-- |Return whether a `Node` may currently be used as an assumption.
+getNodeIsAssumption :: Monad m => Node d i r s m -> JTMST s m Bool
+getNodeIsAssumption = jLiftSTT . readSTRef . nodeIsAssumption
+
+-- |Return whether a `Node` is currently considered a contradiction.
+getNodeIsContradictory :: Monad m => Node d i r s m -> JTMST s m Bool
+getNodeIsContradictory = jLiftSTT . readSTRef . nodeIsContradictory
+
+-- |Return the current support for believing a `Node`.
+getNodeSupport ::
+  Monad m => Node d i r s m -> JTMST s m (Maybe (Justification d i r s m))
+getNodeSupport = jLiftSTT . readSTRef . nodeSupport
+
+-- |Return whether a `Node` is currently believed.
+getNodeBelieved :: Monad m => Node d i r s m -> JTMST s m Bool
+getNodeBelieved = jLiftSTT . readSTRef . nodeBelieved
+
+-- |Return the `JustRule`s which use a `Node` as an antecedent.
+getNodeConsequences ::
+  Monad m => Node d i r s m -> JTMST s m [JustRule d i r s m]
+getNodeConsequences = jLiftSTT . readSTRef . nodeConsequences
+
+-- |Return the current in-rules of a `Node`.
+getNodeInRules :: Monad m => Node d i r s m -> JTMST s m [r]
+getNodeInRules = jLiftSTT . readSTRef . nodeInRules
+
+-- |Return the current out-rules of a `Node`.
+getNodeOutRules :: Monad m => Node d i r s m -> JTMST s m [r]
+getNodeOutRules = jLiftSTT . readSTRef . nodeOutRules
+
+-- |Return the `JustRule`s which currently give a `Node` as their
+-- conclusion.
+getNodeJusts :: Monad m => Node d i r s m -> JTMST s m [JustRule d i r s m]
+getNodeJusts = jLiftSTT . readSTRef . nodeJusts
+
 
 -- ** Justifications
 
@@ -1115,21 +1157,53 @@ supportingJustificationForNode node = jLiftSTT $ readSTRef $ nodeSupport node
 -- >        (new nil nil))
 -- >       ((null nodes) assumptions)
 -- >     (let ((node (car nodes)))
--- >       (cond ((eq (tms-node-mark node) marker))
--- >          ((eq (tms-node-support node) :ENABLED-ASSUMPTION)
--- >           (push node assumptions))
--- >          ((in-node? node)
--- >           (setq new (just-antecedents (tms-node-support node)))))
+-- >       (cond
+-- >         ((eq (tms-node-mark node) marker))
+-- >         ((eq (tms-node-support node) :ENABLED-ASSUMPTION)
+-- >          (push node assumptions))
+-- >         ((in-node? node)
+-- >          (setq new (just-antecedents (tms-node-support node)))))
 -- >       (setf (tms-node-mark node) marker))))
 assumptionsOfNode :: Monad m => Node d i r s m -> JTMST s m [Node d i r s m]
 assumptionsOfNode node =
   let jtms = nodeJTMS node
   in do
     nodes <- jLiftSTT $ readSTRef $ jtmsNodes jtms
+
+    -- We look at each node at most once.
     marking <- jLiftSTT $ newSTArray (0, length nodes - 1) False
+
+    -- Set up a list for results.
     assumptions <- jLiftSTT $ newSTRef []
-    error "<TODO unimplemented>"
-
+
+    -- Set up the stack of nodes to consider.
+    queue <- jLiftSTT $ newSTRef []
+    jLiftSTT $ push node queue
+
+    -- Loop while the stack is not empty.
+    whileListM_ jLiftSTT queue $ \node ->
+      let idx = nodeIndex node
+      in do
+        -- Make sure we do not process a node more than once.
+        unlessMM (jLiftSTT $ readSTArray marking idx) $ do
+          -- The case when the node is an enabled assumption
+          ifM (isEnabledAssumption node)
+            (jLiftSTT $ push node assumptions)
+
+            -- The alternative case where the node is believed
+            (whenM (jLiftSTT $ readSTRef $ nodeBelieved node) $ do
+                support <- getNodeSupport node
+                case support of
+                  Just (ByRule j) ->
+                    jLiftSTT $ pushAll (justAntecedents j) queue
+                  _ -> return ())
+
+          jLiftSTT $ writeSTArray marking idx True
+
+    -- The result is assumptions we've accumulated.
+    jLiftSTT $ readSTRef assumptions
+
+    
 -- |Returns the list of currently enabled assumptions.
 --
 -- ===== __Lisp origins:__
@@ -1245,6 +1319,7 @@ printContraList nodes = error "<TODO unimplemented>"
 tmsAnswer :: MonadIO m => Int -> JTMST s m ()
 tmsAnswer = error "<TODO unimplemented>"
 
+-- |Print debugging information about a `JTMS`.
 debugJTMS :: MonadIO m => String -> JTMS d i r s m -> JTMST s m ()
 debugJTMS desc jtms = do
   liftIO $ putStrLn $ "----- " ++ desc
@@ -1252,10 +1327,12 @@ debugJTMS desc jtms = do
   debugNodes jtms
   liftIO $ putStrLn "-----"
 
+-- |Print debugging information about the `Node`s of a `JTMS`.
 debugNodes :: MonadIO m => JTMS d i r s m -> JTMST s m ()
 debugNodes jtms = forMM_ (jLiftSTT $ readSTRef $ jtmsNodes jtms) $
   \ node -> debugNode node
 
+-- |Print debugging information about a `Node`.
 debugNode :: MonadIO m => Node d i r s m -> JTMST s m ()
 debugNode node = let jtms = nodeJTMS node
   in do
@@ -1299,10 +1376,12 @@ debugNode node = let jtms = nodeJTMS node
             ++ (if length consequences == 1 then "" else "s")
             ++ ": " ++ commaList justFmt consequences
 
+-- |Print debugging information about the `JustRule`s of a `JTMS`.
 debugJusts :: MonadIO m => JTMS d i r s m -> JTMST s m ()
 debugJusts jtms = forMM_ (jLiftSTT $ readSTRef $ jtmsJusts jtms) $
   \ just -> debugJust jtms just
 
+-- |Print debugging information about a `JustRule`.
 debugJust :: MonadIO m => JTMS d i r s m -> JustRule d i r s m -> JTMST s m ()
 debugJust jtms just = do
   nodeFmt <- jLiftSTT $ readSTRef $ jtmsNodeString jtms
@@ -1312,10 +1391,6 @@ debugJust jtms just = do
     "JustRule (" ++ (justFmt just) ++ ") "
       ++ (nodeFmt $ justConsequence just) ++ " <= "
       ++ (commaList nodeFmt $ justAntecedents just)
-
-commaList :: (a -> String) -> [a] -> String
-commaList f [] = ""
-commaList f xs = foldl1 (\ x y -> x ++ ", " ++ y) $ map f xs
 
 --
 -- ===== __Lisp origins:__
