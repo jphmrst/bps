@@ -393,6 +393,15 @@ getNodeSupport ::
   Monad m => Node d i r s m -> JTMST s m (Maybe (Justification d i r s m))
 getNodeSupport = jLiftSTT . readSTRef . nodeSupport
 
+-- |Return where a `Node` is supported by a particular `JustRule`.
+getIsNodeSupportedBy ::
+  Monad m => Node d i r s m -> JustRule d i r s m -> JTMST s m Bool
+getIsNodeSupportedBy node jrule = do
+  support <- getNodeSupport node
+  case support of
+    Just (ByRule j) | j == jrule -> return True
+    _ -> return False
+
 -- |Return whether a `Node` is currently believed.
 getNodeBelieved :: Monad m => Node d i r s m -> JTMST s m Bool
 getNodeBelieved = jLiftSTT . readSTRef . nodeBelieved
@@ -1071,7 +1080,18 @@ makeNodeOut node =
 -- >       (setq new (tms-node-consequences conseq)))))
 propagateOutness ::
   Monad m => Node d i r s m -> JTMS d i r s m -> JTMST s m [Node d i r s m]
-propagateOutness node jtms = error "<TODO unimplemented>"
+propagateOutness node jtms = do
+  result <- jLiftSTT $ newSTRef []
+  queue <- jLiftSTT $ newSTRef []
+  forMM_ (getNodeConsequences node) $ \j -> jLiftSTT $ push j queue
+  whileListM_ jLiftSTT queue $ \j ->
+    let conseq = justConsequence j
+    in whenM (getIsNodeSupportedBy conseq j) $ do
+      makeNodeOut conseq
+      jLiftSTT $ push conseq result
+      further <- getNodeConsequences conseq
+      jLiftSTT $ pushAll further queue
+  jLiftSTT $ readSTRef result
 
 -- |Search for support for nodes @outs@ which were disbelieved after an
 -- assumption retraction.
