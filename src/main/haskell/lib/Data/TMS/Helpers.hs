@@ -74,12 +74,33 @@ whenNonnullR lifter ref bodyf = do
   xs <- lifter $ readSTRef ref
   if (null xs) then return () else bodyf xs
 
+-- ** Stack-like operations
+
 -- |Push a value onto the front of the list at the given `STT`
 -- reference.
 push :: Monad m => a -> STRef s [a] -> STT s m ()
 push v r = do
   prev <- readSTRef r
   writeSTRef r $ v : prev
+
+-- |Push the result of a computation onto the front of the list at the
+-- given `STT` reference.
+pushM :: Monad m => m a -> STRef s [a] -> STT s m ()
+pushM m r = do
+  v <- lift m
+  push v r
+
+-- |Push every value in a collection onto the front of the list at the
+-- given `STT` reference.
+pushAll :: (Monad m, Traversable t) => t a -> STRef s [a] -> STT s m ()
+pushAll vs r = forM_ vs $ \v -> push v r
+
+-- |Push every value in a collection returned from a computation onto
+-- the front of the list at the given `STT` reference.
+pushAllM :: (Monad m, Traversable t) => m (t a) -> STRef s [a] -> STT s m ()
+pushAllM m r = do
+  vs <- lift m
+  pushAll vs r
 
 -- |Pop a value from the given reference to a list if one exists.
 pop :: Monad m => STRef s [a] -> STT s m (Maybe a)
@@ -95,7 +116,8 @@ pop queue = do
 -- the list is empty.  The first argument is a @lift@-style function
 -- which brings `STT` operations into the top-level monad of interest.
 -- Intended to be compatible with stack-like behavior (such as with
--- `push`) where the body of the loop may add elements.
+-- `push`; this function does use `pop`) where the body of the loop
+-- may add elements.
 whileListM_ :: (Monad m0, Monad m) =>
   (forall r . STT s m0 r -> m r) -> STRef s [a] -> (a -> m ()) -> m ()
 whileListM_ lifter listRef bodyf = whileListM_'
@@ -106,3 +128,10 @@ whileListM_ lifter listRef bodyf = whileListM_'
             Just x -> do
               bodyf x
               whileListM_'
+
+-- * Strings
+
+-- |Form a comma-separated string from a list.
+commaList :: (a -> String) -> [a] -> String
+commaList f [] = ""
+commaList f xs = foldl1 (\ x y -> x ++ ", " ++ y) $ map f xs
