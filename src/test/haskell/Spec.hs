@@ -135,5 +135,5 @@ assertNoAssumptionsOfNodes ::
 assertNoAssumptionsOfNodes jtms nodes =
   forM_ nodes $ \ node -> do
     name <- lift $ nodeString node
-    ("Node " ++ name ++ " has no assuptions") ~:
+    ("Node " ++ name ++ " has no assumptions") ~:
       (empty $ assumptionsOfNode node)
