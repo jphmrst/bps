@@ -87,9 +87,9 @@ module Data.TMS.JTMS (
   Node, createNode, nodeDatum, printTmsNode, assumeNode, nodeString,
 
   -- *** Accessors for a `Node`'s current state
-  getNodeIsAssumption, getNodeIsContradictory, getNodeSupport, getNodeBelieved,
+  getNodeIsAssumption, getNodeIsContradictory, getNodeBelieved,
   getNodeConsequences, getNodeInRules, getNodeOutRules, getNodeJusts,
-  isEnabledAssumption, whenSupportedByRule, ifSupportedByRule,
+  getNodeSupport, isEnabledAssumption, whenSupportedByRule, ifSupportedByRule,
 
   -- ** Justifications
   justifyNode,
