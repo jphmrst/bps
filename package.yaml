@@ -53,5 +53,5 @@ tests:
     - HUnit
     - symbol
     - transformers
-    - TLT >= 0.0.0.1  ## Remember to remove the extra-deps in
+    - TLT >= 0.0.0.3  ## Remember to remove the extra-deps in
                       ## stack.yaml when TLT goes external.
