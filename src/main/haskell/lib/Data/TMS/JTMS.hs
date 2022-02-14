@@ -89,6 +89,7 @@ module Data.TMS.JTMS (
   -- *** Accessors for a `Node`'s current state
   getNodeIsAssumption, getNodeIsContradictory, getNodeSupport, getNodeBelieved,
   getNodeConsequences, getNodeInRules, getNodeOutRules, getNodeJusts,
+  isEnabledAssumption, whenSupportedByRule,
 
   -- ** Justifications
   justifyNode,
@@ -988,6 +989,25 @@ isEnabledAssumption node = do
     Just EnabledAssumption -> return True
     _ -> return False
 
+whenSupportedByRule :: Monad m =>
+  Node d i r s m -> (JustRule d i r s m -> JTMST s m a) -> JTMST s m (Maybe a)
+whenSupportedByRule node body = do
+  support <- jLiftSTT $ readSTRef $ nodeSupport node
+  case support of
+    Just (ByRule just) -> do
+      result <- body just
+      return $ Just result
+    _ -> return Nothing
+
+ifSupportedByRule :: Monad m =>
+  Node d i r s m -> (JustRule d i r s m -> JTMST s m ()) -> JTMST s m ()
+    -> JTMST s m ()
+ifSupportedByRule node thenM elseM = do
+  support <- jLiftSTT $ readSTRef $ nodeSupport node
+  case support of
+    Just (ByRule just) -> thenM just
+    _ -> elseM
+
 supportAntecedents :: Monad m => Node d i r s m -> JTMST s m [Node d i r s m]
 supportAntecedents node = do
   support <- jLiftSTT $ readSTRef $ nodeSupport node
@@ -1302,7 +1322,12 @@ assumptionsOfNode node =
 -- >     (if (eq (tms-node-support assumption) :ENABLED-ASSUMPTION)
 -- >      (push assumption result))))
 enabledAssumptions :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
-enabledAssumptions jtms = error "<TODO unimplemented>"
+enabledAssumptions jtms = do
+  result <- jLiftSTT $ newSTRef []
+  forMM_ (getJtmsAssumptions jtms) $ \node -> do
+    whenM (isEnabledAssumption node) $
+      jLiftSTT $ push node result
+  jLiftSTT $ readSTRef result
 
 -- > * Inference engine stub to allow this JTMS to be used standalone
 
@@ -1314,19 +1339,31 @@ enabledAssumptions jtms = error "<TODO unimplemented>"
 -- > ;; In jtms.lisp:
 -- > (defun why-node (node &aux justification)
 -- >   (setq justification (tms-node-support node))
--- >   (cond ((eq justification :ENABLED-ASSUMPTION)
--- >       (format t "~%~A is an enabled assumption"
--- >               (node-string node)))
--- >      (justification
--- >       (format t "~%~A is IN via ~A on"
--- >               (node-string node)
--- >               (just-informant justification))
--- >       (dolist (anode (just-antecedents justification))
--- >         (format t "~%  ~A" (node-string anode))))
--- >      (T (format t "~%~A is OUT." (node-string node))))
+-- >   (cond
+-- >     ((eq justification :ENABLED-ASSUMPTION)
+-- >      (format t "~%~A is an enabled assumption" (node-string node)))
+-- >     (justification (format t "~%~A is IN via ~A on"
+-- >                      (node-string node)
+-- >                      (just-informant justification))
+-- >                    (dolist (anode (just-antecedents justification))
+-- >                      (format t "~%  ~A" (node-string anode))))
+-- >     (T (format t "~%~A is OUT." (node-string node))))
 -- >   node)
 whyNode :: MonadIO m => Node d i r s m -> JTMST s m ()
-whyNode node = error "<TODO unimplemented>"
+whyNode node = do
+  str <- nodeString node
+  ifM (isEnabledAssumption node)
+    (liftIO $ putStrLn $ str ++ " is an enabled assumption")
+    (ifSupportedByRule node
+     (\just -> do
+         fmtInf <- getJtmsInformantString $ nodeJTMS node
+         liftIO $ putStr $
+           str ++ " is IN via " ++ fmtInf (justInformant just) ++ " on"
+         forM_ (justAntecedents just) $ \ ant -> do
+           antStr <- nodeString ant
+           liftIO $ putStr $ " " ++ antStr
+         liftIO $ putStrLn "")
+     (liftIO $ putStrLn $ str ++ " is out"))
 
 -- |Prints the justifications of all current nodes.  Requires that the
 -- underlying monad @m@ be `MonadIO`.
@@ -1337,7 +1374,9 @@ whyNode node = error "<TODO unimplemented>"
 -- > (defun why-nodes (jtms)
 -- >   (dolist (node (jtms-nodes jtms)) (why-node node)))
 whyNodes :: MonadIO m => JTMS d i r s m -> JTMST s m ()
-whyNodes jtms = error "<TODO unimplemented>"
+whyNodes jtms =
+  forMM_ (getJtmsAssumptions jtms) whyNode
+
 
 -- |
 --
@@ -1349,9 +1388,9 @@ whyNodes jtms = error "<TODO unimplemented>"
 -- > (defun ask-user-handler (jtms contradictions)
 -- >   (handle-one-contradiction (car contradictions))
 -- >   (check-for-contradictions jtms))
-askUserHandler ::
-  MonadIO m => JTMS d i r s m -> [Node d i r s m] -> JTMST s m ()
-askUserHandler jtms contradictions = error "<TODO unimplemented>"
+-- askUserHandler ::
+--   MonadIO m => JTMS d i r s m -> [Node d i r s m] -> JTMST s m ()
+-- askUserHandler jtms contradictions = error "<TODO unimplemented>"
 
 -- |
 --
@@ -1374,8 +1413,8 @@ askUserHandler jtms contradictions = error "<TODO unimplemented>"
 -- >         (not (> the-answer (length *contra-assumptions*))))
 -- >       (retract-assumption (nth (1- the-answer)
 -- >                             *contra-assumptions*))))
-handleOneContradiction :: Monad m => JTMS d i r s m -> JTMST s m ()
-handleOneContradiction node = error "<TODO unimplemented>"
+-- handleOneContradiction :: Monad m => JTMS d i r s m -> JTMST s m ()
+-- handleOneContradiction node = error "<TODO unimplemented>"
 
 -- |Print a verbose debugging output list of the contradictions in the
 -- JTMS.  Requires that the underlying monad @m@ be `MonadIO`.
@@ -1390,7 +1429,9 @@ handleOneContradiction node = error "<TODO unimplemented>"
 -- >     (format t "~%~A ~A" counter
 -- >          (node-string (car nn)))))
 printContraList :: MonadIO m => [Node d i r s m] -> JTMST s m ()
-printContraList nodes = error "<TODO unimplemented>"
+printContraList nodes = forM_ nodes $ \ node -> do
+  nodeStr <- nodeString node
+  liftIO $ putStrLn $  "- " ++ nodeStr
 
 -- |
 -- ===== __Lisp origins:__
@@ -1404,8 +1445,8 @@ printContraList nodes = error "<TODO unimplemented>"
 -- >            (format t "~%Ignoring answer, too big."))
 -- >        (format t "~%Ignoring answer, too small"))
 -- >       (format t "~%Ignoring answer, must be an integer.")))
-tmsAnswer :: MonadIO m => Int -> JTMST s m ()
-tmsAnswer = error "<TODO unimplemented>"
+-- tmsAnswer :: MonadIO m => Int -> JTMST s m ()
+-- tmsAnswer = error "<TODO unimplemented>"
 
 -- |Print debugging information about a `JTMS`.
 debugJTMS :: MonadIO m => String -> JTMS d i r s m -> JTMST s m ()
