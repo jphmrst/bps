@@ -54,6 +54,7 @@ main :: IO ()
 main = do
   runJTMST $ tlt $ do
     testEx1
+    testEx3
   return ()
 
 -- Prints result of the string length calculation.
@@ -67,7 +68,6 @@ ex1 :: Monad m => JTMST s m (JTMS1ty s m,
                              Node1ty s m, Node1ty s m, Node1ty s m,
                              Node1ty s m, Node1ty s m, Node1ty s m,
                              Node1ty s m)
-
 ex1 = do
   j <- createJTMS "Ex1"
   nodeStringByDatum j
@@ -167,7 +167,37 @@ testEx1 = do
     assertNodeSupportInformant jtms ne "j2"
     assertNodeSupportInformant jtms ng "j4"
 
-{- Local assertions. -}
+type JTMS3ty s m = JTMS Symbol String () s m
+type Node3ty s m = Node Symbol String () s m
+ex3 :: Monad m => JTMST s m (JTMS3ty s m,
+                             Node3ty s m, Node3ty s m, Node3ty s m,
+                             Node3ty s m, Node3ty s m, Node3ty s m)
+ex3 = do
+  j <- createJTMS "Ex1"
+
+  na <- createNode j (intern "A") True  False
+  nc <- createNode j (intern "C") True  False
+  ne <- createNode j (intern "E") True  False
+  ng <- createNode j (intern "g") False False
+  nh <- createNode j (intern "h") False False
+  contra <- createNode j (intern "CONTRADICTION") False True
+
+  justifyNode "R1" nh [nc, ne]
+  justifyNode "R2" ng [na, nc]
+  justifyNode "R3" contra [ng]
+
+  return (j, na, nc, ne, ng, nh, contra)
+
+testEx3 :: MonadIO m => TLT (JTMST s m) ()
+testEx3 = do
+  (jtms, na, nc, ne, ng, nh, contra) <- lift ex3
+  lift $ datumStringByShow jtms
+  inGroup "Fresh JTMS" $ do
+    assertBeliefs jtms [] [na, nc, ne, ng, nh, contra]
+    assertNoAssumptionsOfNodes jtms [na, nc, ne, ng, nh, contra]
+    assertNodesUnsupported jtms [na, nc, ne, ng, nh, contra]
+
+{------------------------- Local assertions. -------------------------}
 
 assertBeliefs ::
   Monad m => (JTMS d i r s m) -> [Node d i r s m] -> [Node d i r s m] ->
