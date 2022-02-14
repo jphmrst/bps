@@ -45,6 +45,7 @@ import Data.Symbol
 import Data.Void
 import Data.TMS.JTMS
 import Control.Monad
+import Control.Monad.Extra
 import Control.Monad.IO.Class
 import Control.Monad.ST.Trans
 import Control.Monad.Trans.Class
@@ -52,7 +53,7 @@ import Test.TLT
 
 main :: IO ()
 main = do
-  runJTMST $ tlt $ do
+  runSTT $ runJTMST $ tlt $ do
     testEx1
     testEx3
   return ()
@@ -188,14 +189,41 @@ ex3 = do
 
   return (j, na, nc, ne, ng, nh, contra)
 
-testEx3 :: MonadIO m => TLT (JTMST s m) ()
+testEx3 :: MonadIO m => TLT (JTMST s (STT s0 m)) ()
 testEx3 = do
+  contraHandlerFlag <- lift $ lift $ newSTRef False
+
   (jtms, na, nc, ne, ng, nh, contra) <- lift ex3
+  lift $ setContradictionHandler jtms $ \_ ->
+    lift $ writeSTRef contraHandlerFlag True
   lift $ datumStringByShow jtms
   inGroup "Fresh JTMS" $ do
     assertBeliefs jtms [] [na, nc, ne, ng, nh, contra]
     assertNoAssumptionsOfNodes jtms [na, nc, ne, ng, nh, contra]
     assertNodesUnsupported jtms [na, nc, ne, ng, nh, contra]
+    "No call to contradiction handler" ~::
+      notM (lift $ readSTRef contraHandlerFlag)
+
+  lift $ lift $ writeSTRef contraHandlerFlag False
+  lift $ enableAssumption na
+  inGroup "Enabled a" $ do
+    assertBeliefs jtms [na] [nc, ne, ng, nh, contra]
+    assertAssumptionsOfNode jtms na [na]
+    assertNoAssumptionsOfNodes jtms [nc, ne, ng, nh, contra]
+    "No call to contradiction handler" ~::
+      notM (lift $ readSTRef contraHandlerFlag)
+
+  lift $ lift $ writeSTRef contraHandlerFlag False
+  lift $ enableAssumption nc
+  inGroup "Enabled c" $ do
+    assertBeliefs jtms [na, nc, ng, contra] [ne, nh]
+    "Did call contradiction handler" ~:: (lift $ readSTRef contraHandlerFlag)
+
+  lift $ lift $ writeSTRef contraHandlerFlag False
+  lift $ enableAssumption ne
+  inGroup "Enabled e" $ do
+    assertBeliefs jtms [na, nc, ne, ng, nh, contra] []
+    "Did call contradiction handler" ~:: (lift $ readSTRef contraHandlerFlag)
 
 {------------------------- Local assertions. -------------------------}
 
