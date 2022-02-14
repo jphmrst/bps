@@ -89,7 +89,7 @@ module Data.TMS.JTMS (
   -- *** Accessors for a `Node`'s current state
   getNodeIsAssumption, getNodeIsContradictory, getNodeSupport, getNodeBelieved,
   getNodeConsequences, getNodeInRules, getNodeOutRules, getNodeJusts,
-  isEnabledAssumption, whenSupportedByRule,
+  isEnabledAssumption, whenSupportedByRule, ifSupportedByRule,
 
   -- ** Justifications
   justifyNode,
@@ -982,6 +982,7 @@ retractAssumption node = do
         findAlternativeSupport jtms $ node : propagated
     _ -> return ()
 
+-- |Return whether the given node is an enabled assumption.
 isEnabledAssumption :: Monad m => Node d i r s m -> JTMST s m Bool
 isEnabledAssumption node = do
   support <- jLiftSTT $ readSTRef $ nodeSupport node
@@ -989,6 +990,8 @@ isEnabledAssumption node = do
     Just EnabledAssumption -> return True
     _ -> return False
 
+-- |Check whether the given node is supported by a `JustRule`.  If it
+-- is, run the given computation with that `JustRule`.
 whenSupportedByRule :: Monad m =>
   Node d i r s m -> (JustRule d i r s m -> JTMST s m a) -> JTMST s m (Maybe a)
 whenSupportedByRule node body = do
@@ -999,6 +1002,9 @@ whenSupportedByRule node body = do
       return $ Just result
     _ -> return Nothing
 
+-- |Check whether the given node is supported by a `JustRule`.  If it
+-- is, run the @thenM@ computation with that `JustRule`; if not, run
+-- the @elseM@ computation.
 ifSupportedByRule :: Monad m =>
   Node d i r s m -> (JustRule d i r s m -> JTMST s m ()) -> JTMST s m ()
     -> JTMST s m ()
