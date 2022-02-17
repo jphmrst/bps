@@ -1,0 +1,59 @@
+name:                BPS
+version:             0.1.0.0
+github:              "jphmrst/bps"
+license:             GPL-3
+license-file:        Haskell-LICENSE.txt
+author:              "John Maraist"
+maintainer:          "haskell-tms@maraist.org"
+copyright:           "2022 John Maraist; 1986-1993 Kenneth D. Forbus, Johan de Kleer and Xerox Corporation"
+category:	     "Truth maintenance"
+
+synopsis:	     "Translations of classic Truth Maintenance Systems"
+description:	     "Haskell monad transformer translations of the classic Truth Maintenance Systems of Forbus and de Kleer's _Building Problem Solvers_.  See the GitHub repository <https://github.com/jphmrst/bps/>, or the Haddock documentation."
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+- Haskell-LICENSE.txt
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/jphmrst/bps#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- mtl
+- extra
+- STMonadTrans >= 0.4.6
+
+library:
+  source-dirs: src/main/haskell/lib
+
+executables:
+  hbps:
+    main:                Main.hs
+    source-dirs:         src/main/haskell/app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - BPS
+    - symbol
+
+tests:
+  BPS-test:
+    main:                Spec.hs
+    source-dirs:         src/test/haskell
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - BPS
+    - HUnit
+    - symbol
+    - transformers
+    - TLT >= 0.0.0.4  ## Remember to remove the extra-deps in
+                      ## stack.yaml when TLT goes external.

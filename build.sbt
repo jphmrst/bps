@@ -5,7 +5,15 @@ val scala3Version = "3.1.0"
 name := "bps-scala"
 
 // library version
-version := "0.0.4"
+version := "0.1.0"
+
+/////////////////////////////////////////////////////////////////
+// This section activates scala-native
+
+// // Set to false or remove if you want to show stubs as linking errors
+// nativeLinkStubs := false
+// //
+// enablePlugins(ScalaNativePlugin)
 
 /////////////////////////////////////////////////////////////////
 // begin maven etc. publishing information
