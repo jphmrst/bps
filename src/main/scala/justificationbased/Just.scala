@@ -19,7 +19,9 @@ package org.maraist.truthmaintenancesystems.justificationbased
 import scala.collection.mutable.{HashSet, HashMap}
 
 /**
-  * Forms of data which be signal support for a node.
+  * Forms of data which be signal support for a node.  The original
+  * Lisp does not need this declaration since it is untyped; the
+  * latter two cases are simply symbols.
   *
   * @tparam D Type of data associated with each node of a [[JTMS]].
   *
