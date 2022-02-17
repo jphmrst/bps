@@ -1,5 +1,5 @@
 name:                BPS
-version:             0.5.0.0
+version:             0.1.0.0
 github:              "jphmrst/bps"
 license:             GPL-3
 license-file:        Haskell-LICENSE.txt
