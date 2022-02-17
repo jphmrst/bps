@@ -1,23 +1,25 @@
 name:                BPS
-version:             0.1.0.0
-github:              "githubuser/bps-scala"
-license:             AllRightsReserved
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2022 Author name here"
+version:             0.5.0.0
+github:              "jphmrst/bps"
+license:             GPL-3
+license-file:        Haskell-LICENSE.txt
+author:              "John Maraist"
+maintainer:          "haskell-tms@maraist.org"
+copyright:           "2022 John Maraist; 1986-1993 Kenneth D. Forbus, Johan de Kleer and Xerox Corporation"
+category:	     "Truth maintenance"
+
+synopsis:	     "Translations of classic Truth Maintenance Systems"
+description:	     "Haskell monad transformer translations of the classic Truth Maintenance Systems of Forbus and de Kleer's _Building Problem Solvers_.  See the GitHub repository <https://github.com/jphmrst/bps/>, or the Haddock documentation."
 
 extra-source-files:
 - README.md
 - ChangeLog.md
-
-# Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
+- Haskell-LICENSE.txt
 
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/BPS#readme>
+description:         Please see the README on GitHub at <https://github.com/jphmrst/bps#readme>
 
 dependencies:
 - base >= 4.7 && < 5
