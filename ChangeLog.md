@@ -5,7 +5,7 @@ Haskell releases adhere to Haskell's [Package Versioning
 Policy](https://pvp.haskell.org/); Scala releases use the [Semantic
 Versioning spec](https://semver.org/).
 
-# Version 0.5 (Haskell 0.1.0.0, Scala 0.1.0)
+# Version 0.5.0 (Haskell 0.1.0.0, Scala 0.1.0)
 
  - First version with Haskell: working implementation of a monad
    transformer for JTMSes.
@@ -14,15 +14,19 @@ Versioning spec](https://semver.org/).
    will be nice to distinguish new feature additions at 0.x.0 from
    patches and documentation additions at 0.x.y.
 
-# Version 0.4 (Scala only, 0.0.4)
+# Version 0.4.0 (Scala only, 0.0.4)
 
  - Documentation for both JTMS and ATMS.
 
-# Version 0.3 (Scala only, 0.0.3)
+# Version 0.3.0 (Scala only, 0.0.3)
+
+ - Generator for large randomized ATMS examples.
+
+ - Some tweaks to data structure selection based on rough profiling. 
 
  - Contains a mostly-working version of a standalone ATMS.
 
-# Version 0.2 (Scala only, 0.0.2)
+# Version 0.2.0 (Scala only, 0.0.2)
 
  - Separation of the standalone JTMS from (untranslated) JTMS+JTRE
    wrapper.
@@ -36,7 +40,7 @@ Versioning spec](https://semver.org/).
 
  - First version containing this file.
 
-# Version 0.1 (Scala only, 0.0.1)
+# Version 0.1.0 (Scala only, 0.0.1)
 
 Initial release
 
