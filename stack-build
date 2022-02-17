@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+stack build --file-watch --test --copy-bins --haddock BPS --exec 'echo All targets completed' --exec 'echo For doc files: stack haddock --open BPS'
