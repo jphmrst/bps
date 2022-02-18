@@ -17,10 +17,10 @@ extra-source-files:
 - Haskell-LICENSE.txt
 
 dependencies:
-- base >= 4.7 && < 5
-- mtl
-- extra
-- STMonadTrans >= 0.4.6
+- base >= 4.7 && < 5    # https://hackage.haskell.org/packages/base
+- mtl  >= 2.2 && < 2.3  # https://hackage.haskell.org/package/mtl
+- extra >= 1.7 && < 1.8 # https://hackage.haskell.org/package/extra
+- STMonadTrans >= 0.4.6 && < 0.5 # https://hackage.haskell.org/package/STMonadTrans
 
 library:
   source-dirs: src/main/haskell/lib

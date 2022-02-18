@@ -3,3 +3,6 @@
 .bsp
 project/target
 target
+.stack-work
+BPS.cabal
+stack.yaml.lock
