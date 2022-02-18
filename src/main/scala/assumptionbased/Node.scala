@@ -224,7 +224,7 @@ class Node[D, I, R](
     * be omitted, and existing label environments subsumed by a new
     * environment will be removed.
     *
-    * Note that the original list returned its argument, since
+    * Note that the original function returned its argument, since
     * destructive updates to Lisp's lists might result in a change to
     * the first `cons` cell.  Since Scala `ListBuffer`s are wrapped,
     * this change to the overall list reference is not possible, and
