@@ -9,7 +9,7 @@ Stability   : experimental
 Portability : POSIX
 
 Translation of Forbus and de Kleer's assumption-based truth
-maintenance systems (JTMSes) from Common Lisp to Haskell.
+maintenance systems (ATMSes) from Common Lisp to Haskell.
 
 This is not a very \"Haskelly\" implementation; rather, it is a
 translation of the original code with minimal changes.  Most of the
@@ -42,7 +42,7 @@ language governing permissions and limitations under the License.
 
 {-# LANGUAGE RankNTypes #-}
 
-module Data.TMS.ATMS.ATMS (
+module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
   ATMST, AtmsErr, runATMST,
 
