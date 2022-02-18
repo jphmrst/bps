@@ -41,14 +41,8 @@ language governing permissions and limitations under the License.
 
 {-# LANGUAGE RankNTypes #-}
 
-import Data.Symbol
-import Data.Void
 import Data.TMS.JTMS
-import Control.Monad
-import Control.Monad.Extra
-import Control.Monad.IO.Class
 import Control.Monad.ST.Trans
-import Control.Monad.Trans.Class
 import Test.TLT
 import JTMSTests
 
