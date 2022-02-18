@@ -25,6 +25,9 @@ language governing permissions and limitations under the License.
 -}
 
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module JTMSTests (testEx1, testEx3) where
 
@@ -42,6 +45,9 @@ import Test.TLT
 report :: Either JtmsErr () -> IO ()
 report (Right _) = putStrLn ("Tests passed")
 report (Left e) = putStrLn ("Caught exception: " ++ (show e))
+
+instance MonadTLT m n => MonadTLT (JTMST s m) n where
+  liftTLT = lift . liftTLT
 
 type JTMS1ty s m = JTMS Symbol String Void s m
 type Node1ty s m = Node Symbol String Void s m
@@ -69,18 +75,18 @@ ex1 = do
   justifyNode "j4" ng [nd, ne]
   return (j, na, nb, nc, nd, ne, nf, ng)
 
-testEx1 :: MonadIO m => TLT (JTMST s m) ()
+testEx1 :: MonadIO m => JTMST s (TLT m) ()
 testEx1 = do
-  (jtms, na, nb, nc, nd, ne, nf, ng) <- lift ex1
-  lift $ datumStringByShow jtms
+  (jtms, na, nb, nc, nd, ne, nf, ng) <- ex1
+  datumStringByShow jtms
   inGroup "Fresh JTMS" $ do
     assertBeliefs jtms [] [na, nb, nc, nd, ne, nf, ng]
     assertNoAssumptionsOfNodes jtms [na, nb, nc, nd, ne, nf, ng]
     assertNodesUnsupported jtms [na, nb, nc, nd, ne, nf, ng]
 
-  -- lift $ debugJTMS "fresh" jtms
-  lift $ enableAssumption na
-  -- lift $ debugJTMS "after (enableAssumption na)" jtms
+  -- debugJTMS "fresh" jtms
+  enableAssumption na
+  -- debugJTMS "after (enableAssumption na)" jtms
   inGroup "Enabled a as assumption" $ do
     assertBeliefs jtms [na] [nb, nc, nd, ne, nf, ng]
     assertAssumptionsOfNode jtms na [na]
@@ -88,8 +94,8 @@ testEx1 = do
     assertNodeSupportEnabledAssumption jtms na
     assertNodesUnsupported jtms [nb, nc, nd, ne, nf, ng]
 
-  lift $ enableAssumption nb
-  -- lift $ debugJTMS "after (enableAssumption nb)" jtms
+  enableAssumption nb
+  -- debugJTMS "after (enableAssumption nb)" jtms
   inGroup "Enabled b as assumption" $ do
     assertBeliefs jtms [na, nb, nf] [nc, nd, ne, ng]
     assertAssumptionsOfNode jtms na [na]
@@ -100,8 +106,8 @@ testEx1 = do
     assertNodeSupportInformant jtms nf "j1"
     assertNodesUnsupported jtms [nc, nd, ne, ng]
 
-  lift $ enableAssumption nc
-  -- lift $ debugJTMS "after (enableAssumption nc)" jtms
+  enableAssumption nc
+  -- debugJTMS "after (enableAssumption nc)" jtms
   inGroup "Enabled c as assumption" $ do
     assertBeliefs jtms [na, nb, nc, ne, nf, ng] [nd]
     assertAssumptionsOfNode jtms na [na]
@@ -117,8 +123,8 @@ testEx1 = do
     assertNodeSupportInformant jtms ng "j3"
     assertNodesUnsupported jtms [nd]
 
-  lift $ enableAssumption nd
-  -- lift $ debugJTMS "after (enableAssumption nd)" jtms
+  enableAssumption nd
+  -- debugJTMS "after (enableAssumption nd)" jtms
   inGroup "Enabled d as assumption" $ do
     assertBeliefs jtms [na, nb, nc, nd, ne, nf, ng] []
     assertAssumptionsOfNode jtms na [na]
@@ -133,8 +139,8 @@ testEx1 = do
     assertNodeSupportInformant jtms nf "j1"
     assertNodeSupportInformant jtms ng "j3"
 
-  lift $ retractAssumption na
-  -- lift $ debugJTMS "after (retractAssumption na)" jtms
+  retractAssumption na
+  -- debugJTMS "after (retractAssumption na)" jtms
   inGroup "Retracted a as assumption" $ do
     assertBeliefs jtms [nb, nc, nd, ne, ng] [na, nf]
     assertAssumptionsOfNode jtms nb [nb]
@@ -169,94 +175,108 @@ ex3 = do
 
   return (j, na, nc, ne, ng, nh, contra)
 
-testEx3 :: MonadIO m => TLT (JTMST s (STT s0 m)) ()
+testEx3 :: MonadIO m => JTMST s (TLT (STT s0 m)) ()
 testEx3 = do
   contraHandlerFlag <- lift $ lift $ newSTRef False
 
-  (jtms, na, nc, ne, ng, nh, contra) <- lift ex3
-  lift $ setContradictionHandler jtms $ \_ ->
-    lift $ writeSTRef contraHandlerFlag True
-  lift $ datumStringByShow jtms
+  (jtms, na, nc, ne, ng, nh, contra) <- ex3
+  setContradictionHandler jtms $ \_ ->
+    lift $ lift $ writeSTRef contraHandlerFlag True
+  datumStringByShow jtms
   inGroup "Fresh JTMS" $ do
     assertBeliefs jtms [] [na, nc, ne, ng, nh, contra]
     assertNoAssumptionsOfNodes jtms [na, nc, ne, ng, nh, contra]
     assertNodesUnsupported jtms [na, nc, ne, ng, nh, contra]
     "No call to contradiction handler" ~::
-      notM (lift $ readSTRef contraHandlerFlag)
+      notM (lift $ lift $ readSTRef contraHandlerFlag)
 
   lift $ lift $ writeSTRef contraHandlerFlag False
-  lift $ enableAssumption na
+  enableAssumption na
   inGroup "Enabled a" $ do
     assertBeliefs jtms [na] [nc, ne, ng, nh, contra]
     assertAssumptionsOfNode jtms na [na]
     assertNoAssumptionsOfNodes jtms [nc, ne, ng, nh, contra]
     "No call to contradiction handler" ~::
-      notM (lift $ readSTRef contraHandlerFlag)
+      notM (lift $ lift $ readSTRef contraHandlerFlag)
 
   lift $ lift $ writeSTRef contraHandlerFlag False
-  lift $ enableAssumption nc
+  enableAssumption nc
   inGroup "Enabled c" $ do
     assertBeliefs jtms [na, nc, ng, contra] [ne, nh]
-    "Did call contradiction handler" ~:: (lift $ readSTRef contraHandlerFlag)
+    "Did call contradiction handler" ~::
+      (lift $ lift $ readSTRef contraHandlerFlag)
 
   lift $ lift $ writeSTRef contraHandlerFlag False
-  lift $ enableAssumption ne
+  enableAssumption ne
   inGroup "Enabled e" $ do
     assertBeliefs jtms [na, nc, ne, ng, nh, contra] []
-    "Did call contradiction handler" ~:: (lift $ readSTRef contraHandlerFlag)
+    "Did call contradiction handler" ~::
+      (lift $ lift $ readSTRef contraHandlerFlag)
 
 {------------------------- Local assertions. -------------------------}
 
 assertBeliefs ::
-  Monad m => (JTMS d i r s m) -> [Node d i r s m] -> [Node d i r s m] ->
-               TLT (JTMST s m) ()
+  Monad m => (JTMS d i r s (TLT m)) -> [Node d i r s (TLT m)] -> [Node d i r s (TLT m)] ->
+               JTMST s (TLT m) ()
 assertBeliefs jtms ins outs = inGroup "Node belief" $ do
-  forM_ ins  $ \ node -> do
-    name <- lift $ nodeString node
-    ("Node " ++ name ++ " is in") ~:: isInNode node
-  forM_ outs $ \ node -> do
-    name <- lift $ nodeString node
-    ("Node " ++ name ++ " is out") ~:: isOutNode node
+  inChecks
+  outChecks
+  where inChecks = forM_ ins inCheck
+
+        inCheck node = do
+          name <- nodeString node
+          ("Node " ++ name ++ " is in") ~:: isInNode node
+
+        outChecks = forM_ outs $ outCheck
+
+        outCheck node = do
+          name <- nodeString node
+          ("Node " ++ name ++ " is out") ~:: isOutNode node
 
 assertAssumptionsOfNode ::
-  Monad m => (JTMS d i r s m) -> Node d i r s m -> [Node d i r s m] ->
-               TLT (JTMST s m) ()
+  Monad m =>
+    (JTMS d i r s (TLT m)) -> Node d i r s (TLT m) -> [Node d i r s (TLT m)] ->
+      JTMST s (TLT m) ()
 assertAssumptionsOfNode jtms node assumptions = do
-  actuals <- lift $ assumptionsOfNode node
-  name <- lift $ nodeString node
+  actuals <- assumptionsOfNode node
+  name <- nodeString node
   inGroup ("Checking assumptionsOfNode " ++ name) $ do
     ("Same number of expected and actual assumptions")
       ~: length assumptions !==- length actuals
     forM_ assumptions $ \ expected -> do
-      expName <- lift $ nodeString expected
+      expName <- nodeString expected
       ("Contains expected node " ++ expName) ~::- (expected `elem` actuals)
 
 assertNoAssumptionsOfNodes ::
-  Monad m => (JTMS d i r s m) -> [Node d i r s m] -> TLT (JTMST s m) ()
+  Monad m =>
+    (JTMS d i r s (TLT m)) -> [Node d i r s (TLT m)] -> JTMST s (TLT m) ()
 assertNoAssumptionsOfNodes jtms nodes =
   inGroup ("No assumptionsOfNode") $
     forM_ nodes $ \ node -> do
-      name <- lift $ nodeString node
+      name <- nodeString node
       ("Node " ++ name ++ " has no assumptions") ~:
         (empty $ assumptionsOfNode node)
 
 assertNodesUnsupported ::
-  Monad m => (JTMS d i r s m) -> [Node d i r s m] -> TLT (JTMST s m) ()
+  Monad m =>
+    (JTMS d i r s (TLT m)) -> [Node d i r s (TLT m)] -> JTMST s (TLT m) ()
 assertNodesUnsupported jtms nodes =
   inGroup ("Unsupported nodes") $
     forM_ nodes $ \ node -> do
-      name <- lift $ nodeString node
+      name <- nodeString node
       ("Node " ++ name ++ " has no support") ~::
         do support <- getNodeSupport node
            case support of
              Nothing -> return True
              Just _ -> return False
 
-assertNodeSupportRule :: Monad m =>
-  JTMS d i r s m -> Node d i r s m -> JustRule d i r s m -> TLT (JTMST s m) ()
+assertNodeSupportRule ::
+  Monad m =>
+    JTMS d i r s (TLT m) -> Node d i r s (TLT m) -> JustRule d i r s (TLT m) ->
+      JTMST s (TLT m) ()
 assertNodeSupportRule jtms node just = do
-  infString <- lift $ getJtmsInformantString jtms
-  nodeName <- lift $ nodeString node
+  infString <- getJtmsInformantString jtms
+  nodeName <- nodeString node
   ("Node " ++ nodeName ++ " supported by rule "
     ++ (infString $ justInformant just)) ~:: do
     support <- getNodeSupport node
@@ -264,11 +284,12 @@ assertNodeSupportRule jtms node just = do
       Just (ByRule j) | j == just -> return True
       _ -> return False
 
-assertNodeSupportInformant :: (Monad m, Eq i) =>
-  JTMS d i r s m -> Node d i r s m -> i -> TLT (JTMST s m) ()
+assertNodeSupportInformant ::
+  (Monad m, Eq i) =>
+    JTMS d i r s (TLT m) -> Node d i r s (TLT m) -> i -> JTMST s (TLT m) ()
 assertNodeSupportInformant jtms node inf = do
-  infString <- lift $ getJtmsInformantString jtms
-  nodeName <- lift $ nodeString node
+  infString <- getJtmsInformantString jtms
+  nodeName <- nodeString node
   ("Node " ++ nodeName ++ " supported by informant " ++ (infString inf)) ~:: do
     support <- getNodeSupport node
     case support of
@@ -276,10 +297,10 @@ assertNodeSupportInformant jtms node inf = do
       _ -> return False
 
 assertNodeSupportEnabledAssumption ::
-  Monad m => JTMS d i r s m -> Node d i r s m -> TLT (JTMST s m) ()
+  Monad m => JTMS d i r s (TLT m) -> Node d i r s (TLT m) -> JTMST s (TLT m) ()
 assertNodeSupportEnabledAssumption jtms node = do
-  infString <- lift $ getJtmsInformantString jtms
-  nodeName <- lift $ nodeString node
+  infString <- getJtmsInformantString jtms
+  nodeName <- nodeString node
   ("Node " ++ nodeName ++ " is enabled assumption ") ~:: do
     support <- getNodeSupport node
     case support of
@@ -287,16 +308,17 @@ assertNodeSupportEnabledAssumption jtms node = do
       _ -> return False
 
 assertNodesSupportEnabledAssumption ::
-  Monad m => JTMS d i r s m -> [Node d i r s m] -> TLT (JTMST s m) ()
+  Monad m =>
+    JTMS d i r s (TLT m) -> [Node d i r s (TLT m)] -> JTMST s (TLT m) ()
 assertNodesSupportEnabledAssumption jtms nodes =
   inGroup ("Nodes are enabled assumptions") $
     forM_ nodes $ \ node -> assertNodeSupportEnabledAssumption jtms node
 
 assertNodeSupportUserStipulation ::
-  Monad m => JTMS d i r s m -> Node d i r s m -> TLT (JTMST s m) ()
+  Monad m => JTMS d i r s (TLT m) -> Node d i r s (TLT m) -> JTMST s (TLT m) ()
 assertNodeSupportUserStipulation jtms node = do
-  infString <- lift $ getJtmsInformantString jtms
-  nodeName <- lift $ nodeString node
+  infString <- getJtmsInformantString jtms
+  nodeName <- nodeString node
   ("Node " ++ nodeName ++ " is enabled assumption ") ~:: do
     support <- getNodeSupport node
     case support of

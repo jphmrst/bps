@@ -43,7 +43,7 @@ packages:
 # extra-deps: []
 
 extra-deps:
-- archive: /home/jm/Lib/Haskell/TLT/.stack-work/dist/x86_64-linux-tinfo6/Cabal-3.2.1.0/TLT-0.0.0.4.tar.gz
+- archive: /home/jm/Lib/Haskell/TLT/.stack-work/dist/x86_64-linux-tinfo6/Cabal-3.2.1.0/TLT-0.1.0.0.tar.gz
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
