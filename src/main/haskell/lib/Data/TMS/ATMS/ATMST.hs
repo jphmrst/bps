@@ -150,6 +150,29 @@ runATMST atmst = runSTT $ runExceptT $ unwrap2 atmst
 -- >   (node-string nil)
 -- >   (enqueue-procedure nil))
 data Monad m => ATMS d i r s m = ATMS {
+  -- |Name of this ATMS.
+  atmsTitle :: String,
+  -- |Unique namer for nodes.
+  atmsNodeCounter :: STRef s Int,
+  -- |Unique namer for justifications.
+  atmsJustCounter :: STRef s Int,
+  -- |Unique namer for environments.
+  atmsEnvCounter :: STRef s Int,
+  -- |List of all TMS nodes.
+  atmsNodes :: STRef s [Node d i r s m],
+  -- |List of all justifications.
+  atmsJusts :: STRef s [JustRule d i r s m],
+  -- |List of all contradiction nodes.
+  atmsContradictions :: STRef s [Node d i r s m],
+  -- |List of all assumption nodes.
+  atmsAssumptions :: STRef s [Node d i r s m],
+  -- TODO nogood-table, contra-node, env-table, empty-env
+  atmsNodeString :: STRef s (Node d i r s m -> String),
+  atmsJustString :: STRef s (JustRule d i r s m -> String),
+  atmsDatumString :: STRef s (d -> String),
+  atmsInformantString :: STRef s (i -> String),
+  atmsEnqueueProcedure :: STRef s (r -> ATMST s m ()),
+  atmsDebugging :: STRef s Bool
 }
 
 -- > ;; In atms.lisp
@@ -171,6 +194,7 @@ printAtms = error "< TODO unimplemented >"
 -- >   (rules nil)                   ; run when label non-empty.
 -- >   (atms nil))
 data Monad m => Node d i r s m = Node {
+  nodeIndex :: Int
 }
 
 -- > (defun print-tms-node (node stream ignore)
@@ -188,6 +212,7 @@ printNode = error "< TODO unimplemented >"
 -- >       (consequence nil)
 -- >       (antecedents nil))
 data Monad m => JustRule d i r s m = JustRule {
+  justIndex :: Int
 }
 
 -- > ;; In atms.lisp
@@ -289,7 +314,24 @@ envOrder = error "< TODO unimplemented envOrder >"
 -- >     (setf (atms-empty-env atms) (create-env atms nil))
 -- >     atms))
 createATMS :: Monad m => String -> ATMST s m (ATMS d i r s m)
-createATMS = error "< TODO unimplemented createATMS >"
+createATMS title = AtmsT $ lift $ do
+  nc <- newSTRef 0
+  jc <- newSTRef 0
+  ec <- newSTRef 0
+  nodes <- newSTRef ([] :: [Node d i r s m])
+  justs <- newSTRef ([] :: [JustRule d i r s m])
+  contradictions <- newSTRef ([] :: [Node d i r s m])
+  assumptions <- newSTRef ([] :: [Node d i r s m])
+  nodeString <- newSTRef (show . nodeIndex)
+  justString <- newSTRef (show . justIndex)
+  datumString <- newSTRef (\ datum -> "?")
+  informantString <- newSTRef (\ inf -> "?")
+  enqueueProcedure <- newSTRef (\ _ -> return ())
+  debugging <- newSTRef False
+  return (ATMS title nc jc ec nodes justs contradictions assumptions
+               nodeString justString datumString informantString
+               enqueueProcedure debugging)
+
 
 -- > ;; In atms.lisp
 -- > (defun change-atms (atms &key node-string
