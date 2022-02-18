@@ -5,6 +5,10 @@ Haskell releases adhere to Haskell's [Package Versioning
 Policy](https://pvp.haskell.org/); Scala releases use the [Semantic
 Versioning spec](https://semver.org/).
 
+# In Haskell branch — Haskell 0.2.0.0
+
+ - Translation of ATMS underway.
+
 # Version 0.5.0 (Haskell 0.1.0.0, Scala 0.1.0)
 
  - First version with Haskell: working implementation of a monad
