@@ -42,9 +42,11 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE RankNTypes #-}
 
 import Data.TMS.JTMS
+import Data.TMS.ATMS.ATMST
 import Control.Monad.ST.Trans
 import Test.TLT
 import JTMSTests
+import ATMSTests
 
 main :: IO ()
 main = do
@@ -52,3 +54,5 @@ main = do
     inGroup "JTMS tests" $ runJTMST $ do
       testEx1
       testEx3
+    inGroup "ATMS tests" $ runATMST $ do
+      ex1AndTest

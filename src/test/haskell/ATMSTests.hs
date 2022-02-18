@@ -24,9 +24,11 @@ language governing permissions and limitations under the License.
 
 -}
 
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-module ATMSTests () where
+module ATMSTests where
 
 import Data.Symbol
 import Data.Void
@@ -42,3 +44,24 @@ import Test.TLT
 report :: Either AtmsErr () -> IO ()
 report (Right _) = putStrLn ("Tests passed")
 report (Left e) = putStrLn ("Caught exception: " ++ (show e))
+
+instance MonadTLT m n => MonadTLT (ATMST s m) n where
+  liftTLT = lift . liftTLT
+
+type ATMS1ty s m = ATMS String String Void s m
+type Node1ty s m = Node String String Void s m
+ex1AndTest :: Monad m => ATMST s (TLT m) ()
+ex1AndTest = inGroup "ATMS Test 1" $ do
+  atms <- createATMS "Ex1"
+
+  na <- createNode atms "A" True False
+  inGroup "Created Node A" $ do
+    aLabels <- getNodeLabels atms na
+    "Initially 1 label" ~: 1 !==- length aLabels
+
+  nc <- createNode atms "C" True False
+  ne <- createNode atms "E" True False
+  nh <- createNode atms "H" False False
+  justifyNode atms "R1" nh [nc, ne]
+  return ()
+

@@ -46,6 +46,25 @@ module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
   ATMST, AtmsErr, runATMST,
 
+  ATMS, createATMS,
+
+  Node, createNode, assumeNode, makeContradiction,
+  justifyNode, removeNode, nodeString, defaultNodeString,
+  isTrueNode, isInNode, isOutNode, isNodeConsistentWith,
+  getNodeLabels,
+
+  JustRule, Justification, Explanation,
+
+  Env, EnvTable,
+
+  interpretations,
+
+  printAtms, printNode, printJust, printEnvStructure,
+  printJustification, printEnv, printNogoods,
+  printEnvs, printEnvTable, printAtmsStatistics, printTable,
+  whyNodes, whyNode,
+
+  explainNode
   ) where
 
 import Control.Monad.State
@@ -197,6 +216,9 @@ data Explanation d i r s m =
 data Monad m => Env d i r s m = Env {
 }
 
+getNodeLabels :: ATMS d i r s m -> Node d i r s m  -> ATMST s m [Env d i r s m]
+getNodeLabels atms node = error "< TODO unimplemented getNodeLabels >"
+
 data Monad m => EnvTable d i r s m = EnvTable {
 }
 
@@ -319,8 +341,10 @@ isNodeConsistentWith = error "< TODO unimplemented isNodeConsistentWith >"
 -- >     (push node (atms-assumptions atms))
 -- >     (push (create-env atms (list node)) (tms-node-label node)))
 -- >   node)
-createNode :: Monad m => ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
-createNode = error "< TODO unimplemented createNode >"
+createNode ::
+  Monad m => ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
+createNode atms datum isAssumption isContradictory =
+  error "< TODO unimplemented createNode >"
 
 -- > ;; In atms.lisp
 -- > (defun assume-node (node &aux atms)
@@ -364,7 +388,7 @@ makeContradiction = error "< TODO unimplemented makeContradiction >"
 -- >         (mapcar #'node-string antecedents))
 -- >   (propagate just nil (list (atms-empty-env atms)))
 -- >   just)
-justifyNode :: Monad m => Node d i r s m -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
+justifyNode :: Monad m => ATMS d i r s m -> i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
 justifyNode = error "< TODO unimplemented justifyNode >"
 
 -- > ;; In atms.lisp
