@@ -49,7 +49,6 @@ import JTMSTests
 main :: IO ()
 main = do
   runSTT $ tlt $ do
-    runJTMST $ do
+    inGroup "JTMS tests" $ runJTMST $ do
       testEx1
       testEx3
-  return ()
