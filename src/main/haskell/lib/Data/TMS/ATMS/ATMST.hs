@@ -87,6 +87,7 @@ data AtmstState = AtmstState {
   envTableIncr :: Int
   }
 
+-- |Initial state of an ATMST process.
 initialAtmstState :: AtmstState
 initialAtmstState = AtmstState 50 75
 
