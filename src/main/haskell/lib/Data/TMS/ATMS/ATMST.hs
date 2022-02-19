@@ -93,6 +93,14 @@ data AtmstState = AtmstState {
 initialAtmstState :: AtmstState
 initialAtmstState = AtmstState 50 75
 
+-- |Update the initial table size of an ATMST state.
+withInitialEnvTableAlloc :: AtmstState -> Int -> AtmstState
+withInitialEnvTableAlloc (AtmstState _ ei) ia = AtmstState ia ei
+
+-- |Update the table increment size of an ATMST state.
+withEnvTableIncr :: AtmstState -> Int -> AtmstState
+withEnvTableIncr (AtmstState ia _) ei = AtmstState ia ei
+
 {- ===== ATMST definition. ============================================= -}
 
 -- |The process of building and using a mutable ATMS.
