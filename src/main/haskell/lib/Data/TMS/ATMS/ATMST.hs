@@ -96,7 +96,8 @@ initialAtmstState = AtmstState 50 75
 {- ===== ATMST definition. ============================================= -}
 
 -- |The process of building and using a mutable ATMS.
-type ATMSTInner s m a = Monad m => ExceptT AtmsErr (STT s m) a
+type ATMSTInner s m a =
+  Monad m => ExceptT AtmsErr (StateT AtmstState (STT s m)) a
 
 -- |The process of building and using a mutable ATMS.
 newtype Monad m => ATMST s m a = AtmsT { unwrap :: ATMSTInner s m a }
@@ -129,22 +130,34 @@ instance (Monad m, Functor m) => Monad (ATMST s m) where
   return v = AtmsT $ return v
 
 instance MonadTrans (ATMST s) where
-  lift m = AtmsT $ lift $ lift m
+  lift m = AtmsT $ lift $ lift $ lift m
 
 instance MonadIO m => MonadIO (ATMST s m) where
   liftIO = lift . liftIO
 
 -- |Lift `STT` behavior to the `ATMST` level.
 sttLayer :: Monad m => STT s m r -> ATMST s m r
-sttLayer md = AtmsT $ lift $ md
+sttLayer md = AtmsT $ lift $ lift $ md
 
 -- |Lift `ExceptT` behavior to the `ATMST` level.
-exceptLayer :: Monad m => ExceptT AtmsErr (STT s m) r -> ATMST s m r
-exceptLayer md = AtmsT $ md
+exceptLayer ::
+  Monad m => ExceptT AtmsErr (StateT AtmstState (STT s m)) r -> ATMST s m r
+exceptLayer = AtmsT
+
+-- |Lift `StateT` behavior to the `ATMST` level.
+stateLayer ::
+  Monad m => StateT AtmstState (STT s m) r -> ATMST s m r
+stateLayer = AtmsT . lift
 
 -- |Execute a computation in the `ATMST` monad transformer.
 runATMST :: Monad m => (forall s . ATMST s m r) -> m (Either AtmsErr r)
-runATMST atmst = runSTT $ runExceptT $ unwrap2 atmst
+runATMST atmst =
+  let core = unwrap2 atmst
+      afterExcept = runExceptT core
+      afterState = do
+        (result, endState) <- runStateT afterExcept initialAtmstState
+        return result
+  in runSTT afterState
 
 -- > ;; In atms.lisp
 -- > (defstruct (atms (:PRINT-FUNCTION print-atms))
@@ -329,7 +342,7 @@ envOrder = error "< TODO unimplemented envOrder >"
 -- >     atms))
 createATMS :: Monad m => String -> ATMST s m (ATMS d i r s m)
 createATMS title = do
-  AtmsT $ lift $ do
+  AtmsT $ lift $ lift $ do
     nc <- newSTRef 0
     jc <- newSTRef 0
     ec <- newSTRef 0
