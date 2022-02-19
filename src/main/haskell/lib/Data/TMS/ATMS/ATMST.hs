@@ -81,6 +81,8 @@ import Data.TMS.Helpers
 -- |Errors which can arise from ATMS operations.
 data AtmsErr = CannotEnableNonassumption String Int deriving Show
 
+{- ===== Internal state of an ATMST. =================================== -}
+
 -- |Internal state of an ATMST process
 data AtmstState = AtmstState {
   initialEnvTableAlloc :: Int,
@@ -90,6 +92,8 @@ data AtmstState = AtmstState {
 -- |Initial state of an ATMST process.
 initialAtmstState :: AtmstState
 initialAtmstState = AtmstState 50 75
+
+{- ===== ATMST definition. ============================================= -}
 
 -- |The process of building and using a mutable ATMS.
 type ATMSTInner s m a = Monad m => ExceptT AtmsErr (STT s m) a
@@ -131,12 +135,12 @@ instance MonadIO m => MonadIO (ATMST s m) where
   liftIO = lift . liftIO
 
 -- |Lift `STT` behavior to the `ATMST` level.
-aLiftSTT :: Monad m => STT s m r -> ATMST s m r
-aLiftSTT md = AtmsT $ lift $ md
+sttLayer :: Monad m => STT s m r -> ATMST s m r
+sttLayer md = AtmsT $ lift $ md
 
 -- |Lift `ExceptT` behavior to the `ATMST` level.
-aLiftExcept :: Monad m => ExceptT AtmsErr (STT s m) r -> ATMST s m r
-aLiftExcept md = AtmsT $ md
+exceptLayer :: Monad m => ExceptT AtmsErr (STT s m) r -> ATMST s m r
+exceptLayer md = AtmsT $ md
 
 -- |Execute a computation in the `ATMST` monad transformer.
 runATMST :: Monad m => (forall s . ATMST s m r) -> m (Either AtmsErr r)
