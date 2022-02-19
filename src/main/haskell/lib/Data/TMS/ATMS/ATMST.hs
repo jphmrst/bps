@@ -81,6 +81,15 @@ import Data.TMS.Helpers
 -- |Errors which can arise from ATMS operations.
 data AtmsErr = CannotEnableNonassumption String Int deriving Show
 
+-- |Internal state of an ATMST process
+data AtmstState = AtmstState {
+  initialEnvTableAlloc :: Int,
+  envTableIncr :: Int
+  }
+
+initialAtmstState :: AtmstState
+initialAtmstState = AtmstState 50 75
+
 -- |The process of building and using a mutable ATMS.
 type ATMSTInner s m a = Monad m => ExceptT AtmsErr (STT s m) a
 
