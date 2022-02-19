@@ -44,7 +44,7 @@ language governing permissions and limitations under the License.
 
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
-  ATMST, AtmsErr, runATMST,
+  ATMST, AtmsErr, runATMST, setInitialEnvTableAlloc, setEnvTableIncr,
 
   ATMS, createATMS,
 
@@ -156,6 +156,22 @@ exceptLayer = AtmsT
 stateLayer ::
   Monad m => StateT AtmstState (STT s m) r -> ATMST s m r
 stateLayer = AtmsT . lift
+
+-- |Retrieve the current initial `Env` table size setting.
+getInitialEnvTableAlloc :: Monad m => ATMST s m Int
+getInitialEnvTableAlloc = stateLayer $ fmap initialEnvTableAlloc get
+
+-- |Retrieve the current initial `Env` table size setting.
+setInitialEnvTableAlloc :: Monad m => Int -> ATMST s m ()
+setInitialEnvTableAlloc ia = stateLayer $ modify (`withInitialEnvTableAlloc` ia)
+
+-- |Retrieve the current initial `Env` table size setting.
+getEnvTableIncr :: Monad m => ATMST s m Int
+getEnvTableIncr = stateLayer $ fmap envTableIncr get
+
+-- |Retrieve the current initial `Env` table size setting.
+setEnvTableIncr :: Monad m => Int -> ATMST s m ()
+setEnvTableIncr ia = stateLayer $ modify (`withEnvTableIncr` ia)
 
 -- |Execute a computation in the `ATMST` monad transformer.
 runATMST :: Monad m => (forall s . ATMST s m r) -> m (Either AtmsErr r)
