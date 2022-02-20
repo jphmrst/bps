@@ -220,7 +220,7 @@ data Monad m => ATMS d i r s m = ATMS {
   -- |List of all assumption nodes.
   atmsAssumptions :: STRef s [Node d i r s m],
   -- |The environment table.
-  atmsEnvTable :: STArray s Int [Env d i r s m],
+  atmsEnvTable :: EnvTable d i r s m,
   -- TODO nogood-table, contra-node, env-table, empty-env
   atmsNodeString :: STRef s (Node d i r s m -> String),
   atmsJustString :: STRef s (JustRule d i r s m -> String),
@@ -344,8 +344,7 @@ data Monad m => Env d i r s m = Env {
 getNodeLabels :: ATMS d i r s m -> Node d i r s m  -> ATMST s m [Env d i r s m]
 getNodeLabels atms node = error "< TODO unimplemented getNodeLabels >"
 
-data Monad m => EnvTable d i r s m = EnvTable {
-}
+newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 
 -- > ;; In atms.lisp
 -- > (defun print-env-structure (env stream ignore)
@@ -433,7 +432,7 @@ createATMS title = do
     enqueueProcedure <- newSTRef (\ _ -> return ())
     debugging <- newSTRef False
     return (ATMS title nc jc ec etAlloc
-             nodes justs contradictions assumptions etable
+             nodes justs contradictions assumptions (EnvTable etable)
              nodeString justString datumString informantString
              enqueueProcedure debugging)
 
@@ -701,8 +700,14 @@ removeNode = error "< TODO unimplemented removeNode >"
 -- >   (set-env-contradictory atms e)
 -- >   e)
 createEnv :: Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m (Env d i r s m)
-createEnv = error "< TODO unimplemented createEnv >"
-
+createEnv atms assumptions = do
+  index <- nextEnvCounter atms
+  whyNogood <- sttLayer $ newSTRef Good
+  rules <- sttLayer $ newSTRef []
+  env <- return $ Env index (length assumptions) assumptions whyNogood rules
+  insertInTable (atmsEnvTable atms) env
+  setEnvContradictory atms env
+  return env
 -- > ;; In atms.lisp
 -- > (defun union-env (e1 e2)
 -- >   (when (> (env-count e1)
@@ -746,7 +751,7 @@ findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 -- >         (list count env) table
 -- >         #'(lambda (entry1 entry2)
 -- >             (< (car entry1) (car entry2)))))))
-insertInTable :: Monad m => EnvTable d i r s m -> Env d i r s m -> ATMST s m (EnvTable d i r s m)
+insertInTable :: Monad m => EnvTable d i r s m -> Env d i r s m -> ATMST s m ()
 insertInTable = error "< TODO unimplemented insertInTable >"
 
 -- > ;; In atms.lisp
