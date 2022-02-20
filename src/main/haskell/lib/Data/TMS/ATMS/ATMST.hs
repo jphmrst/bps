@@ -616,7 +616,10 @@ propagate ::
   Monad m =>
     JustRule d i r s m -> Maybe (Node d i r s m) -> [Env d i r s m] ->
       ATMST s m ()
-propagate = error "< TODO unimplemented propagate >"
+propagate just antecedent envs = do
+  newEnvs <- weave antecedent envs (justAntecedents just)
+  when (not (null newEnvs)) $
+    update newEnvs (justConsequence just) just
 
 -- > ;; In atms.lisp
 -- > (defun update (new-envs consequence just &aux atms enqueuef)
@@ -689,7 +692,9 @@ updateLabel = error "< TODO unimplemented updateLabel >"
 -- >       (setq envs (delete nil new-envs :TEST #'eq))
 -- >       (unless envs (return-from weave nil))))
 -- >   envs)
-weave :: Monad m => Node d i r s m -> [Env d i r s m] -> [Node d i r s m] -> ATMST s m [Env d i r s m]
+weave ::
+  Monad m => Maybe (Node d i r s m) -> [Env d i r s m] -> [Node d i r s m] ->
+               ATMST s m [Env d i r s m]
 weave = error "< TODO unimplemented weave >"
 
 -- > ;; In atms.lisp
