@@ -237,6 +237,35 @@ data Monad m => ATMS d i r s m = ATMS {
 printAtms :: MonadIO m => ATMS d i r s m -> ATMST s m ()
 printAtms = error "< TODO unimplemented >"
 
+-- |Get the next node counter value, incrementing for future accesses.
+nextNodeCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
+nextNodeCounter jtms =
+  let nodeCounter = atmsNodeCounter jtms
+  in sttLayer $ do
+    nodeId <- readSTRef nodeCounter
+    writeSTRef nodeCounter $ 1 + nodeId
+    return nodeId
+
+-- |Get the next justification rule counter value, incrementing for
+-- future accesses.
+nextJustCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
+nextJustCounter atms = sttLayer $
+  let justCounter = atmsJustCounter atms
+  in do
+    justId <- readSTRef justCounter
+    writeSTRef justCounter $ 1 + justId
+    return justId
+
+-- |Get the next environment rule counter value, incrementing for
+-- future accesses.
+nextEnvCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
+nextEnvCounter atms = sttLayer $
+  let envCounter = atmsEnvCounter atms
+  in do
+    envId <- readSTRef envCounter
+    writeSTRef envCounter $ 1 + envId
+    return envId
+
 -- > ;; In atms.lisp
 -- > (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
 -- >   (index 0)                                        ;; Unique name.
@@ -445,8 +474,11 @@ isNodeConsistentWith = error "< TODO unimplemented isNodeConsistentWith >"
 -- >   node)
 createNode ::
   Monad m => ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
-createNode atms datum isAssumption isContradictory =
-  error "< TODO unimplemented createNode >"
+createNode atms datum isAssumption isContradictory = do
+  idx <- nextNodeCounter atms
+  let node = Node
+    in do
+      error "< TODO unimplemented createNode >"
 
 -- > ;; In atms.lisp
 -- > (defun assume-node (node &aux atms)
