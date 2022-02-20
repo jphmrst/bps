@@ -183,13 +183,13 @@ setEnvTableIncr ia = stateLayer $ modify (`withEnvTableIncr` ia)
 
 -- |Execute a computation in the `ATMST` monad transformer.
 runATMST :: Monad m => (forall s . ATMST s m r) -> m (Either AtmsErr r)
-runATMST atmst =
+runATMST atmst = do
   let core = unwrap2 atmst
       afterExcept = runExceptT core
       afterState = do
         (result, endState) <- runStateT afterExcept initialAtmstState
         return result
-  in runSTT afterState
+  runSTT afterState
 
 -- > ;; In atms.lisp
 -- > (defstruct (atms (:PRINT-FUNCTION print-atms))
@@ -253,32 +253,29 @@ printAtms = error "< TODO unimplemented >"
 
 -- |Get the next node counter value, incrementing for future accesses.
 nextNodeCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
-nextNodeCounter jtms =
+nextNodeCounter jtms = sttLayer $ do
   let nodeCounter = atmsNodeCounter jtms
-  in sttLayer $ do
-    nodeId <- readSTRef nodeCounter
-    writeSTRef nodeCounter $ 1 + nodeId
-    return nodeId
+  nodeId <- readSTRef nodeCounter
+  writeSTRef nodeCounter $ 1 + nodeId
+  return nodeId
 
 -- |Get the next justification rule counter value, incrementing for
 -- future accesses.
 nextJustCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
-nextJustCounter atms = sttLayer $
+nextJustCounter atms = sttLayer $ do
   let justCounter = atmsJustCounter atms
-  in do
-    justId <- readSTRef justCounter
-    writeSTRef justCounter $ 1 + justId
-    return justId
+  justId <- readSTRef justCounter
+  writeSTRef justCounter $ 1 + justId
+  return justId
 
 -- |Get the next environment rule counter value, incrementing for
 -- future accesses.
 nextEnvCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
-nextEnvCounter atms = sttLayer $
+nextEnvCounter atms = sttLayer $ do
   let envCounter = atmsEnvCounter atms
-  in do
-    envId <- readSTRef envCounter
-    writeSTRef envCounter $ 1 + envId
-    return envId
+  envId <- readSTRef envCounter
+  writeSTRef envCounter $ 1 + envId
+  return envId
 
 -- > ;; In atms.lisp
 -- > (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
@@ -537,16 +534,15 @@ createNode atms datum isAssumption isContradictory = do
   rules <- sttLayer $ newSTRef []
   let node = Node idx datum label justs conseq
                   contraFlag assumptionFlag rules atms
-    in do
-      sttLayer $ do
-        push node $ atmsNodes atms
-        when isContradictory $ push node $ atmsContradictions atms
-      when isAssumption $ do
-        selfEnv <- createEnv atms [node]
-        sttLayer $ do
-          push node $ atmsAssumptions atms
-          push selfEnv $ nodeLabel node
-      return node
+  sttLayer $ do
+    push node $ atmsNodes atms
+    when isContradictory $ push node $ atmsContradictions atms
+  when isAssumption $ do
+    selfEnv <- createEnv atms [node]
+    sttLayer $ do
+      push node $ atmsAssumptions atms
+      push selfEnv $ nodeLabel node
+  return node
 
 -- > ;; In atms.lisp
 -- > (defun assume-node (node &aux atms)
@@ -804,31 +800,30 @@ findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 -- >         #'(lambda (entry1 entry2)
 -- >             (< (car entry1) (car entry2)))))))
 insertInTable :: Monad m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
-insertInTable atms env =
+insertInTable atms env = do
   let count = envCount env
       tableRef = atmsEnvTable atms
       ngtRef = atmsNogoodTable atms
-  in do
-    alloc <- sttLayer $ readSTRef $ atmsEnvTableAlloc atms
-    when (alloc < count) $ do
-      EnvTable oldArray <- sttLayer $ readSTRef tableRef
-      EnvTable oldNogoodArray <- sttLayer $ readSTRef ngtRef
-      incr <- getEnvTableIncr
-      let newAlloc = count + incr
-        in sttLayer $ do
-          newArray <- newSTArray (1, newAlloc) []
-          newNGArray <- newSTArray (1, newAlloc) []
-          forM_ [1..alloc] $ \i -> do
-            envs <- readSTArray oldArray i
-            writeSTArray newArray i envs
-            ngs <- readSTArray oldNogoodArray i
-            writeSTArray newNGArray i ngs
-          writeSTRef tableRef $ EnvTable newArray
-          writeSTRef ngtRef $ EnvTable newNGArray
+  alloc <- sttLayer $ readSTRef $ atmsEnvTableAlloc atms
+  when (alloc < count) $ do
+    EnvTable oldArray <- sttLayer $ readSTRef tableRef
+    EnvTable oldNogoodArray <- sttLayer $ readSTRef ngtRef
+    incr <- getEnvTableIncr
+    let newAlloc = count + incr
     sttLayer $ do
-      table@(EnvTable array) <- readSTRef tableRef
-      oldEnvs <- readSTArray array count
-      writeSTArray array count $ env : oldEnvs
+      newArray <- newSTArray (1, newAlloc) []
+      newNGArray <- newSTArray (1, newAlloc) []
+      forM_ [1..alloc] $ \i -> do
+        envs <- readSTArray oldArray i
+        writeSTArray newArray i envs
+        ngs <- readSTArray oldNogoodArray i
+        writeSTArray newNGArray i ngs
+      writeSTRef tableRef $ EnvTable newArray
+      writeSTRef ngtRef $ EnvTable newNGArray
+  sttLayer $ do
+    table@(EnvTable array) <- readSTRef tableRef
+    oldEnvs <- readSTArray array count
+    writeSTArray array count $ env : oldEnvs
 
 -- > ;; In atms.lisp
 -- > (defun lookup-env (assumes)
