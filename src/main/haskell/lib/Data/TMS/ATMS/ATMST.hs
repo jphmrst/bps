@@ -209,6 +209,8 @@ data Monad m => ATMS d i r s m = ATMS {
   atmsJustCounter :: STRef s Int,
   -- |Unique namer for environments.
   atmsEnvCounter :: STRef s Int,
+  -- |Current size of environment table.
+  atmsEnvTableAlloc :: STRef s Int,
   -- |List of all TMS nodes.
   atmsNodes :: STRef s [Node d i r s m],
   -- |List of all justifications.
@@ -366,10 +368,12 @@ envOrder = error "< TODO unimplemented envOrder >"
 -- >     atms))
 createATMS :: Monad m => String -> ATMST s m (ATMS d i r s m)
 createATMS title = do
+  ecInitialAlloc <- getInitialEnvTableAlloc
   AtmsT $ lift $ lift $ do
     nc <- newSTRef 0
     jc <- newSTRef 0
     ec <- newSTRef 0
+    etAlloc <- newSTRef ecInitialAlloc
     nodes <- newSTRef ([] :: [Node d i r s m])
     justs <- newSTRef ([] :: [JustRule d i r s m])
     contradictions <- newSTRef ([] :: [Node d i r s m])
@@ -380,7 +384,7 @@ createATMS title = do
     informantString <- newSTRef (\ inf -> "?")
     enqueueProcedure <- newSTRef (\ _ -> return ())
     debugging <- newSTRef False
-    return (ATMS title nc jc ec nodes justs contradictions assumptions
+    return (ATMS title nc jc ec etAlloc nodes justs contradictions assumptions
              nodeString justString datumString informantString
              enqueueProcedure debugging)
 
