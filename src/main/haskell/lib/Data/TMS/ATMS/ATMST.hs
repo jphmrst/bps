@@ -280,7 +280,13 @@ nextEnvCounter atms = sttLayer $
 data Monad m => Node d i r s m = Node {
   nodeIndex :: Int,
   nodeDatum :: d,
-  nodeLabel :: STRef s [Env d i r s m]
+  nodeLabel :: STRef s [Env d i r s m],
+  nodeJusts :: STRef s [Justification d i r s m],
+  nodeConsequences :: STRef s [JustRule d i r s m],
+  nodeIsContradictory :: STRef s Bool,
+  nodeIsAssumption :: STRef s Bool,
+  nodeRules :: STRef s [r],
+  nodeATMS :: ATMS d i r s m
 }
 
 -- > (defun print-tms-node (node stream ignore)
@@ -479,15 +485,23 @@ createNode ::
 createNode atms datum isAssumption isContradictory = do
   idx <- nextNodeCounter atms
   label <- sttLayer $ newSTRef []
-  let node = Node idx datum label
+  justs <- sttLayer $ newSTRef []
+  conseq <- sttLayer $ newSTRef []
+  assumptionFlag <- sttLayer $ newSTRef isAssumption
+  contraFlag <- sttLayer $ newSTRef isContradictory
+  rules <- sttLayer $ newSTRef []
+  let node = Node idx datum label justs conseq
+                  contraFlag assumptionFlag rules atms
     in do
-      sttLayer $ push node $ atmsNodes atms
-      sttLayer $ when isContradictory $ push node $ atmsContradictions atms
+      sttLayer $ do
+        push node $ atmsNodes atms
+        when isContradictory $ push node $ atmsContradictions atms
       when isAssumption $ do
-        sttLayer $ push node $ atmsAssumptions atms
         selfEnv <- createEnv atms [node]
-        sttLayer $ push selfEnv $ nodeLabel node
-      error "< TODO unimplemented createNode >"
+        sttLayer $ do
+          push node $ atmsAssumptions atms
+          push selfEnv $ nodeLabel node
+      return node
 
 -- > ;; In atms.lisp
 -- > (defun assume-node (node &aux atms)
