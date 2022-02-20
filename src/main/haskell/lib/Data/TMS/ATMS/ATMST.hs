@@ -672,25 +672,68 @@ update = error "< TODO unimplemented update >"
 updateLabel :: Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m [Env d i r s m]
 updateLabel = error "< TODO unimplemented updateLabel >"
 
+-- |Update the label of node @antecedent@ to include the given @envs@
+-- environments, pruning environments which are a superset of another
+-- included enviroment.
+--
+-- Implements Algorithm 12.3 of /Building Problem Solvers/.
+--
 -- > ;; In atms.lisp
 -- > (defun weave (antecedent envs antecedents &aux new-envs new-env)
 -- >   (setq envs (copy-list envs))
 -- >   (dolist (node antecedents)
 -- >     (unless (eq node antecedent)
+-- >
+-- >       ;; We will update ENVS with the list built in NEW-ENVS.
 -- >       (setq new-envs nil)
+-- >
+-- >       ;; We look at all pairs of
+-- >       ;;  - An Env from the passed-in ENVS, plus
+-- >       ;;  - An Env from the NODE's label.
+-- >       ;; The union of these two is NEW-ENV, and the body of
+-- >       ;; the loop considers how we should incorporate NEW-ENV
+-- >       ;; into NEW-ENVS.
 -- >       (dolist (env envs)
 -- >         (if env
--- >           (dolist (node-env (tms-node-label node))
--- >             (setq new-env (union-env env node-env))
--- >             (unless (env-nogood? new-env)
--- >               (do ((nnew-envs new-envs (cdr nnew-envs)))
--- >                   ((null nnew-envs) (push new-env new-envs))
--- >                 (when (car nnew-envs)
--- >                   (case (compare-env new-env (car nnew-envs))
--- >                     ((:EQ :S21) (return nil))
--- >                     (:S12 (rplaca nnew-envs nil)))))))))
+-- >             (dolist (node-env (tms-node-label node))
+-- >               (setq new-env (union-env env node-env))
+-- >               (unless (env-nogood? new-env)
+-- >
+-- >                 ;; If NEW-ENV is a superset of (or is equal to)
+-- >                 ;; anything already in NEW-ENVS, then NEW-ENV
+-- >                 ;; is redundant, and we abort the body of the
+-- >                 ;; inner match-searching loop without adding
+-- >                 ;; NEW-ENV to NEW-ENVS.
+-- >
+-- >                 ;; Otherwise if anything already in NEW-ENVS is
+-- >                 ;; a superset of NEW-ENV, then (1) NEW-ENV
+-- >                 ;; makes that element redundant, and we strip
+-- >                 ;; it out of NEW-ENVS; and (2) we add NEW-ENV
+-- >                 ;; to NEW-ENVS.
+-- >                 (do ((nnew-envs new-envs (cdr nnew-envs)))
+-- >                     ((null nnew-envs) (push new-env new-envs))
+-- >                   (when (car nnew-envs)
+-- >                     (case (compare-env new-env (car nnew-envs))
+-- >                       ((:EQ :S21) (return nil))
+-- >                       (:S12 (rplaca nnew-envs nil))
+-- >                           ; Could also be NIL, for mutually
+-- >                           ; non-contained sets --- ignored.
+-- >                      ))) ;; End of DO-macro.
+-- >
+-- >                 ;; Note that at this point the exit condition of the
+-- >                 ;; DO will have added NEW-ENV to the NEW-ENVS list.
+-- >
+-- >                 ))))
+-- >
+-- >       ;; So we have nearly produced the refinement of ENVS for
+-- >       ;; this NODE in the ANTECEDENTS.  It might have spurious
+-- >       ;; NILs, so we strip those out and update ENVS.  If ever
+-- >       ;; we narrow ENVS down to nothing, then we can short-
+-- >       ;; curcuit returning that empty list.
 -- >       (setq envs (delete nil new-envs :TEST #'eq))
 -- >       (unless envs (return-from weave nil))))
+-- >
+-- >   ;; Finally, return the last refinement of ENVS.
 -- >   envs)
 weave ::
   Monad m => Maybe (Node d i r s m) -> [Env d i r s m] -> [Node d i r s m] ->
