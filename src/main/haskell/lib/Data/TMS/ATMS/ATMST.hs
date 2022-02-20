@@ -53,7 +53,7 @@ module Data.TMS.ATMS.ATMST (
   Node, createNode, assumeNode, makeContradiction,
   justifyNode, removeNode, nodeString, defaultNodeString,
   isTrueNode, isInNode, isOutNode, isNodeConsistentWith,
-  getNodeLabels,
+  getNodeLabel,
 
   JustRule, Justification, Explanation,
 
@@ -71,7 +71,8 @@ module Data.TMS.ATMS.ATMST (
 
 import Control.Monad.State
 import Control.Monad.ST.Trans
-import Control.Monad.Except
+-- import Control.Monad.Except
+import Control.Monad.Trans.Except
 import Control.Monad.Extra
 import Data.TMS.Helpers
 
@@ -81,7 +82,9 @@ import Data.TMS.Helpers
 -- wrapper.
 
 -- |Errors which can arise from ATMS operations.
-data AtmsErr = CannotEnableNonassumption String Int deriving Show
+data AtmsErr = CannotEnableNonassumption String Int
+             | FromMonadFail String
+  deriving Show
 
 {- ===== Internal state of an ATMST. =================================== -}
 
@@ -159,6 +162,9 @@ stateLayer ::
   Monad m => StateT AtmstState (STT s m) r -> ATMST s m r
 stateLayer = AtmsT . lift
 
+instance Monad m => MonadFail (ATMST s m) where
+  fail s = exceptLayer $ throwE $ FromMonadFail s
+
 -- |Retrieve the current initial `Env` table size setting.
 getInitialEnvTableAlloc :: Monad m => ATMST s m Int
 getInitialEnvTableAlloc = stateLayer $ fmap initialEnvTableAlloc get
@@ -225,7 +231,11 @@ data Monad m => ATMS d i r s m = ATMS {
   atmsEnvTable :: STRef s (EnvTable d i r s m),
   -- |The table of nogood environments.
   atmsNogoodTable :: STRef s (EnvTable d i r s m),
-  -- TODO contra-node, empty-env
+  -- |Canonical empty Env for this ATMS.  This value is not set more
+  -- than once, but it created after the ATMS is allocated, so we use
+  -- a reference to be able to set it up later.
+  atmsEmptyEnv :: STRef s (Maybe (Env d i r s m)),
+  -- TODO contra-node
   atmsNodeString :: STRef s (Node d i r s m -> String),
   atmsJustString :: STRef s (JustRule d i r s m -> String),
   atmsDatumString :: STRef s (d -> String),
@@ -293,6 +303,10 @@ data Monad m => Node d i r s m = Node {
   nodeATMS :: ATMS d i r s m
 }
 
+-- |Shortcut to read from the reference to a node's label.
+getNodeLabel :: Monad m => Node d i r s m  -> ATMST s m [Env d i r s m]
+getNodeLabel node = sttLayer $ readSTRef (nodeLabel node)
+
 -- > (defun print-tms-node (node stream ignore)
 -- >   (declare (ignore ignore))
 -- >   (if (tms-node-assumption? node)
@@ -308,7 +322,10 @@ printNode = error "< TODO unimplemented >"
 -- >       (consequence nil)
 -- >       (antecedents nil))
 data Monad m => JustRule d i r s m = JustRule {
-  justIndex :: Int
+  justIndex :: Int,
+  justInformant :: i,
+  justConsequence :: Node d i r s m,
+  justAntecedents :: [Node d i r s m]
 }
 
 -- > ;; In atms.lisp
@@ -352,10 +369,6 @@ data Monad m => Env d i r s m = Env {
 envIsNogood :: Monad m => Env d i r s m -> ATMST s m Bool
 envIsNogood env = do
   fmap isNogood $ sttLayer $ readSTRef $ envWhyNogood env
-
-getNodeLabels ::
-  Monad m => ATMS d i r s m -> Node d i r s m  -> ATMST s m [Env d i r s m]
-getNodeLabels atms node = error "< TODO unimplemented getNodeLabels >"
 
 newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 
@@ -430,7 +443,8 @@ envOrder = error "< TODO unimplemented envOrder >"
 createATMS :: Monad m => String -> ATMST s m (ATMS d i r s m)
 createATMS title = do
   ecInitialAlloc <- getInitialEnvTableAlloc
-  AtmsT $ lift $ lift $ do
+  emptyEnvRef <- sttLayer $ newSTRef Nothing
+  result <- sttLayer $ do
     nc <- newSTRef 0
     jc <- newSTRef 0
     ec <- newSTRef 0
@@ -449,11 +463,14 @@ createATMS title = do
     informantString <- newSTRef (\ inf -> "?")
     enqueueProcedure <- newSTRef (\ _ -> return ())
     debugging <- newSTRef False
-    return (ATMS title nc jc ec etAlloc
-             nodes justs contradictions assumptions
-             etableRef ngtableRef
-             nodeString justString datumString informantString
-             enqueueProcedure debugging)
+    return $ ATMS title nc jc ec etAlloc
+                  nodes justs contradictions assumptions
+                  etableRef ngtableRef emptyEnvRef
+                  nodeString justString datumString informantString
+                  enqueueProcedure debugging
+  emptyEnv <- createEnv result []
+  sttLayer $ writeSTRef emptyEnvRef (Just emptyEnv)
+  return result
 
 
 -- > ;; In atms.lisp
@@ -573,8 +590,17 @@ makeContradiction = error "< TODO unimplemented makeContradiction >"
 -- >         (mapcar #'node-string antecedents))
 -- >   (propagate just nil (list (atms-empty-env atms)))
 -- >   just)
-justifyNode :: Monad m => ATMS d i r s m -> i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
-justifyNode = error "< TODO unimplemented justifyNode >"
+justifyNode ::
+  Monad m => i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
+justifyNode informant consequence antecedents = do
+  let atms = nodeATMS consequence
+  idx <- nextJustCounter atms
+  let just = JustRule idx informant consequence antecedents
+  sttLayer $ push (ByRule just) (nodeJusts consequence)
+  sttLayer $ forM_ antecedents $ \node -> push just $ nodeConsequences node
+  sttLayer $ push just $ atmsJusts atms
+  Just emptyEnv <- sttLayer $ readSTRef $ atmsEmptyEnv atms
+  propagate just Nothing [emptyEnv]
 
 -- > ;; In atms.lisp
 -- > (defun nogood-nodes (informant nodes)
@@ -590,7 +616,10 @@ nogoodNodes = error "< TODO unimplemented nogoodNodes >"
 -- > (defun propagate (just antecedent envs &aux new-envs)
 -- >   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
 -- >       (update new-envs (just-consequence just) just)))
-propagate :: Monad m => JustRule d i r s m -> Node d i r s m -> [Env d i r s m] -> ATMST s m ()
+propagate ::
+  Monad m =>
+    JustRule d i r s m -> Maybe (Node d i r s m) -> [Env d i r s m] ->
+      ATMST s m ()
 propagate = error "< TODO unimplemented propagate >"
 
 -- > ;; In atms.lisp
@@ -881,7 +910,6 @@ setEnvContradictory atms env = do
         when (isSubsetEnv cenv env) $ do
           sttLayer $ writeSTRef (envWhyNogood env) $ ByEnv cenv
           error "< TODO unimplemented setEnvContradictory Quit from here >"
-
 
 -- > ;; In atms.lisp
 -- > (defun remove-env-from-labels (env atms &aux enqueuef)

@@ -56,12 +56,12 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
 
   na <- createNode atms "A" True False
   inGroup "Created Node A" $ do
-    aLabels <- getNodeLabels atms na
+    aLabels <- getNodeLabel na
     "Initially 1 label" ~: 1 !==- length aLabels
 
   nc <- createNode atms "C" True False
   ne <- createNode atms "E" True False
   nh <- createNode atms "H" False False
-  justifyNode atms "R1" nh [nc, ne]
+  justifyNode "R1" nh [nc, ne]
   return ()
 
