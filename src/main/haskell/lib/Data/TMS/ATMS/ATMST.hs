@@ -679,23 +679,24 @@ updateLabel = error "< TODO unimplemented updateLabel >"
 -- >     (unless (eq node antecedent)
 -- >       (setq new-envs nil)
 -- >       (dolist (env envs)
--- >    (if env
--- >        (dolist (node-env (tms-node-label node))
--- >          (setq new-env (union-env env node-env))
--- >          (unless (env-nogood? new-env)
--- >            (do ((nnew-envs new-envs (cdr nnew-envs)))
--- >                ((null nnew-envs) (push new-env new-envs))
--- >              (when (car nnew-envs)
--- >                (case (compare-env new-env (car nnew-envs))
--- >                  ((:EQ :S21) (return nil))
--- >                  (:S12 (rplaca nnew-envs nil)))))))))
+-- >         (if env
+-- >           (dolist (node-env (tms-node-label node))
+-- >             (setq new-env (union-env env node-env))
+-- >             (unless (env-nogood? new-env)
+-- >               (do ((nnew-envs new-envs (cdr nnew-envs)))
+-- >                   ((null nnew-envs) (push new-env new-envs))
+-- >                 (when (car nnew-envs)
+-- >                   (case (compare-env new-env (car nnew-envs))
+-- >                     ((:EQ :S21) (return nil))
+-- >                     (:S12 (rplaca nnew-envs nil)))))))))
 -- >       (setq envs (delete nil new-envs :TEST #'eq))
 -- >       (unless envs (return-from weave nil))))
 -- >   envs)
 weave ::
   Monad m => Maybe (Node d i r s m) -> [Env d i r s m] -> [Node d i r s m] ->
                ATMST s m [Env d i r s m]
-weave = error "< TODO unimplemented weave >"
+weave = do
+  error "< TODO unimplemented weave >"
 
 -- > ;; In atms.lisp
 -- > (defun in-antecedent? (nodes)
