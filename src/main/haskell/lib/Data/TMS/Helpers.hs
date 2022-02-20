@@ -135,3 +135,24 @@ whileListM_ lifter listRef bodyf = whileListM_'
 commaList :: (a -> String) -> [a] -> String
 commaList f [] = ""
 commaList f xs = foldl1 (\ x y -> x ++ ", " ++ y) $ map f xs
+
+-- * Mutable lists (cons cells) in `STT`
+
+data MList s a = MCons (STRef s a) (STRef s (MList s a)) | MNil
+
+fromList :: Monad m => [a] -> STT s m (MList s a)
+fromList [] = return MNil
+fromList (x : xs) = do
+  car <- newSTRef x
+  tail <- fromList xs
+  cdr <- newSTRef tail
+  return $ MCons car cdr
+
+toList :: Monad m => MList s a -> STT s m [a]
+toList MNil = return []
+toList (MCons car cdr) = do
+  x <- readSTRef car
+  ms <- readSTRef cdr
+  xs <- toList ms
+  return $ x : xs
+
