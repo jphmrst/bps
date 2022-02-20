@@ -223,7 +223,9 @@ data Monad m => ATMS d i r s m = ATMS {
   atmsAssumptions :: STRef s [Node d i r s m],
   -- |The environment table.
   atmsEnvTable :: STRef s (EnvTable d i r s m),
-  -- TODO nogood-table, contra-node, env-table, empty-env
+  -- |The table of nogood environments.
+  atmsNogoodTable :: STRef s (EnvTable d i r s m),
+  -- TODO contra-node, empty-env
   atmsNodeString :: STRef s (Node d i r s m -> String),
   atmsJustString :: STRef s (JustRule d i r s m -> String),
   atmsDatumString :: STRef s (d -> String),
@@ -323,8 +325,12 @@ data Justification d i r s m =
 data Explanation d i r s m =
   IsRule (JustRule d i r s m) | IsAssumption (Node d i r s m)
 
-data WhoNogood d i r s m =
+data WhyNogood d i r s m =
   Good | ByJustification (Justification d i r s m) | ByEnv (Env d i r s m)
+
+isNogood :: WhyNogood d i r s m -> Bool
+isNogood Good = False
+isNoGood _ = True
 
 -- > ;; In atms.lisp
 -- > (defstruct (env (:PREDICATE env?)
@@ -339,11 +345,16 @@ data Monad m => Env d i r s m = Env {
   envIndex :: Int,
   envCount :: Int,
   envAssumptions :: [Node d i r s m],
-  envWhyNogood :: STRef s (WhoNogood d i r s m),
+  envWhyNogood :: STRef s (WhyNogood d i r s m),
   envRules :: STRef s [r]
 }
 
-getNodeLabels :: ATMS d i r s m -> Node d i r s m  -> ATMST s m [Env d i r s m]
+envIsNogood :: Monad m => Env d i r s m -> ATMST s m Bool
+envIsNogood env = do
+  fmap isNogood $ sttLayer $ readSTRef $ envWhyNogood env
+
+getNodeLabels ::
+  Monad m => ATMS d i r s m -> Node d i r s m  -> ATMST s m [Env d i r s m]
 getNodeLabels atms node = error "< TODO unimplemented getNodeLabels >"
 
 newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
@@ -430,6 +441,8 @@ createATMS title = do
     assumptions <- newSTRef ([] :: [Node d i r s m])
     etable <- newSTArray (0, ecInitialAlloc) []
     etableRef <- newSTRef (EnvTable etable)
+    ngtable <- newSTArray (0, ecInitialAlloc) []
+    ngtableRef <- newSTRef (EnvTable ngtable)
     nodeString <- newSTRef (show . nodeIndex)
     justString <- newSTRef (show . justIndex)
     datumString <- newSTRef (\ datum -> "?")
@@ -437,7 +450,8 @@ createATMS title = do
     enqueueProcedure <- newSTRef (\ _ -> return ())
     debugging <- newSTRef False
     return (ATMS title nc jc ec etAlloc
-             nodes justs contradictions assumptions etableRef
+             nodes justs contradictions assumptions
+             etableRef ngtableRef
              nodeString justString datumString informantString
              enqueueProcedure debugging)
 
@@ -764,18 +778,24 @@ insertInTable :: Monad m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
 insertInTable atms env =
   let count = envCount env
       tableRef = atmsEnvTable atms
+      ngtRef = atmsNogoodTable atms
   in do
     alloc <- sttLayer $ readSTRef $ atmsEnvTableAlloc atms
     when (alloc < count) $ do
       EnvTable oldArray <- sttLayer $ readSTRef tableRef
+      EnvTable oldNogoodArray <- sttLayer $ readSTRef ngtRef
       incr <- getEnvTableIncr
       let newAlloc = count + incr
         in sttLayer $ do
           newArray <- newSTArray (1, newAlloc) []
+          newNGArray <- newSTArray (1, newAlloc) []
           forM_ [1..alloc] $ \i -> do
             envs <- readSTArray oldArray i
             writeSTArray newArray i envs
+            ngs <- readSTArray oldNogoodArray i
+            writeSTArray newNGArray i ngs
           writeSTRef tableRef $ EnvTable newArray
+          writeSTRef ngtRef $ EnvTable newNGArray
     sttLayer $ do
       table@(EnvTable array) <- readSTRef tableRef
       oldEnvs <- readSTArray array count
@@ -842,17 +862,26 @@ newNogood = error "< TODO unimplemented newNogood >"
 -- > ;; In atms.lisp
 -- > (defun set-env-contradictory (atms env &aux count)
 -- >   (cond ((env-nogood? env) t)
--- >    (t (setq count (env-count env))
--- >       (dolist (entry (atms-nogood-table atms))
--- >         (cond ((> (car entry) count)
--- >                (return nil))
--- >               (t (dolist (cenv (cdr entry))
--- >                    (when (subset-env? cenv env)
--- >                      (setf (env-nogood? env)
--- >                            cenv)
--- >                      (return t)))))))))
-setEnvContradictory :: Monad m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
-setEnvContradictory = error "< TODO unimplemented setEnvContradictory >"
+-- >         (t (setq count (env-count env))
+-- >            (dolist (entry (atms-nogood-table atms))
+-- >              (cond ((> (car entry) count)
+-- >                     (return nil))
+-- >                    (t (dolist (cenv (cdr entry))
+-- >                         (when (subset-env? cenv env)
+-- >                           (setf (env-nogood? env) cenv)
+-- >                           (return t)))))))))
+setEnvContradictory ::
+  Monad m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
+setEnvContradictory atms env = do
+  ifM (envIsNogood env) (return ()) $ do
+    count <- return $ envCount env
+    EnvTable nogoodTableArray <- sttLayer $ readSTRef $ atmsNogoodTable atms
+    forM_ [1..count] $ \i -> do
+      forMM_ (sttLayer $ readSTArray nogoodTableArray i) $ \cenv ->
+        when (isSubsetEnv cenv env) $ do
+          sttLayer $ writeSTRef (envWhyNogood env) $ ByEnv cenv
+          error "< TODO unimplemented setEnvContradictory Quit from here >"
+
 
 -- > ;; In atms.lisp
 -- > (defun remove-env-from-labels (env atms &aux enqueuef)
