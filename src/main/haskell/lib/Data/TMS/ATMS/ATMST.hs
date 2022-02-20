@@ -44,7 +44,9 @@ language governing permissions and limitations under the License.
 
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
-  ATMST, AtmsErr, runATMST, setInitialEnvTableAlloc, setEnvTableIncr,
+  ATMST, AtmsErr, runATMST,
+  setInitialEnvTableAlloc, setEnvTableIncr,
+  getInitialEnvTableAlloc, getEnvTableIncr,
 
   ATMS, createATMS,
 
@@ -220,7 +222,7 @@ data Monad m => ATMS d i r s m = ATMS {
   -- |List of all assumption nodes.
   atmsAssumptions :: STRef s [Node d i r s m],
   -- |The environment table.
-  atmsEnvTable :: EnvTable d i r s m,
+  atmsEnvTable :: STRef s (EnvTable d i r s m),
   -- TODO nogood-table, contra-node, env-table, empty-env
   atmsNodeString :: STRef s (Node d i r s m -> String),
   atmsJustString :: STRef s (JustRule d i r s m -> String),
@@ -399,6 +401,8 @@ envOrder = error "< TODO unimplemented envOrder >"
 
 -- * Basic inference engine interface.
 
+-- |Create a new, empty ATMS.
+--
 -- > ;; In atms.lisp
 -- > (defun create-atms (title &key (node-string 'default-node-string)
 -- >                           (debugging NIL)
@@ -425,6 +429,7 @@ createATMS title = do
     contradictions <- newSTRef ([] :: [Node d i r s m])
     assumptions <- newSTRef ([] :: [Node d i r s m])
     etable <- newSTArray (0, ecInitialAlloc) []
+    etableRef <- newSTRef (EnvTable etable)
     nodeString <- newSTRef (show . nodeIndex)
     justString <- newSTRef (show . justIndex)
     datumString <- newSTRef (\ datum -> "?")
@@ -432,7 +437,7 @@ createATMS title = do
     enqueueProcedure <- newSTRef (\ _ -> return ())
     debugging <- newSTRef False
     return (ATMS title nc jc ec etAlloc
-             nodes justs contradictions assumptions (EnvTable etable)
+             nodes justs contradictions assumptions etableRef
              nodeString justString datumString informantString
              enqueueProcedure debugging)
 
@@ -473,6 +478,8 @@ isOutNode = error "< TODO unimplemented isOutNode >"
 isNodeConsistentWith :: Monad m => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isNodeConsistentWith = error "< TODO unimplemented isNodeConsistentWith >"
 
+-- |Create a new `Node` in an `ATMS`.
+--
 -- > ;; In atms.lisp
 -- > (defun tms-create-node (atms datum &key assumptionp contradictoryp
 -- >                               &aux node)
@@ -690,6 +697,8 @@ removeNode = error "< TODO unimplemented removeNode >"
 
 -- * Creating and extending environments.
 
+-- |Create and return a new `Env` for the given assumptions.
+--
 -- > ;; In atms.lisp
 -- > (defun create-env (atms assumptions &aux e)
 -- >   (setq e (make-env :INDEX (incf (atms-env-counter atms))
@@ -705,7 +714,7 @@ createEnv atms assumptions = do
   whyNogood <- sttLayer $ newSTRef Good
   rules <- sttLayer $ newSTRef []
   env <- return $ Env index (length assumptions) assumptions whyNogood rules
-  insertInTable (atmsEnvTable atms) env
+  insertInTable atms env
   setEnvContradictory atms env
   return env
 -- > ;; In atms.lisp
@@ -751,8 +760,26 @@ findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 -- >         (list count env) table
 -- >         #'(lambda (entry1 entry2)
 -- >             (< (car entry1) (car entry2)))))))
-insertInTable :: Monad m => EnvTable d i r s m -> Env d i r s m -> ATMST s m ()
-insertInTable = error "< TODO unimplemented insertInTable >"
+insertInTable :: Monad m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
+insertInTable atms env =
+  let count = envCount env
+      tableRef = atmsEnvTable atms
+  in do
+    alloc <- sttLayer $ readSTRef $ atmsEnvTableAlloc atms
+    when (alloc < count) $ do
+      EnvTable oldArray <- sttLayer $ readSTRef tableRef
+      incr <- getEnvTableIncr
+      let newAlloc = count + incr
+        in sttLayer $ do
+          newArray <- newSTArray (1, newAlloc) []
+          forM_ [1..alloc] $ \i -> do
+            envs <- readSTArray oldArray i
+            writeSTArray newArray i envs
+          writeSTRef tableRef $ EnvTable newArray
+    sttLayer $ do
+      table@(EnvTable array) <- readSTRef tableRef
+      oldEnvs <- readSTArray array count
+      writeSTArray array count $ env : oldEnvs
 
 -- > ;; In atms.lisp
 -- > (defun lookup-env (assumes)
