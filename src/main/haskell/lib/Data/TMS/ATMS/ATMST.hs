@@ -321,6 +321,9 @@ data Justification d i r s m =
 data Explanation d i r s m =
   IsRule (JustRule d i r s m) | IsAssumption (Node d i r s m)
 
+data WhoNogood d i r s m =
+  Good | ByJustification (Justification d i r s m) | ByEnv (Env d i r s m)
+
 -- > ;; In atms.lisp
 -- > (defstruct (env (:PREDICATE env?)
 -- >            (:PRINT-FUNCTION print-env-structure))
@@ -331,6 +334,11 @@ data Explanation d i r s m =
 -- >       (nogood? nil)
 -- >       (rules nil))                         ; Call this if becomes nogood.
 data Monad m => Env d i r s m = Env {
+  envIndex :: Int,
+  envCount :: Int,
+  envAssumptions :: [Node d i r s m],
+  envWhyNogood :: STRef s (WhoNogood d i r s m),
+  envRules :: STRef s [r]
 }
 
 getNodeLabels :: ATMS d i r s m -> Node d i r s m  -> ATMST s m [Env d i r s m]
