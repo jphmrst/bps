@@ -278,7 +278,9 @@ nextEnvCounter atms = sttLayer $
 -- >   (rules nil)                   ; run when label non-empty.
 -- >   (atms nil))
 data Monad m => Node d i r s m = Node {
-  nodeIndex :: Int
+  nodeIndex :: Int,
+  nodeDatum :: d,
+  nodeLabel :: STRef s [Env d i r s m]
 }
 
 -- > (defun print-tms-node (node stream ignore)
@@ -476,8 +478,15 @@ createNode ::
   Monad m => ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
 createNode atms datum isAssumption isContradictory = do
   idx <- nextNodeCounter atms
-  let node = Node
+  label <- sttLayer $ newSTRef []
+  let node = Node idx datum label
     in do
+      sttLayer $ push node $ atmsNodes atms
+      sttLayer $ when isContradictory $ push node $ atmsContradictions atms
+      when isAssumption $ do
+        sttLayer $ push node $ atmsAssumptions atms
+        selfEnv <- createEnv atms [node]
+        sttLayer $ push selfEnv $ nodeLabel node
       error "< TODO unimplemented createNode >"
 
 -- > ;; In atms.lisp
