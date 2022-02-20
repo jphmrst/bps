@@ -219,6 +219,8 @@ data Monad m => ATMS d i r s m = ATMS {
   atmsContradictions :: STRef s [Node d i r s m],
   -- |List of all assumption nodes.
   atmsAssumptions :: STRef s [Node d i r s m],
+  -- |The environment table.
+  atmsEnvTable :: STArray s Int [Env d i r s m],
   -- TODO nogood-table, contra-node, env-table, empty-env
   atmsNodeString :: STRef s (Node d i r s m -> String),
   atmsJustString :: STRef s (JustRule d i r s m -> String),
@@ -378,13 +380,15 @@ createATMS title = do
     justs <- newSTRef ([] :: [JustRule d i r s m])
     contradictions <- newSTRef ([] :: [Node d i r s m])
     assumptions <- newSTRef ([] :: [Node d i r s m])
+    etable <- newSTArray (0, ecInitialAlloc) []
     nodeString <- newSTRef (show . nodeIndex)
     justString <- newSTRef (show . justIndex)
     datumString <- newSTRef (\ datum -> "?")
     informantString <- newSTRef (\ inf -> "?")
     enqueueProcedure <- newSTRef (\ _ -> return ())
     debugging <- newSTRef False
-    return (ATMS title nc jc ec etAlloc nodes justs contradictions assumptions
+    return (ATMS title nc jc ec etAlloc
+             nodes justs contradictions assumptions etable
              nodeString justString datumString informantString
              enqueueProcedure debugging)
 
