@@ -156,6 +156,12 @@ commaList f xs = foldl1 (\ x y -> x ++ ", " ++ y) $ map f xs
 
 data MList s a = MCons (STRef s a) (STRef s (MList s a)) | MNil
 
+mnull MNil = True
+mnull _ = False
+
+mcar (MCons x _)  = x
+mcdr (MCons _ xs) = xs
+
 fromList :: Monad m => [a] -> STT s m (MList s a)
 fromList [] = return MNil
 fromList (x : xs) = do
@@ -172,6 +178,18 @@ toList (MCons car cdr) = do
   xs <- toList ms
   return $ x : xs
 
+-- |Treating an `MList` as a stack, add a new element at the top of
+-- the stack, and return the new stack top.
+mlistPush :: Monad m => a -> MList s a -> STT s m (MList s a)
+mlistPush item mlist = do
+  itemRef <- newSTRef item
+  mlistRef <- newSTRef mlist
+  return $ MCons itemRef mlistRef
+
+-- |Iterate over the elements of a `MList`.  The body does not
+-- necessarily need operate in the same monad as where the references
+-- originate; the @lifter@ parameter brings the latter into the
+-- former.
 mlistFor_ :: (Monad m0, Monad m) =>
   (forall r . STT s m0 r -> m r) -> MList s a -> (a -> m ()) -> m ()
 mlistFor_ lifter MNil _ = return ()
@@ -180,4 +198,30 @@ mlistFor_ lifter (MCons xref xsref) bodyf = do
   bodyf x
   xs <- lifter $ readSTRef xsref
   mlistFor_ lifter xs bodyf
+
+-- |Like `mlistFor_`, but the body expects an `MCons` cell instead of
+-- the list element itself.  Useful for mutating the list along the
+-- way.
+mlistForCons_ :: (Monad m0, Monad m) =>
+  (forall r . STT s m0 r -> m r) -> MList s a -> (MList s a -> m ()) -> m ()
+mlistForCons_ _ MNil _ = return ()
+mlistForCons_ lifter mc@(MCons _ _) bodyf = do
+  bodyf mc
+  xs <- lifter $ readSTRef (mcdr mc)
+  mlistForCons_ lifter xs bodyf
+
+-- |A combination of `mlistForCons_` and `forMwhile_`: iterate over
+-- the `MCons` cell of a list, with a trigger for an early exit.  Note
+-- that the monad for the continuation condition is over the overall
+-- monad @m@, not the `STT` wrapped monad @m0@.
+mlistForConsWhile_ ::
+  (Monad m0, Monad m) =>
+    (forall r . STT s m0 r -> m r) -> m Bool -> MList s a -> (MList s a -> m ())
+      -> m ()
+mlistForConsWhile_ _ _ MNil _ = return ()
+mlistForConsWhile_ lifter moreM mc@(MCons _ _) bodyf =
+  whenM moreM $ do
+    bodyf mc
+    xs <- lifter $ readSTRef (mcdr mc)
+    mlistForConsWhile_ lifter moreM xs bodyf
 
