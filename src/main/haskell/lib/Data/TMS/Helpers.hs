@@ -33,6 +33,22 @@ forMM_ srcM f = do
   src <- srcM
   forM_ src f
 
+-- | Like `forM_`, but with an extra check run after the body of the
+-- loop.  If the check fails, the loop exits early.
+forMwhile_ :: Monad m => [a] -> m Bool -> (a -> m ()) -> m ()
+forMwhile_ [] _ _ = return ()
+forMwhile_ (x : xs) pred bodyf = do
+  whenM pred $ do
+    bodyf x
+    forMwhile_ xs pred bodyf
+
+-- | Like `forMwhile_`, but the source list is also the result of a
+-- monadic computation.
+forMMwhile_ :: Monad m => m [a] -> m Bool -> (a -> m ()) -> m ()
+forMMwhile_ xsM condM bodyf = do
+  xs <- xsM
+  forMwhile_ xs condM bodyf
+
 -- | Like `forMM_`, except instead of a fixed list, loop over `Maybe`
 -- values returned from a subcomputation, until that subcomputation
 -- returns `Nothing`.
@@ -155,4 +171,13 @@ toList (MCons car cdr) = do
   ms <- readSTRef cdr
   xs <- toList ms
   return $ x : xs
+
+mlistFor_ :: (Monad m0, Monad m) =>
+  (forall r . STT s m0 r -> m r) -> MList s a -> (a -> m ()) -> m ()
+mlistFor_ lifter MNil _ = return ()
+mlistFor_ lifter (MCons xref xsref) bodyf = do
+  x <- lifter $ readSTRef xref
+  bodyf x
+  xs <- lifter $ readSTRef xsref
+  mlistFor_ lifter xs bodyf
 
