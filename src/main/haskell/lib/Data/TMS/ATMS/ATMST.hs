@@ -811,10 +811,16 @@ weave antecedent givenEnvs antecedents = do
               newMCons <- mlistPush (Just newEnv) oldMCons
               writeSTRef newEnvs newMCons
 
+      -- So we have nearly produced the refinement of ENVS for this
+      -- NODE in the ANTECEDENTS.  It might have spurious NILs, so we
+      -- strip those out and update envsRef.  If ever we narrow ENVS
+      -- down to nothing, then we can short-circuit returning that
+      -- empty list.
       preFinalNewEnvs <- sttLayer $ readSTRef newEnvs
       filteredNewEnvs <- sttLayer $ mlistUnmaybe preFinalNewEnvs
       sttLayer $ writeSTRef envsRef filteredNewEnvs
 
+  -- Finally, return the last refinement of ENVS.
   envs <- sttLayer $ readSTRef envsRef
   sttLayer $ toList envs
 
