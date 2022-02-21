@@ -506,7 +506,8 @@ isOutNode = error "< TODO unimplemented isOutNode >"
 -- > (defun node-consistent-with? (n env)
 -- >   (some #'(lambda (le) (not (env-nogood? (union-env le env))))
 -- >    (tms-node-label n)))
-isNodeConsistentWith :: Monad m => Node d i r s m -> Env d i r s m -> ATMST s m Bool
+isNodeConsistentWith ::
+  Monad m => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isNodeConsistentWith = error "< TODO unimplemented isNodeConsistentWith >"
 
 -- |Create a new `Node` in an `ATMS`.
@@ -644,7 +645,9 @@ propagate just antecedent envs = do
 -- >       (rplaca new-envs nil)))
 -- >   (setq new-envs (delete nil new-envs :TEST #'eq))
 -- >   (unless new-envs (return-from update nil))))
-update :: Monad m => [Env d i r s m] -> Node d i r s m -> JustRule d i r s m -> ATMST s m ()
+update ::
+  Monad m =>
+    [Env d i r s m] -> Node d i r s m -> JustRule d i r s m -> ATMST s m ()
 update = error "< TODO unimplemented update >"
 
 -- |Internal method to update the label of this node to include the
@@ -672,7 +675,8 @@ update = error "< TODO unimplemented update >"
 -- >   (dolist (new-env new-envs) (push node (env-nodes new-env)))
 -- >   (setf (tms-node-label node) (delete nil envs :TEST #'eq))
 -- >   new-envs)
-updateLabel :: Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m [Env d i r s m]
+updateLabel ::
+  Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m [Env d i r s m]
 updateLabel = error "< TODO unimplemented updateLabel >"
 
 -- |Update the label of node @antecedent@ to include the given @envs@
@@ -775,7 +779,8 @@ isWeave = error "< TODO unimplemented isInAntecedent >"
 -- > ;; In atms.lisp
 -- > (defun supporting-antecedent? (nodes env)
 -- >   (dolist (node nodes t) (unless (in-node? node env) (return nil))))
-isSupportingAntecedent :: Monad m => [Node d i r s m] -> Env d i r s m -> ATMST s m Bool
+isSupportingAntecedent ::
+  Monad m => [Node d i r s m] -> Env d i r s m -> ATMST s m Bool
 isSupportingAntecedent = error "< TODO unimplemented isSupportingAntecedent >"
 
 -- > ;; In atms.lisp
@@ -809,7 +814,8 @@ removeNode = error "< TODO unimplemented removeNode >"
 -- >    (insert-in-table (atms-env-table atms) e))
 -- >   (set-env-contradictory atms e)
 -- >   e)
-createEnv :: Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m (Env d i r s m)
+createEnv ::
+  Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m (Env d i r s m)
 createEnv atms assumptions = do
   index <- nextEnvCounter atms
   whyNogood <- sttLayer $ newSTRef Good
@@ -847,7 +853,8 @@ unionEnv e1 e2 =
 -- >                             #'assumption-order))
 -- >   (or (lookup-env nassumes)
 -- >       (create-env (tms-node-atms assumption) nassumes)))
-consEnv :: Monad m => Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
+consEnv ::
+  Monad m => Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 consEnv = error "< TODO unimplemented consEnv >"
 
 -- > ;; In atms.lisp
@@ -857,7 +864,8 @@ consEnv = error "< TODO unimplemented consEnv >"
 -- >   ;; Presumes the list of assumptions is ordered properly
 -- >   (or (lookup-env assumptions)
 -- >       (create-env atms assumptions)))
-findOrMakeEnv :: Monad m => [Node d i r s m] -> ATMS d i r s m -> ATMST s m (Env d i r s m)
+findOrMakeEnv ::
+  Monad m => [Node d i r s m] -> ATMS d i r s m -> ATMST s m (Env d i r s m)
 findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 
 -- * Env tables.
@@ -927,7 +935,8 @@ isSubsetEnv = error "< TODO unimplemented isSubsetEnv >"
 -- >         :S12))
 -- >    ((subsetp (env-assumptions e2) (env-assumptions e1))
 -- >     :S21)))
-compareEnv :: Monad m => Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
+compareEnv ::
+  Monad m => Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 compareEnv = error "< TODO unimplemented compareEnv >"
 
 -- * Processing nogoods
@@ -952,7 +961,9 @@ compareEnv = error "< TODO unimplemented compareEnv >"
 -- >               (subset-env? cenv old))
 -- >      (setf (env-nogood? old) cenv)
 -- >      (remove-env-from-labels old atms))))))
-newNogood :: Monad m => ATMS d i r s m -> Env d i r s m -> Justification d i r s m -> ATMST s m ()
+newNogood ::
+  Monad m =>
+    ATMS d i r s m -> Env d i r s m -> Justification d i r s m -> ATMST s m ()
 newNogood = error "< TODO unimplemented newNogood >"
 
 -- > ;; In atms.lisp
@@ -987,7 +998,8 @@ setEnvContradictory atms env = do
 -- >   (dolist (node (env-nodes env))
 -- >     (setf (tms-node-label node)
 -- >      (delete env (tms-node-label node) :COUNT 1))))
-removeEnvFromLabels :: Monad m => Env d i r s m -> ATMS d i r s m -> ATMST s m ()
+removeEnvFromLabels ::
+  Monad m => Env d i r s m -> ATMS d i r s m -> ATMST s m ()
 removeEnvFromLabels = error "< TODO unimplemented removeEnvFromLabels >"
 
 -- * Interpretation construction
@@ -1008,7 +1020,8 @@ removeEnvFromLabels = error "< TODO unimplemented removeEnvFromLabels >"
 -- >                  (let ((result
 -- >                         (mapcan #'(lambda (alt)
 -- >                                     (format *trace-output*
--- >                                         "~%    - ~a --> ~a" alt (tms-node-label alt))
+-- >                                         "~%    - ~a --> ~a"
+-- >                                         alt (tms-node-label alt))
 -- >                                     (copy-list (tms-node-label alt)))
 -- >                                 alt-set)))
 -- >                    (format *trace-output*
@@ -1033,7 +1046,8 @@ removeEnvFromLabels = error "< TODO unimplemented removeEnvFromLabels >"
 -- >       (dolist (solution solutions)
 -- >    (extend-via-defaults solution defaults defaults)))
 -- >     (delete nil *solutions* :TEST #'eq)))
-interpretations :: Monad m => ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m ()
+interpretations ::
+  Monad m => ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m ()
 interpretations = error "< TODO unimplemented interpretations >"
 
 -- > ;; In atms.lisp
@@ -1053,7 +1067,8 @@ interpretations = error "< TODO unimplemented interpretations >"
 -- >         (unless (env-nogood? new-solution)
 -- >           (get-depth-solutions1 new-solution
 -- >                                 (cdr choice-sets)))))))
-getDepthSolutions1 :: Monad m => Env d i r s m -> [[Env d i r s m]] -> ATMST s m ()
+getDepthSolutions1 ::
+  Monad m => Env d i r s m -> [[Env d i r s m]] -> ATMST s m ()
 getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
 
 -- > ;; In atms.lisp
@@ -1071,7 +1086,9 @@ getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
 -- >     (setq new-solution (cons-env (car defaults) solution))
 -- >     (unless (env-nogood? new-solution)
 -- >       (extend-via-defaults new-solution (cdr defaults) original))))
-extendViaDefaults :: Monad m => Env d i r s m -> [Node d i r s m] -> [Node d i r s m] -> ATMST s m ()
+extendViaDefaults ::
+  Monad m =>
+    Env d i r s m -> [Node d i r s m] -> [Node d i r s m] -> ATMST s m ()
 extendViaDefaults = error "< TODO unimplemented extendViaDefaults >"
 
 -- * Generating explanations
@@ -1082,7 +1099,9 @@ extendViaDefaults = error "< TODO unimplemented extendViaDefaults >"
 
 -- > ;; In atms.lisp
 -- > (defun explain-node (node env) (explain-node-1 env node nil nil))
-explainNode :: Monad m => Node d i r s m -> Env d i r s m -> ATMST s m [Justification d i r s m]
+explainNode ::
+  Monad m =>
+    Node d i r s m -> Env d i r s m -> ATMST s m [Justification d i r s m]
 explainNode = error "< TODO unimplemented explainNode >"
 
 -- > ;; In atms.lisp
@@ -1101,11 +1120,16 @@ explainNode = error "< TODO unimplemented explainNode >"
 -- >                   (unless (in-node? a env) (return t)))
 -- >          (let ((new-explanation explanation))
 -- >            (dolist (a (just-antecedents just)
--- >                       (return-from explain-node-1 (cons just new-explanation)))
+-- >                       (return-from explain-node-1
+-- >                         (cons just new-explanation)))
 -- >              (setq new-explanation
 -- >                    (explain-node-1 env a queued-nodes new-explanation))
 -- >              (unless new-explanation (return nil)))))))))
-explainNode1 :: Monad m => Env d i r s m -> Node d i r s m -> [Node d i r s m] -> [Justification d i r s m] -> ATMST s m [Explanation d i r s m]
+explainNode1 ::
+  Monad m =>
+    Env d i r s m -> Node d i r s m -> [Node d i r s m] ->
+      [Justification d i r s m] ->
+        ATMST s m [Explanation d i r s m]
 explainNode1 = error "< TODO unimplemented explainNode1 >"
 
 -- > ;;; Printing
