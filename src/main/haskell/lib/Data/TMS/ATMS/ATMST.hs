@@ -415,17 +415,19 @@ orderedInsert = error "< TODO unimplemented orderedInsert >"
 orderedPush :: a -> [a] -> (a -> a -> Bool) -> [a]
 orderedPush = error "< TODO unimplemented orderedPush >"
 
+-- |We order assumptions in `Env` lists by their index.
+--
 -- > ;; In atms.lisp
 -- > (defun assumption-order (a1 a2)
 -- >   (< (tms-node-index a1) (tms-node-index a2)))
 assumptionOrder :: Monad m => Node d i r s m -> Node d i r s m -> Bool
-assumptionOrder = error "< TODO unimplemented assumptionOrder >"
+assumptionOrder n1 n2 = nodeIndex n1 < nodeIndex n2
 
 -- > ;; In atms.lisp
 -- > (defun env-order (e1 e2)
 -- >   (< (env-index e1) (env-index e2)))
-envOrder :: Monad m => Node d i r s m -> Node d i r s m -> Bool
-envOrder = error "< TODO unimplemented envOrder >"
+envOrder :: Monad m => Env d i r s m -> Env d i r s m -> Bool
+envOrder e1 e2 = envIndex e1 < envIndex e2
 
 -- * Basic inference engine interface.
 
@@ -869,7 +871,11 @@ removeNode = error "< TODO unimplemented removeNode >"
 
 -- * Creating and extending environments.
 
--- |Create and return a new `Env` for the given assumptions.
+-- |Create and return a new `Env` for the given assumptions.  Note
+-- that this function does not sort or otherwise organize
+-- @assumptions@, and it only called with an empty or singleton list.
+-- Instead, it is `consEnv` which inserts nodes in order when one
+-- environement is defined in terms of another.
 --
 -- > ;; In atms.lisp
 -- > (defun create-env (atms assumptions &aux e)
@@ -886,8 +892,7 @@ createEnv atms assumptions = do
   index <- nextEnvCounter atms
   whyNogood <- sttLayer $ newSTRef Good
   rules <- sttLayer $ newSTRef []
-  env <- return $ Env index (length assumptions) (sortOn nodeIndex assumptions)
-                      whyNogood rules
+  env <- return $ Env index (length assumptions) assumptions whyNogood rules
   insertInTable atms env
   setEnvContradictory atms env
   return env
@@ -914,6 +919,9 @@ unionEnv e1 e2 =
             sttLayer $ writeSTRef acc newE2
           sttLayer $ readSTRef acc
 
+-- |Derive an environment from the addition of one additional
+-- assumption to a previous `Env`'s assumption list.
+--
 -- > ;; In atms.lisp
 -- > (defun cons-env (assumption env &aux nassumes)
 -- >   (setq nassumes (ordered-insert assumption
@@ -923,7 +931,12 @@ unionEnv e1 e2 =
 -- >       (create-env (tms-node-atms assumption) nassumes)))
 consEnv ::
   Monad m => Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
-consEnv = error "< TODO unimplemented consEnv >"
+consEnv assumption env = do
+  let nassumes = orderedInsert assumption (envAssumptions env) assumptionOrder
+  envByLookup <- lookupEnv nassumes
+  case envByLookup of
+    Just prevEnv -> return prevEnv
+    Nothing -> createEnv (nodeATMS assumption) nassumes
 
 -- > ;; In atms.lisp
 -- > (defun find-or-make-env (assumptions atms)
@@ -981,8 +994,8 @@ insertInTable atms env = do
 -- >           nil)
 -- >     (if (equal (env-assumptions env) assumes)
 -- >    (return env))))
-lookupEnv :: Monad m => [Node d i r s m] -> ATMST s m (Env d i r s m)
-lookupEnv = error "< TODO unimplemented lookupEnv >"
+lookupEnv :: Monad m => [Node d i r s m] -> ATMST s m (Maybe (Env d i r s m))
+lookupEnv ns = error "< TODO unimplemented lookupEnv >"
 
 -- > ;; In atms.lisp
 -- > (defun subset-env? (e1 e2)
