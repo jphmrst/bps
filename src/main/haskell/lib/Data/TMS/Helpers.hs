@@ -159,8 +159,8 @@ data MList s a = MCons (STRef s a) (STRef s (MList s a)) | MNil
 mnull MNil = True
 mnull _ = False
 
-mcar (MCons x _)  = x
-mcdr (MCons _ xs) = xs
+mcar (MCons x _)  = readSTRef x
+mcdr (MCons _ xs) = readSTRef xs
 
 fromList :: Monad m => [a] -> STT s m (MList s a)
 fromList [] = return MNil
@@ -177,6 +177,48 @@ toList (MCons car cdr) = do
   ms <- readSTRef cdr
   xs <- toList ms
   return $ x : xs
+
+mlistMap :: Monad m => (a -> b) -> MList s a -> STT s m (MList s b)
+mlistMap f MNil = return MNil
+mlistMap f (MCons xref xsref) = do
+  x <- readSTRef xref
+  xs <- readSTRef xsref
+  xref' <- newSTRef $ f x
+  xs' <- mlistMap f xs
+  xsref' <- newSTRef xs'
+  return $ MCons xref' xsref'
+
+mlistFilter :: Monad m => (a -> Bool) -> MList s a -> STT s m (MList s a)
+mlistFilter p l = do
+  (_, result) <- flt p l
+  return result
+  where
+    flt :: Monad m => (a -> Bool) -> MList s a -> STT s m (Bool, MList s a)
+    flt pred l@MNil = return (False, l)
+    flt pred l@(MCons xref xsref) = do
+      x <- readSTRef xref
+      xs <- readSTRef xsref
+      (changed, xs') <- flt pred xs
+      if pred x
+      then if changed
+           then do
+             xsref' <- newSTRef xs'
+             return (True, MCons xref xsref')
+           else return (False, l)
+      else return (True, xs')
+
+mlistUnmaybe :: Monad m => MList s (Maybe a) -> STT s m (MList s a)
+mlistUnmaybe MNil = return MNil
+mlistUnmaybe (MCons xref xsref) = do
+  x <- readSTRef xref
+  xs <- readSTRef xsref
+  xs' <- mlistUnmaybe xs
+  case x of
+    Nothing -> return xs'
+    Just x' -> do
+      xref' <- newSTRef x'
+      xsref' <- newSTRef xs'
+      return $ MCons xref' xsref'
 
 -- |Treating an `MList` as a stack, add a new element at the top of
 -- the stack, and return the new stack top.
@@ -207,7 +249,7 @@ mlistForCons_ :: (Monad m0, Monad m) =>
 mlistForCons_ _ MNil _ = return ()
 mlistForCons_ lifter mc@(MCons _ _) bodyf = do
   bodyf mc
-  xs <- lifter $ readSTRef (mcdr mc)
+  xs <- lifter $ mcdr mc
   mlistForCons_ lifter xs bodyf
 
 -- |A combination of `mlistForCons_` and `forMwhile_`: iterate over
@@ -216,12 +258,17 @@ mlistForCons_ lifter mc@(MCons _ _) bodyf = do
 -- monad @m@, not the `STT` wrapped monad @m0@.
 mlistForConsWhile_ ::
   (Monad m0, Monad m) =>
-    (forall r . STT s m0 r -> m r) -> m Bool -> MList s a -> (MList s a -> m ())
+    (forall r . STT s m0 r -> m r) -> MList s a -> m Bool -> (MList s a -> m ())
       -> m ()
-mlistForConsWhile_ _ _ MNil _ = return ()
-mlistForConsWhile_ lifter moreM mc@(MCons _ _) bodyf =
+mlistForConsWhile_ _ MNil _ _ = return ()
+mlistForConsWhile_ lifter mc@(MCons _ _) moreM bodyf =
   whenM moreM $ do
     bodyf mc
-    xs <- lifter $ readSTRef (mcdr mc)
-    mlistForConsWhile_ lifter moreM xs bodyf
+    xs <- lifter $ mcdr mc
+    mlistForConsWhile_ lifter xs moreM bodyf
 
+-- |Overwrite the @car@ slot of the given `MCons` with the given
+-- value.  Named after the Common Lisp function with the same
+-- behavior.
+rplaca :: Monad m => MList s a -> a -> STT s m ()
+rplaca (MCons r _) v = writeSTRef r v

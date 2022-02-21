@@ -74,6 +74,7 @@ import Control.Monad.ST.Trans
 -- import Control.Monad.Except
 import Control.Monad.Trans.Except
 import Control.Monad.Extra
+import Data.List
 import Data.TMS.Helpers
 
 -- * The @ATMST@ monad transformer
@@ -365,6 +366,9 @@ data Monad m => Env d i r s m = Env {
   envWhyNogood :: STRef s (WhyNogood d i r s m),
   envRules :: STRef s [r]
 }
+
+instance Monad m => Eq (Env d i r s m) where
+  e1 == e2 = (envIndex e1) == (envIndex e2)
 
 envIsNogood :: Monad m => Env d i r s m -> ATMST s m Bool
 envIsNogood env = do
@@ -746,16 +750,72 @@ weave ::
   Monad m => Maybe (Node d i r s m) -> [Env d i r s m] -> [Node d i r s m] ->
                ATMST s m [Env d i r s m]
 weave antecedent givenEnvs antecedents = do
-  envs <- sttLayer $ fromList givenEnvs
+  origEnvs <- sttLayer $ fromList givenEnvs
+  envsRef <- sttLayer $ newSTRef origEnvs
+
   forM_ antecedents $ \node ->
     unless (maybe False (node ==) antecedent) $ do
-      newEnvs <- sttLayer $ newSTRef []
+
+      -- From loop to loop we update what's stored under envsRef, so
+      -- we start this outer loop by reading what we start off with
+      -- there.
+      envs <- sttLayer $ readSTRef envsRef
+
+      -- We will update envs with the list built in newEnvs.
+      newEnvs <- sttLayer $ newSTRef MNil
+
+      -- We look at all pairs of
+      --  - An Env from the passed-in ENVS, plus
+      --  - An Env from the NODE's label.
+      -- The union of these two is NEW-ENV, and the body of the loop
+      -- considers how we should incorporate NEW-ENV into NEW-ENVS.
       mlistFor_ sttLayer envs $ \env -> do
         forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
           newEnv <- unionEnv env nodeEnv
+
+          -- We are not interested in nogood environments, so we skip
+          -- filing the union if it is nogood.
           unlessM (envIsNogood newEnv) $ do
-            error "< TODO unimplemented weave --- the inner do loop >"
-      error "< TODO unimplemented weave --- after the double loops>"
+
+            -- If NEW-ENV is a superset of (or is equal to) anything
+            -- already in NEW-ENVS, then NEW-ENV is redundant, and we
+            -- abort the body of the inner match-searching loop
+            -- without adding NEW-ENV to NEW-ENVS.
+            --
+            -- Otherwise if anything already in NEW-ENVS is a superset
+            -- of NEW-ENV, then (1) NEW-ENV makes that element
+            -- redundant, and we strip it out of NEW-ENVS; and (2) we
+            -- add NEW-ENV to NEW-ENVS.
+
+            addEnv <- sttLayer $ newSTRef True
+
+            oldMCons <- sttLayer $ readSTRef newEnvs
+            mlistForConsWhile_ sttLayer oldMCons
+                               (sttLayer $ readSTRef addEnv) $ \ cons ->
+              case cons of
+                MNil -> return () -- Should not be possible
+                mc@(MCons carRef cdrRef) -> do
+                  maybeCar <- sttLayer $ readSTRef carRef
+                  case maybeCar of
+                    Nothing -> return ()
+                    Just car ->
+                      case compareEnv newEnv car of
+                        EQenv  -> sttLayer $ writeSTRef addEnv False
+                        S12env -> sttLayer $ rplaca cons Nothing
+                        S21env -> sttLayer $ writeSTRef addEnv False
+                        DisjEnv -> return ()
+
+            -- If we haven't found newEnv to be redundant, then add it
+            -- to newEnvs.
+            sttLayer $ whenM (readSTRef addEnv) $ do
+              newMCons <- mlistPush (Just newEnv) oldMCons
+              writeSTRef newEnvs newMCons
+
+      preFinalNewEnvs <- sttLayer $ readSTRef newEnvs
+      filteredNewEnvs <- sttLayer $ mlistUnmaybe preFinalNewEnvs
+      sttLayer $ writeSTRef envsRef filteredNewEnvs
+
+  envs <- sttLayer $ readSTRef envsRef
   sttLayer $ toList envs
 
 -- > ;; In atms.lisp
@@ -820,10 +880,12 @@ createEnv atms assumptions = do
   index <- nextEnvCounter atms
   whyNogood <- sttLayer $ newSTRef Good
   rules <- sttLayer $ newSTRef []
-  env <- return $ Env index (length assumptions) assumptions whyNogood rules
+  env <- return $ Env index (length assumptions) (sortOn nodeIndex assumptions)
+                      whyNogood rules
   insertInTable atms env
   setEnvContradictory atms env
   return env
+
 -- > ;; In atms.lisp
 -- > (defun union-env (e1 e2)
 -- >   (when (> (env-count e1) (env-count e2))
@@ -926,6 +988,13 @@ lookupEnv = error "< TODO unimplemented lookupEnv >"
 isSubsetEnv :: Monad m => Env d i r s m -> Env d i r s m -> Bool
 isSubsetEnv = error "< TODO unimplemented isSubsetEnv >"
 
+-- | The possible results of comparing two `Env`s.
+data EnvCompare =
+  EQenv     -- ^ Two `Env`s are the same
+  | S12env  -- ^ The first `Env` is a subset of the second.
+  | S21env  -- ^ The second `Env` is a subset of the first.
+  | DisjEnv -- ^ Two `Env`s are disjoint.
+
 -- > ;; In atms.lisp
 -- > (defun compare-env (e1 e2)
 -- >   (cond ((eq e1 e2) :EQ)
@@ -935,10 +1004,28 @@ isSubsetEnv = error "< TODO unimplemented isSubsetEnv >"
 -- >         :S12))
 -- >    ((subsetp (env-assumptions e2) (env-assumptions e1))
 -- >     :S21)))
-compareEnv ::
-  Monad m => Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
-compareEnv = error "< TODO unimplemented compareEnv >"
+compareEnv :: Monad m => Env d i r s m -> Env d i r s m -> EnvCompare
+compareEnv e1 e2 =
+  if e1 == e2
+  then EQenv
+  else if envCount e1 < envCount e2
+       then if nodeListIsSubsetEq (envAssumptions e1) (envAssumptions e2)
+            then S12env
+            else DisjEnv
+       else if nodeListIsSubsetEq (envAssumptions e2) (envAssumptions e1)
+            then S21env
+            else DisjEnv
 
+-- |Return true if the first sorted (by `Env` index) node list is a
+-- subset of the second.
+nodeListIsSubsetEq :: Monad m => [Node d i r s m] -> [Node d i r s m] -> Bool
+nodeListIsSubsetEq [] _ = True
+nodeListIsSubsetEq _ [] = False
+nodeListIsSubsetEq l1@(x : xs) (y : ys) =
+  case nodeIndex x `compare` nodeIndex y of
+    LT -> False
+    EQ -> nodeListIsSubsetEq xs ys
+    GT -> nodeListIsSubsetEq l1 ys
 -- * Processing nogoods
 
 -- > ;; In atms.lisp
