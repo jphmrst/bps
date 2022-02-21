@@ -300,6 +300,9 @@ data Monad m => Node d i r s m = Node {
   nodeATMS :: ATMS d i r s m
 }
 
+instance Monad m => Eq (Node d i r s m) where
+  n1 == n2 = nodeIndex n1 == nodeIndex n2
+
 -- |Shortcut to read from the reference to a node's label.
 getNodeLabel :: Monad m => Node d i r s m  -> ATMST s m [Env d i r s m]
 getNodeLabel node = sttLayer $ readSTRef (nodeLabel node)
@@ -729,7 +732,7 @@ updateLabel = error "< TODO unimplemented updateLabel >"
 -- >       ;; this NODE in the ANTECEDENTS.  It might have spurious
 -- >       ;; NILs, so we strip those out and update ENVS.  If ever
 -- >       ;; we narrow ENVS down to nothing, then we can short-
--- >       ;; curcuit returning that empty list.
+-- >       ;; circuit returning that empty list.
 -- >       (setq envs (delete nil new-envs :TEST #'eq))
 -- >       (unless envs (return-from weave nil))))
 -- >
@@ -738,8 +741,18 @@ updateLabel = error "< TODO unimplemented updateLabel >"
 weave ::
   Monad m => Maybe (Node d i r s m) -> [Env d i r s m] -> [Node d i r s m] ->
                ATMST s m [Env d i r s m]
-weave = do
-  error "< TODO unimplemented weave >"
+weave antecedent givenEnvs antecedents = do
+  envs <- sttLayer $ fromList givenEnvs
+  forM_ antecedents $ \node ->
+    unless (maybe False (node ==) antecedent) $ do
+      newEnvs <- sttLayer $ newSTRef []
+      mlistFor_ sttLayer envs $ \env -> do
+        forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
+          newEnv <- unionEnv env nodeEnv
+          unlessM (envIsNogood newEnv) $ do
+            error "< TODO unimplemented weave --- the inner do loop >"
+      error "< TODO unimplemented weave --- after the double loops>"
+  sttLayer $ toList envs
 
 -- > ;; In atms.lisp
 -- > (defun in-antecedent? (nodes)
@@ -807,15 +820,25 @@ createEnv atms assumptions = do
   return env
 -- > ;; In atms.lisp
 -- > (defun union-env (e1 e2)
--- >   (when (> (env-count e1)
--- >       (env-count e2))
+-- >   (when (> (env-count e1) (env-count e2))
 -- >     (psetq e1 e2 e2 e1))
 -- >   (dolist (assume (env-assumptions e1))
 -- >     (setq e2 (cons-env assume e2))
 -- >     (if (env-nogood? e2) (return nil)))
 -- >   e2)
-unionEnv :: Monad m => Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
-unionEnv = error "< TODO unimplemented unionEnv >"
+unionEnv ::
+  Monad m => Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
+unionEnv e1 e2 =
+  if envCount e1 > envCount e2 then unionEnv' e2 e1 else unionEnv' e1 e2
+  where unionEnv' e1 e2 = do
+          acc <- sttLayer $ newSTRef e2
+          forMwhile_ (envAssumptions e1)
+                     (do e2 <- sttLayer $ readSTRef acc
+                         notM $ envIsNogood e2) $ \assume -> do
+            oldE2 <- sttLayer $ readSTRef acc
+            newE2 <- consEnv assume oldE2
+            sttLayer $ writeSTRef acc newE2
+          sttLayer $ readSTRef acc
 
 -- > ;; In atms.lisp
 -- > (defun cons-env (assumption env &aux nassumes)
