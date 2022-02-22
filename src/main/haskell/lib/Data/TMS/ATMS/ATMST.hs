@@ -53,7 +53,7 @@ module Data.TMS.ATMS.ATMST (
   Node, createNode, assumeNode, makeContradiction,
   justifyNode, removeNode, nodeString, defaultNodeString,
   isTrueNode, isInNode, isOutNode, isNodeConsistentWith,
-  getNodeLabel,
+  getNodeLabel, getNodeIsContradictory,
 
   JustRule, Justification, Explanation,
 
@@ -308,6 +308,11 @@ instance Monad m => Eq (Node d i r s m) where
 getNodeLabel :: Monad m => Node d i r s m  -> ATMST s m [Env d i r s m]
 getNodeLabel node = sttLayer $ readSTRef (nodeLabel node)
 
+-- |Shortcut to read the current value of a `Node`'s is-contradictory
+-- flag.
+getNodeIsContradictory :: Monad m => Node d i r s m  -> ATMST s m Bool
+getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
+
 -- > (defun print-tms-node (node stream ignore)
 -- >   (declare (ignore ignore))
 -- >   (if (tms-node-assumption? node)
@@ -363,6 +368,7 @@ data Monad m => Env d i r s m = Env {
   envIndex :: Int,
   envCount :: Int,
   envAssumptions :: [Node d i r s m],
+  envNodes :: STRef s [Node d i r s m],
   envWhyNogood :: STRef s (WhyNogood d i r s m),
   envRules :: STRef s [r]
 }
@@ -648,16 +654,26 @@ propagate just antecedent envs = do
 -- >     (setf (tms-node-rules consequence) nil))
 -- >   (dolist (supported-just (tms-node-consequences consequence))
 -- >     (propagate supported-just consequence new-envs)
--- >   (do ((new-envs new-envs (cdr new-envs)))
--- >       ((null new-envs))
--- >     (unless (member (car new-envs) (tms-node-label consequence))
--- >       (rplaca new-envs nil)))
--- >   (setq new-envs (delete nil new-envs :TEST #'eq))
--- >   (unless new-envs (return-from update nil))))
+-- >     (do ((new-envs new-envs (cdr new-envs)))
+-- >         ((null new-envs))
+-- >       (unless (member (car new-envs) (tms-node-label consequence))
+-- >         (rplaca new-envs nil)))
+-- >     (setq new-envs (delete nil new-envs :TEST #'eq))
+-- >     (unless new-envs
+-- >       (return-from update nil))))
 update ::
   Monad m =>
     [Env d i r s m] -> Node d i r s m -> JustRule d i r s m -> ATMST s m ()
-update = error "< TODO unimplemented update >"
+update newEnvs consequence just = do
+  let atms = nodeATMS consequence
+
+  -- If the consequence node is a contradiction, then we can mark all
+  -- of the environments implying it as contradictory as well.
+  ifM (getNodeIsContradictory consequence)
+    (forM_ newEnvs $ \ env -> newNogood atms env $ ByRule just) $
+
+    -- Otherwise we propagate further.
+    do error "< TODO unimplemented update not isContradictory >"
 
 -- |Internal method to update the label of this node to include the
 -- given environments.  The inclusion is not simply list extension;
@@ -668,11 +684,13 @@ update = error "< TODO unimplemented update >"
 -- > ;; In atms.lisp
 -- > (defun update-label (node new-envs &aux envs)
 -- >   (setq envs (tms-node-label node))
+-- >
 -- >   (do ((new-envs new-envs (cdr new-envs)))
 -- >       ((null new-envs))
 -- >     (do ((nenvs envs (cdr nenvs)))
--- >    ((null nenvs) (push (car new-envs) envs))
--- >       (cond ((null (car nenvs)))
+-- >         ((null nenvs) (push (car new-envs) envs))
+-- >       (cond
+-- >        ((null (car nenvs)))
 -- >        ((null (car new-envs)))
 -- >        ((case (compare-env (car new-envs) (car nenvs))
 -- >           ((:EQ :S21) (rplaca new-envs nil))
@@ -680,9 +698,12 @@ update = error "< TODO unimplemented update >"
 -- >                       (delete node (env-nodes (car nenvs))
 -- >                               :COUNT 1))
 -- >                 (rplaca nenvs nil)))))))
+-- >
 -- >   (setq new-envs (delete nil new-envs :TEST #'eq))
--- >   (dolist (new-env new-envs) (push node (env-nodes new-env)))
--- >   (setf (tms-node-label node) (delete nil envs :TEST #'eq))
+-- >   (dolist (new-env new-envs)
+-- >     (push node (env-nodes new-env)))
+-- >   (setf (tms-node-label node)
+-- >         (delete nil envs :TEST #'eq))
 -- >   new-envs)
 updateLabel ::
   Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m [Env d i r s m]
@@ -894,8 +915,10 @@ createEnv ::
 createEnv atms assumptions = do
   index <- nextEnvCounter atms
   whyNogood <- sttLayer $ newSTRef Good
+  nodes <- sttLayer $ newSTRef []
   rules <- sttLayer $ newSTRef []
-  env <- return $ Env index (length assumptions) assumptions whyNogood rules
+  env <- return $
+    Env index (length assumptions) assumptions nodes whyNogood rules
   insertInTable atms env
   setEnvContradictory atms env
   return env
