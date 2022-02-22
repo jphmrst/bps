@@ -170,6 +170,14 @@ fromList (x : xs) = do
   cdr <- newSTRef tail
   return $ MCons car cdr
 
+fromListMap :: Monad m => (a -> b) -> [a] -> STT s m (MList s b)
+fromListMap _ [] = return MNil
+fromListMap f (x : xs) = do
+  car <- newSTRef $ f x
+  tail <- fromListMap f xs
+  cdr <- newSTRef tail
+  return $ MCons car cdr
+
 toList :: Monad m => MList s a -> STT s m [a]
 toList MNil = return []
 toList (MCons car cdr) = do
@@ -177,6 +185,16 @@ toList (MCons car cdr) = do
   ms <- readSTRef cdr
   xs <- toList ms
   return $ x : xs
+
+toUnmaybeList :: Monad m => MList s (Maybe a) -> STT s m [a]
+toUnmaybeList MNil = return []
+toUnmaybeList (MCons car cdr) = do
+  xmaybe <- readSTRef car
+  ms <- readSTRef cdr
+  xs <- toUnmaybeList ms
+  case xmaybe of
+    Nothing -> return xs
+    Just x -> return $ x : xs
 
 mlistMap :: Monad m => (a -> b) -> MList s a -> STT s m (MList s b)
 mlistMap f MNil = return MNil
@@ -219,6 +237,9 @@ mlistUnmaybe (MCons xref xsref) = do
       xref' <- newSTRef x'
       xsref' <- newSTRef xs'
       return $ MCons xref' xsref'
+
+mlistStripNothing :: Monad m => MList s (Maybe a) -> STT s m (MList s (Maybe a))
+mlistStripNothing = mlistFilter (not . null)
 
 -- |Treating an `MList` as a stack, add a new element at the top of
 -- the stack, and return the new stack top.

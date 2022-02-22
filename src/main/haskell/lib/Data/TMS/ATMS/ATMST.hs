@@ -308,6 +308,11 @@ instance Monad m => Eq (Node d i r s m) where
 getNodeLabel :: Monad m => Node d i r s m  -> ATMST s m [Env d i r s m]
 getNodeLabel node = sttLayer $ readSTRef (nodeLabel node)
 
+-- |Shortcut to write to the reference to a node's label.
+setNodeLabel ::
+  Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m ()
+setNodeLabel node envs = sttLayer $ writeSTRef (nodeLabel node) envs
+
 -- |Shortcut to read the current value of a `Node`'s is-contradictory
 -- flag.
 getNodeIsContradictory :: Monad m => Node d i r s m  -> ATMST s m Bool
@@ -663,7 +668,7 @@ propagate just antecedent envs = do
 -- >       (return-from update nil))))
 update ::
   Monad m =>
-    MList s (Env d i r s m) -> Node d i r s m -> JustRule d i r s m ->
+    MList s  (Maybe (Env d i r s m)) -> Node d i r s m -> JustRule d i r s m ->
       ATMST s m ()
 update newEnvs consequence just = do
   let atms = nodeATMS consequence
@@ -671,7 +676,10 @@ update newEnvs consequence just = do
   -- If the consequence node is a contradiction, then we can mark all
   -- of the environments implying it as contradictory as well.
   ifM (getNodeIsContradictory consequence)
-    (mlistFor_ sttLayer newEnvs $ \ env -> newNogood atms env $ ByRule just) $
+    (mlistFor_ sttLayer newEnvs $ \ envmaybe ->
+        case envmaybe of
+          Nothing -> return ()
+          Just env -> newNogood atms env $ ByRule just) $
 
     -- Otherwise we propagate further.
     do revNewEnvs <- updateLabel consequence newEnvs
@@ -699,7 +707,13 @@ update newEnvs consequence just = do
 -- >           (:S12 (setf (env-nodes (car nenvs))
 -- >                       (delete node (env-nodes (car nenvs))
 -- >                               :COUNT 1))
--- >                 (rplaca nenvs nil)))))))
+-- >                 (rplaca nenvs nil))))))
+-- >
+-- >     ;; Note that at the exit from the inner DO-loop, the
+-- >     ;; exit statement will push the car of the NEW-ENVS
+-- >     ;; scanner (which may be NULL) onto ENVS.
+-- >
+-- >     )
 -- >
 -- >   (setq new-envs (delete nil new-envs :TEST #'eq))
 -- >   (dolist (new-env new-envs)
@@ -708,9 +722,24 @@ update newEnvs consequence just = do
 -- >         (delete nil envs :TEST #'eq))
 -- >   new-envs)
 updateLabel ::
-  Monad m => Node d i r s m -> MList s (Env d i r s m) ->
+  Monad m => Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
     ATMST s m (MList s (Env d i r s m))
-updateLabel = error "< TODO unimplemented updateLabel >"
+updateLabel node newEnvs = do
+  -- We will edit the label of this node, so we extract it as a
+  -- mutable list, and replace it at the end of this function.
+  envs <- do labels <- getNodeLabel node
+             sttLayer $ fromListMap Just labels
+
+  -- These two loops traverse respectively the given newEnvs, and the
+  -- node label environments, to see if either is a subset of the
+  -- other.
+
+  error "< TODO unimplemented updateLabel >"
+
+  updatedLabel <- sttLayer $ toUnmaybeList envs
+  setNodeLabel node updatedLabel
+
+  error "< TODO unimplemented updateLabel return value >"
 
 -- |Update the label of node @antecedent@ to include the given @envs@
 -- environments, pruning environments which are a superset of another
@@ -777,9 +806,9 @@ updateLabel = error "< TODO unimplemented updateLabel >"
 -- >   envs)
 weave ::
   Monad m => Maybe (Node d i r s m) -> [Env d i r s m] -> [Node d i r s m] ->
-               ATMST s m (MList s (Env d i r s m))
+               ATMST s m (MList s (Maybe (Env d i r s m)))
 weave antecedent givenEnvs antecedents = do
-  origEnvs <- sttLayer $ fromList givenEnvs
+  origEnvs <- sttLayer $ fromListMap Just givenEnvs
   envsRef <- sttLayer $ newSTRef origEnvs
 
   forM_ antecedents $ \node ->
@@ -798,55 +827,57 @@ weave antecedent givenEnvs antecedents = do
       --  - An Env from the NODE's label.
       -- The union of these two is NEW-ENV, and the body of the loop
       -- considers how we should incorporate NEW-ENV into NEW-ENVS.
-      mlistFor_ sttLayer envs $ \env -> do
-        forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
-          newEnv <- unionEnv env nodeEnv
+      mlistFor_ sttLayer envs $ \envmaybe ->
+        case envmaybe of
+          Nothing -> return ()
+          Just env -> do
+            forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
+              newEnv <- unionEnv env nodeEnv
 
-          -- We are not interested in nogood environments, so we skip
-          -- filing the union if it is nogood.
-          unlessM (envIsNogood newEnv) $ do
+              -- We are not interested in nogood environments, so we
+              -- skip filing the union if it is nogood.
+              unlessM (envIsNogood newEnv) $ do
 
-            -- If NEW-ENV is a superset of (or is equal to) anything
-            -- already in NEW-ENVS, then NEW-ENV is redundant, and we
-            -- abort the body of the inner match-searching loop
-            -- without adding NEW-ENV to NEW-ENVS.
-            --
-            -- Otherwise if anything already in NEW-ENVS is a superset
-            -- of NEW-ENV, then (1) NEW-ENV makes that element
-            -- redundant, and we strip it out of NEW-ENVS; and (2) we
-            -- add NEW-ENV to NEW-ENVS.
+                -- If NEW-ENV is a superset of (or is equal to)
+                -- anything already in NEW-ENVS, then NEW-ENV is
+                -- redundant, and we abort the body of the inner
+                -- match-searching loop without adding NEW-ENV to
+                -- NEW-ENVS.
+                --
+                -- Otherwise if anything already in NEW-ENVS is a
+                -- superset of NEW-ENV, then (1) NEW-ENV makes that
+                -- element redundant, and we strip it out of NEW-ENVS;
+                -- and (2) we add NEW-ENV to NEW-ENVS.
 
-            addEnv <- sttLayer $ newSTRef True
+                addEnv <- sttLayer $ newSTRef True
 
-            oldMCons <- sttLayer $ readSTRef newEnvs
-            mlistForConsWhile_ sttLayer oldMCons
-                               (sttLayer $ readSTRef addEnv) $ \ cons ->
-              case cons of
-                MNil -> return () -- Should not be possible
-                mc@(MCons carRef cdrRef) -> do
-                  maybeCar <- sttLayer $ readSTRef carRef
-                  case maybeCar of
-                    Nothing -> return ()
-                    Just car ->
-                      case compareEnv newEnv car of
-                        EQenv  -> sttLayer $ writeSTRef addEnv False
-                        S12env -> sttLayer $ rplaca cons Nothing
-                        S21env -> sttLayer $ writeSTRef addEnv False
-                        DisjEnv -> return ()
+                oldMCons <- sttLayer $ readSTRef newEnvs
+                mlistForConsWhile_ sttLayer oldMCons
+                                   (sttLayer $ readSTRef addEnv) $ \ cons ->
+                  case cons of
+                    MNil -> return () -- Should not be possible
+                    mc@(MCons carRef cdrRef) -> do
+                      maybeCar <- sttLayer $ readSTRef carRef
+                      case maybeCar of
+                        Nothing -> return ()
+                        Just car ->
+                          case compareEnv newEnv car of
+                            EQenv  -> sttLayer $ writeSTRef addEnv False
+                            S12env -> sttLayer $ rplaca cons Nothing
+                            S21env -> sttLayer $ writeSTRef addEnv False
+                            DisjEnv -> return ()
 
-            -- If we haven't found newEnv to be redundant, then add it
-            -- to newEnvs.
-            sttLayer $ whenM (readSTRef addEnv) $ do
-              newMCons <- mlistPush (Just newEnv) oldMCons
-              writeSTRef newEnvs newMCons
+                -- If we haven't found newEnv to be redundant, then
+                -- add it to newEnvs.
+                sttLayer $ whenM (readSTRef addEnv) $ do
+                  newMCons <- mlistPush (Just newEnv) oldMCons
+                  writeSTRef newEnvs newMCons
 
       -- So we have nearly produced the refinement of ENVS for this
       -- NODE in the ANTECEDENTS.  It might have spurious NILs, so we
-      -- strip those out and update envsRef.  If ever we narrow ENVS
-      -- down to nothing, then we can short-circuit returning that
-      -- empty list.
+      -- strip those out and update envsRef.
       preFinalNewEnvs <- sttLayer $ readSTRef newEnvs
-      filteredNewEnvs <- sttLayer $ mlistUnmaybe preFinalNewEnvs
+      filteredNewEnvs <- sttLayer $ mlistStripNothing preFinalNewEnvs
       sttLayer $ writeSTRef envsRef filteredNewEnvs
 
   -- Finally, return the last refinement of ENVS.
