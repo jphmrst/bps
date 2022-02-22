@@ -245,6 +245,30 @@ data Monad m => ATMS d i r s m = ATMS {
   atmsDebugging :: STRef s Bool
 }
 
+-- |Shortcut maker for reading from a `ATMS` reference.
+getATMSMutable ::
+  Monad m => (ATMS d i r s m -> STRef s a) -> ATMS d i r s m  -> ATMST s m a
+{-# INLINE getATMSMutable #-}
+getATMSMutable refGetter atms = sttLayer $ readSTRef (refGetter atms)
+
+-- |Shortcut to write to the reference to a ATMS's label.
+setATMSMutable ::
+  Monad m =>
+    (ATMS d i r s m -> STRef s a) -> ATMS d i r s m -> a -> ATMST s m ()
+{-# INLINE setATMSMutable #-}
+setATMSMutable refGetter atms envs = sttLayer $ writeSTRef (refGetter atms) envs
+
+-- |Shortcut to read from the reference to a ATMS's label.
+getEnqueueProcedure ::
+  Monad m => ATMS d i r s m -> ATMST s m (r -> ATMST s m ())
+{-# INLINE getEnqueueProcedure #-}
+getEnqueueProcedure = getATMSMutable atmsEnqueueProcedure
+-- |Shortcut to write to the reference to a ATMS's label.
+setEnqueueProcedure ::
+  Monad m => ATMS d i r s m -> (r -> ATMST s m ()) -> ATMST s m ()
+{-# INLINE setEnqueueProcedure #-}
+setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
+
 -- > ;; In atms.lisp
 -- > (defun print-atms (atms stream ignore)
 -- >   (declare (ignore ignore))
@@ -304,14 +328,37 @@ data Monad m => Node d i r s m = Node {
 instance Monad m => Eq (Node d i r s m) where
   n1 == n2 = nodeIndex n1 == nodeIndex n2
 
--- |Shortcut to read from the reference to a node's label.
-getNodeLabel :: Monad m => Node d i r s m  -> ATMST s m [Env d i r s m]
-getNodeLabel node = sttLayer $ readSTRef (nodeLabel node)
+-- |Shortcut maker for reading from a `Node` reference.
+getNodeMutable ::
+  Monad m => (Node d i r s m -> STRef s a) -> Node d i r s m  -> ATMST s m a
+{-# INLINE getNodeMutable #-}
+getNodeMutable refGetter node = sttLayer $ readSTRef (refGetter node)
 
 -- |Shortcut to write to the reference to a node's label.
-setNodeLabel ::
-  Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m ()
-setNodeLabel node envs = sttLayer $ writeSTRef (nodeLabel node) envs
+setNodeMutable ::
+  Monad m =>
+    (Node d i r s m -> STRef s a) -> Node d i r s m -> a -> ATMST s m ()
+{-# INLINE setNodeMutable #-}
+setNodeMutable refGetter node envs = sttLayer $ writeSTRef (refGetter node) envs
+
+-- |Shortcut to read from the reference to a node's label.
+getNodeLabel :: Monad m => Node d i r s m -> ATMST s m [Env d i r s m]
+{-# INLINE getNodeLabel #-}
+getNodeLabel = getNodeMutable nodeLabel
+-- |Shortcut to write to the reference to a node's label.
+setNodeLabel :: Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m ()
+{-# INLINE setNodeLabel #-}
+setNodeLabel = setNodeMutable nodeLabel
+
+-- |Shortcut to read from the reference to a node's rules.
+getNodeRules :: Monad m => Node d i r s m -> ATMST s m [r]
+{-# INLINE getNodeRules #-}
+getNodeRules = getNodeMutable nodeRules
+
+-- |Shortcut to write to the reference to a node's rules.
+setNodeRules :: Monad m => Node d i r s m -> [r] -> ATMST s m ()
+{-# INLINE setNodeRules #-}
+setNodeRules = setNodeMutable nodeRules
 
 -- |Shortcut to read the current value of a `Node`'s is-contradictory
 -- flag.
@@ -648,15 +695,27 @@ propagate just antecedent envs = do
 -- > ;; In atms.lisp
 -- > (defun update (new-envs consequence just &aux atms enqueuef)
 -- >   (setq atms (tms-node-atms consequence))
+-- >
+-- >   ;; If the consequence node is a contradiction, then all we need to
+-- >   ;; do is mark all of the environments implying it as contradictory
+-- >   ;; as well.
 -- >   (when (tms-node-contradictory? consequence)
 -- >     (dolist (env new-envs) (new-nogood atms env just))
 -- >     (return-from update nil))
+-- >
+-- >   ;; Otherwise we propagate further.  If this step prunes out
+-- >   ;; all `Env`s from the `newEnvs`, then we have nothing further
+-- >   ;; to do.
 -- >   (setq new-envs (update-label consequence new-envs))
 -- >   (unless new-envs (return-from update nil))
+-- >
+-- >   ;; Process rules queued in the consequence.
 -- >   (when (setq enqueuef (atms-enqueue-procedure atms))
 -- >     (dolist (rule (tms-node-rules consequence))
 -- >       (funcall enqueuef rule))
 -- >     (setf (tms-node-rules consequence) nil))
+-- >
+-- >   ;;
 -- >   (dolist (supported-just (tms-node-consequences consequence))
 -- >     (propagate supported-just consequence new-envs)
 -- >     (do ((new-envs new-envs (cdr new-envs)))
@@ -673,17 +732,26 @@ update ::
 update newEnvs consequence just = do
   let atms = nodeATMS consequence
 
-  -- If the consequence node is a contradiction, then we can mark all
-  -- of the environments implying it as contradictory as well.
+  -- If the consequence node is a contradiction, then all we need to
+  -- do is mark all of the environments implying it as contradictory
+  -- as well.
   ifM (getNodeIsContradictory consequence)
     (mlistFor_ sttLayer newEnvs $ \ envmaybe ->
         case envmaybe of
           Nothing -> return ()
-          Just env -> newNogood atms env $ ByRule just) $
+          Just env -> newNogood atms env $ ByRule just) $ do
 
-    -- Otherwise we propagate further.
-    do revNewEnvs <- updateLabel consequence newEnvs
-       error "< TODO unimplemented update not isContradictory >"
+            -- Otherwise we propagate further.  If this step prunes
+            -- out all `Env`s from the `newEnvs`, then we have nothing
+            -- further to do.
+            revNewEnvs <- updateLabel consequence newEnvs
+            if mnull newEnvs then return () else do
+
+              -- Process rules queued in the consequence.
+              enqueuef <- getEnqueueProcedure atms
+              forMM_ (getNodeRules consequence) $ enqueuef
+
+              error "< TODO unimplemented update not isContradictory >"
 
 -- |Internal method to update the label of this node to include the
 -- given environments.  The inclusion is not simply list extension;
