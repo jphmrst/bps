@@ -406,8 +406,11 @@ defaultNodeString = error "< TODO unimplemented defaultNodeString >"
 -- >    ((funcall test item (car list)) (cons item list))
 -- >    ((eq item (car list)) list)
 -- >    (t (cons (car list) (ordered-insert item (cdr list) test)))))
-orderedInsert :: a -> [a] -> (a -> a -> Bool) -> [a]
-orderedInsert = error "< TODO unimplemented orderedInsert >"
+orderedInsert :: Eq a => a -> [a] -> (a -> a -> Bool) -> [a]
+orderedInsert item [] _ = [item]
+orderedInsert item list@(i : _) test | test item i  = i : list
+orderedInsert item list@(i : _) _    | item == i    = list
+orderedInsert item (i : is) test = i : orderedInsert item is test
 
 -- > ;; In atms.lisp
 -- > (defmacro ordered-push (item list test)
@@ -991,11 +994,19 @@ insertInTable atms env = do
 -- >   (dolist (env (cdr (assoc (length assumes)
 -- >                       (atms-env-table (tms-node-atms (car assumes)))
 -- >                       :TEST #'=))
--- >           nil)
+-- >                nil)
 -- >     (if (equal (env-assumptions env) assumes)
--- >    (return env))))
+-- >       (return env))))
 lookupEnv :: Monad m => [Node d i r s m] -> ATMST s m (Maybe (Env d i r s m))
-lookupEnv ns = error "< TODO unimplemented lookupEnv >"
+lookupEnv [] = return Nothing
+lookupEnv assumptions@(a : _) = do
+  let atms = nodeATMS a
+      ns = sortOn nodeIndex assumptions
+  EnvTable envTable <- sttLayer $ readSTRef $ atmsEnvTable atms
+  entries <- sttLayer $ readSTArray envTable $ length ns
+  case filter (\x -> envAssumptions x == ns) entries of
+    [] -> return Nothing
+    (x : _) -> return $ Just x
 
 -- > ;; In atms.lisp
 -- > (defun subset-env? (e1 e2)
