@@ -637,7 +637,7 @@ propagate ::
       ATMST s m ()
 propagate just antecedent envs = do
   newEnvs <- weave antecedent envs (justAntecedents just)
-  when (not (null newEnvs)) $
+  when (not (mnull newEnvs)) $ do
     update newEnvs (justConsequence just) just
 
 -- > ;; In atms.lisp
@@ -663,17 +663,19 @@ propagate just antecedent envs = do
 -- >       (return-from update nil))))
 update ::
   Monad m =>
-    [Env d i r s m] -> Node d i r s m -> JustRule d i r s m -> ATMST s m ()
+    MList s (Env d i r s m) -> Node d i r s m -> JustRule d i r s m ->
+      ATMST s m ()
 update newEnvs consequence just = do
   let atms = nodeATMS consequence
 
   -- If the consequence node is a contradiction, then we can mark all
   -- of the environments implying it as contradictory as well.
   ifM (getNodeIsContradictory consequence)
-    (forM_ newEnvs $ \ env -> newNogood atms env $ ByRule just) $
+    (mlistFor_ sttLayer newEnvs $ \ env -> newNogood atms env $ ByRule just) $
 
     -- Otherwise we propagate further.
-    do error "< TODO unimplemented update not isContradictory >"
+    do revNewEnvs <- updateLabel consequence newEnvs
+       error "< TODO unimplemented update not isContradictory >"
 
 -- |Internal method to update the label of this node to include the
 -- given environments.  The inclusion is not simply list extension;
@@ -706,7 +708,8 @@ update newEnvs consequence just = do
 -- >         (delete nil envs :TEST #'eq))
 -- >   new-envs)
 updateLabel ::
-  Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m [Env d i r s m]
+  Monad m => Node d i r s m -> MList s (Env d i r s m) ->
+    ATMST s m (MList s (Env d i r s m))
 updateLabel = error "< TODO unimplemented updateLabel >"
 
 -- |Update the label of node @antecedent@ to include the given @envs@
@@ -774,7 +777,7 @@ updateLabel = error "< TODO unimplemented updateLabel >"
 -- >   envs)
 weave ::
   Monad m => Maybe (Node d i r s m) -> [Env d i r s m] -> [Node d i r s m] ->
-               ATMST s m [Env d i r s m]
+               ATMST s m (MList s (Env d i r s m))
 weave antecedent givenEnvs antecedents = do
   origEnvs <- sttLayer $ fromList givenEnvs
   envsRef <- sttLayer $ newSTRef origEnvs
@@ -847,8 +850,7 @@ weave antecedent givenEnvs antecedents = do
       sttLayer $ writeSTRef envsRef filteredNewEnvs
 
   -- Finally, return the last refinement of ENVS.
-  envs <- sttLayer $ readSTRef envsRef
-  sttLayer $ toList envs
+  sttLayer $ readSTRef envsRef
 
 -- > ;; In atms.lisp
 -- > (defun in-antecedent? (nodes)
