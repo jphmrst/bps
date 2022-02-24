@@ -44,29 +44,40 @@ language governing permissions and limitations under the License.
 
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
-  ATMST, AtmsErr, runATMST,
+  ATMST,
+  AtmsErr(CannotRemoveNodeWIthConsequences, InternalNoEmptyEnv, FromMonadFail),
+  runATMST,
   setInitialEnvTableAlloc, setEnvTableIncr,
   getInitialEnvTableAlloc, getEnvTableIncr,
 
-  ATMS, createATMS,
+  -- * Top-level ATMS structure
+  ATMS, createATMS, atmsTitle,
 
-  Node, createNode, assumeNode, makeContradiction,
-  justifyNode, removeNode, nodeString, defaultNodeString,
+  -- * Nodes
+  Node, createNode,
+  -- ** Setting node status
+  assumeNode, makeContradiction, removeNode,
+  -- ** Node components
+  nodeString, defaultNodeString, getNodeLabel, getNodeRules,
+  getNodeConsequences, getNodeIsContradictory,
+  -- ** Deductions related to a node
   isTrueNode, isInNode, isOutNode, isNodeConsistentWith,
-  getNodeLabel, getNodeRules, getNodeConsequences, getNodeIsContradictory,
 
-  JustRule, Justification, Explanation,
+  -- * Justifications
+  JustRule, Justification, Explanation, justifyNode,
 
+  -- * Environments and tables
   Env, EnvTable,
 
-  interpretations,
+  -- * Deduction and search utilities
+  interpretations, explainNode,
 
+  -- * Printing and debugging
   printAtms, printNode, printJust, printEnvStructure,
   printJustification, printEnv, printNogoods,
   printEnvs, printEnvTable, printAtmsStatistics, printTable,
-  whyNodes, whyNode,
+  whyNodes, whyNode
 
-  explainNode
   ) where
 
 import Control.Monad.State
@@ -83,8 +94,20 @@ import Data.TMS.Helpers
 -- wrapper.
 
 -- |Errors which can arise from ATMS operations.
-data AtmsErr = CannotEnableNonassumption String Int
+data AtmsErr = CannotRemoveNodeWIthConsequences String Int
+               -- ^ It is not possible to remove a `Node` from an
+               -- `ATMS` after a `JustRule` which uses that `Node` is
+               -- added to the `ATMS`.
+             | InternalNoEmptyEnv
+               -- ^ Internal error called when there is no internal
+               -- default empty `Env` associated with this `ATMS`.
+               -- Should never be signaled for an `ATMS` created with
+               -- `createATMS`, since this latter function does set up
+               -- the default empty environment before returning the
+               -- new `ATMS`.
              | FromMonadFail String
+               -- ^ Indicates a pattern-matching failure within an
+               -- `ATMST` operation.
   deriving Show
 
 {- ===== Internal state of an ATMST. =================================== -}
@@ -192,6 +215,8 @@ runATMST atmst = do
         return result
   runSTT afterState
 
+{- ----------------------------------------------------------------- -}
+
 -- > ;; In atms.lisp
 -- > (defstruct (atms (:PRINT-FUNCTION print-atms))
 -- >   (title nil)
@@ -245,25 +270,130 @@ data Monad m => ATMS d i r s m = ATMS {
   atmsDebugging :: STRef s Bool
 }
 
--- |Shortcut maker for reading from a `ATMS` reference.
+-- |Shortcut maker for reading from an `ATMS` reference.
 getATMSMutable ::
   Monad m => (ATMS d i r s m -> STRef s a) -> ATMS d i r s m  -> ATMST s m a
 {-# INLINE getATMSMutable #-}
 getATMSMutable refGetter atms = sttLayer $ readSTRef (refGetter atms)
-
--- |Shortcut to write to the reference to a ATMS's label.
+-- |Shortcut to write to an ATMS reference.
 setATMSMutable ::
   Monad m =>
     (ATMS d i r s m -> STRef s a) -> ATMS d i r s m -> a -> ATMST s m ()
 {-# INLINE setATMSMutable #-}
 setATMSMutable refGetter atms envs = sttLayer $ writeSTRef (refGetter atms) envs
 
--- |Shortcut to read from the reference to a ATMS's label.
+-- |Return the `ATMS`'s `Node` list.
+getNodes ::
+  Monad m => ATMS d i r s m -> ATMST s m [Node d i r s m]
+{-# INLINE getNodes #-}
+getNodes = getATMSMutable atmsNodes
+{-
+-- |Shortcut to write to the reference to a ATMS's `Node` list.
+setNodes ::
+  Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
+{-# INLINE setNodes #-}
+setNodes = setATMSMutable atmsNodes
+-}
+
+-- |Return the `ATMS`'s `JustRule` list.
+getJusts ::
+  Monad m => ATMS d i r s m -> ATMST s m [JustRule d i r s m]
+{-# INLINE getJusts #-}
+getJusts = getATMSMutable atmsJusts
+{-
+-- |Shortcut to write to the reference to a ATMS's `JustRule` list.
+setJusts ::
+  Monad m => ATMS d i r s m -> [JustRule d i r s m] -> ATMST s m ()
+{-# INLINE setJusts #-}
+setJusts = setATMSMutable atmsJusts
+-}
+
+-- |Return the `ATMS`'s contradictions list.
+getContradictions ::
+  Monad m => ATMS d i r s m -> ATMST s m [Node d i r s m]
+{-# INLINE getContradictions #-}
+getContradictions = getATMSMutable atmsContradictions
+{-
+-- |Shortcut to write to the reference to a ATMS's contradictions list.
+setContradictions ::
+  Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
+{-# INLINE setContradictions #-}
+setContradictions = setATMSMutable atmsContradictions
+-}
+
+-- |Return the `ATMS`'s assumptions list.
+getAssumptions ::
+  Monad m => ATMS d i r s m -> ATMST s m [Node d i r s m]
+{-# INLINE getAssumptions #-}
+getAssumptions = getATMSMutable atmsAssumptions
+{-
+-- |Shortcut to write to the reference to a ATMS's assumptions list.
+setAssumptions ::
+  Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
+{-# INLINE setAssumptions #-}
+setAssumptions = setATMSMutable atmsAssumptions
+-}
+
+-- |Return the `ATMS`'s empty environment.
+getEmptyEnvironment ::
+  Monad m => ATMS d i r s m -> ATMST s m (Env d i r s m)
+{-# INLINE getEmptyEnvironment #-}
+getEmptyEnvironment atms = do
+  maybeEnv <- getATMSMutable atmsEmptyEnv atms
+  case maybeEnv of
+    Just env -> return env
+    Nothing -> exceptLayer $ throwE InternalNoEmptyEnv
+
+-- |Return the `ATMS`'s `Node` formatter.
+getNodeString ::
+  Monad m => ATMS d i r s m -> ATMST s m (Node d i r s m -> String)
+{-# INLINE getNodeString #-}
+getNodeString = getATMSMutable atmsNodeString
+-- |Shortcut to write to the reference to a ATMS's `Node` formatter.
+setNodeString ::
+  Monad m => ATMS d i r s m -> (Node d i r s m -> String) -> ATMST s m ()
+{-# INLINE setNodeString #-}
+setNodeString = setATMSMutable atmsNodeString
+
+-- |Return the `ATMS`'s `JustRule` formatter.
+getJustString ::
+  Monad m => ATMS d i r s m -> ATMST s m (JustRule d i r s m -> String)
+{-# INLINE getJustString #-}
+getJustString = getATMSMutable atmsJustString
+-- |Shortcut to write to the reference to a ATMS's `JustRule` formatter.
+setJustString ::
+  Monad m => ATMS d i r s m -> (JustRule d i r s m -> String) -> ATMST s m ()
+{-# INLINE setJustString #-}
+setJustString = setATMSMutable atmsJustString
+
+-- |Return the `ATMS`'s datum formatter.
+getDatumString ::
+  Monad m => ATMS d i r s m -> ATMST s m (d -> String)
+{-# INLINE getDatumString #-}
+getDatumString = getATMSMutable atmsDatumString
+-- |Shortcut to write to the reference to a ATMS's datum formatter.
+setDatumString ::
+  Monad m => ATMS d i r s m -> (d -> String) -> ATMST s m ()
+{-# INLINE setDatumString #-}
+setDatumString = setATMSMutable atmsDatumString
+
+-- |Return the `ATMS`'s informant formatter.
+getInformantString ::
+  Monad m => ATMS d i r s m -> ATMST s m (i -> String)
+{-# INLINE getInformantString #-}
+getInformantString = getATMSMutable atmsInformantString
+-- |Shortcut to write to the reference to a ATMS's informant formatter.
+setInformantString ::
+  Monad m => ATMS d i r s m -> (i -> String) -> ATMST s m ()
+{-# INLINE setInformantString #-}
+setInformantString = setATMSMutable atmsInformantString
+
+-- |Return the `ATMS`'s rule-queueing procedure.
 getEnqueueProcedure ::
   Monad m => ATMS d i r s m -> ATMST s m (r -> ATMST s m ())
 {-# INLINE getEnqueueProcedure #-}
 getEnqueueProcedure = getATMSMutable atmsEnqueueProcedure
--- |Shortcut to write to the reference to a ATMS's label.
+-- |Shortcut to write to the reference to a ATMS's rule-queueing procedure.
 setEnqueueProcedure ::
   Monad m => ATMS d i r s m -> (r -> ATMST s m ()) -> ATMST s m ()
 {-# INLINE setEnqueueProcedure #-}
@@ -301,6 +431,8 @@ nextEnvCounter atms = sttLayer $ do
   envId <- readSTRef envCounter
   writeSTRef envCounter $ 1 + envId
   return envId
+
+{- ----------------------------------------------------------------- -}
 
 -- > ;; In atms.lisp
 -- > (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
@@ -340,7 +472,7 @@ setNodeMutable ::
 {-# INLINE setNodeMutable #-}
 setNodeMutable refGetter node envs = sttLayer $ writeSTRef (refGetter node) envs
 
--- |Shortcut to read from the reference to a node's label.
+-- |Return the `Node`'s label.
 getNodeLabel :: Monad m => Node d i r s m -> ATMST s m [Env d i r s m]
 {-# INLINE getNodeLabel #-}
 getNodeLabel = getNodeMutable nodeLabel
@@ -349,7 +481,7 @@ setNodeLabel :: Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m ()
 {-# INLINE setNodeLabel #-}
 setNodeLabel = setNodeMutable nodeLabel
 
--- |Shortcut to read from the reference to a node's rules.
+-- |Return the `Node`'s rules.
 getNodeRules :: Monad m => Node d i r s m -> ATMST s m [r]
 {-# INLINE getNodeRules #-}
 getNodeRules = getNodeMutable nodeRules
@@ -358,7 +490,7 @@ setNodeRules :: Monad m => Node d i r s m -> [r] -> ATMST s m ()
 {-# INLINE setNodeRules #-}
 setNodeRules = setNodeMutable nodeRules
 
--- |Shortcut to read from the reference to a node's consequences.
+-- |Return the `Node`'s consequences.
 getNodeConsequences ::
   Monad m => Node d i r s m -> ATMST s m [JustRule d i r s m]
 {-# INLINE getNodeConsequences #-}
@@ -369,8 +501,7 @@ setNodeConsequences ::
 {-# INLINE setNodeConsequences #-}
 setNodeConsequences = setNodeMutable nodeConsequences
 
--- |Shortcut to read the current value of a `Node`'s is-contradictory
--- flag.
+-- |Return whether the `Node`'s is currently contradictory.
 getNodeIsContradictory :: Monad m => Node d i r s m  -> ATMST s m Bool
 getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 
@@ -415,6 +546,8 @@ data WhyNogood d i r s m =
 isNogood :: WhyNogood d i r s m -> Bool
 isNogood Good = False
 isNoGood _ = True
+
+{- ----------------------------------------------------------------- -}
 
 -- > ;; In atms.lisp
 -- > (defstruct (env (:PREDICATE env?)
@@ -516,6 +649,8 @@ assumptionOrder n1 n2 = nodeIndex n1 < nodeIndex n2
 envOrder :: Monad m => Env d i r s m -> Env d i r s m -> Bool
 envOrder e1 e2 = envIndex e1 < envIndex e2
 
+{- ----------------------------------------------------------------- -}
+
 -- * Basic inference engine interface.
 
 -- |Create a new, empty ATMS.
@@ -565,6 +700,7 @@ createATMS title = do
   sttLayer $ writeSTRef emptyEnvRef (Just emptyEnv)
   return result
 
+{- ----------------------------------------------------------------- -}
 
 -- > ;; In atms.lisp
 -- > (defun change-atms (atms &key node-string
