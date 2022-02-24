@@ -53,7 +53,7 @@ module Data.TMS.ATMS.ATMST (
   Node, createNode, assumeNode, makeContradiction,
   justifyNode, removeNode, nodeString, defaultNodeString,
   isTrueNode, isInNode, isOutNode, isNodeConsistentWith,
-  getNodeLabel, getNodeIsContradictory,
+  getNodeLabel, getNodeRules, getNodeConsequences, getNodeIsContradictory,
 
   JustRule, Justification, Explanation,
 
@@ -333,7 +333,6 @@ getNodeMutable ::
   Monad m => (Node d i r s m -> STRef s a) -> Node d i r s m  -> ATMST s m a
 {-# INLINE getNodeMutable #-}
 getNodeMutable refGetter node = sttLayer $ readSTRef (refGetter node)
-
 -- |Shortcut to write to the reference to a node's label.
 setNodeMutable ::
   Monad m =>
@@ -354,11 +353,21 @@ setNodeLabel = setNodeMutable nodeLabel
 getNodeRules :: Monad m => Node d i r s m -> ATMST s m [r]
 {-# INLINE getNodeRules #-}
 getNodeRules = getNodeMutable nodeRules
-
 -- |Shortcut to write to the reference to a node's rules.
 setNodeRules :: Monad m => Node d i r s m -> [r] -> ATMST s m ()
 {-# INLINE setNodeRules #-}
 setNodeRules = setNodeMutable nodeRules
+
+-- |Shortcut to read from the reference to a node's consequences.
+getNodeConsequences ::
+  Monad m => Node d i r s m -> ATMST s m [JustRule d i r s m]
+{-# INLINE getNodeConsequences #-}
+getNodeConsequences = getNodeMutable nodeConsequences
+-- |Shortcut to write to the reference to a node's consequences.
+setNodeConsequences ::
+  Monad m => Node d i r s m -> [JustRule d i r s m] -> ATMST s m ()
+{-# INLINE setNodeConsequences #-}
+setNodeConsequences = setNodeMutable nodeConsequences
 
 -- |Shortcut to read the current value of a `Node`'s is-contradictory
 -- flag.
@@ -427,6 +436,23 @@ data Monad m => Env d i r s m = Env {
 
 instance Monad m => Eq (Env d i r s m) where
   e1 == e2 = (envIndex e1) == (envIndex e2)
+
+-- |Shortcut maker for reading from a `Env` reference.
+getEnvMutable ::
+  Monad m => (Env d i r s m -> STRef s a) -> Env d i r s m  -> ATMST s m a
+{-# INLINE getEnvMutable #-}
+getEnvMutable refGetter env = sttLayer $ readSTRef (refGetter env)
+-- |Shortcut to write to the reference to a env's label.
+setEnvMutable ::
+  Monad m =>
+    (Env d i r s m -> STRef s a) -> Env d i r s m -> a -> ATMST s m ()
+{-# INLINE setEnvMutable #-}
+setEnvMutable refGetter env envs = sttLayer $ writeSTRef (refGetter env) envs
+
+getEnvNodes :: Monad m => Env d i r s m  -> ATMST s m [Node d i r s m]
+getEnvNodes = getEnvMutable envNodes
+setEnvNodes :: Monad m => Env d i r s m  -> [Node d i r s m] -> ATMST s m ()
+setEnvNodes = setEnvMutable envNodes
 
 envIsNogood :: Monad m => Env d i r s m -> ATMST s m Bool
 envIsNogood env = do
@@ -667,7 +693,8 @@ justifyNode informant consequence antecedents = do
   sttLayer $ forM_ antecedents $ \node -> push just $ nodeConsequences node
   sttLayer $ push just $ atmsJusts atms
   Just emptyEnv <- sttLayer $ readSTRef $ atmsEmptyEnv atms
-  propagate just Nothing [emptyEnv]
+  envListRef <- sttLayer $ fromListMap Just [emptyEnv]
+  propagate just Nothing envListRef
 
 -- > ;; In atms.lisp
 -- > (defun nogood-nodes (informant nodes)
@@ -685,8 +712,10 @@ nogoodNodes = error "< TODO unimplemented nogoodNodes >"
 -- >       (update new-envs (just-consequence just) just)))
 propagate ::
   Monad m =>
-    JustRule d i r s m -> Maybe (Node d i r s m) -> [Env d i r s m] ->
-      ATMST s m ()
+    JustRule d i r s m ->
+      Maybe (Node d i r s m) ->
+        MList s (Maybe (Env d i r s m)) ->
+          ATMST s m ()
 propagate just antecedent envs = do
   newEnvs <- weave antecedent envs (justAntecedents just)
   when (not (mnull newEnvs)) $ do
@@ -703,9 +732,9 @@ propagate just antecedent envs = do
 -- >     (dolist (env new-envs) (new-nogood atms env just))
 -- >     (return-from update nil))
 -- >
--- >   ;; Otherwise we propagate further.  If this step prunes out
--- >   ;; all `Env`s from the `newEnvs`, then we have nothing further
--- >   ;; to do.
+-- >   ;; Otherwise we [re[are to propagate further, but if this
+-- >   ;; step prunes out all `Env`s from the `newEnvs`, then we
+-- >   ;; have nothing further to do.
 -- >   (setq new-envs (update-label consequence new-envs))
 -- >   (unless new-envs (return-from update nil))
 -- >
@@ -715,7 +744,8 @@ propagate just antecedent envs = do
 -- >       (funcall enqueuef rule))
 -- >     (setf (tms-node-rules consequence) nil))
 -- >
--- >   ;;
+-- >   ;; Propagate to the justification rules which might depend on
+-- >   ;; this node.
 -- >   (dolist (supported-just (tms-node-consequences consequence))
 -- >     (propagate supported-just consequence new-envs)
 -- >     (do ((new-envs new-envs (cdr new-envs)))
@@ -745,13 +775,31 @@ update newEnvs consequence just = do
             -- out all `Env`s from the `newEnvs`, then we have nothing
             -- further to do.
             revNewEnvs <- updateLabel consequence newEnvs
-            if mnull newEnvs then return () else do
+            newEnvsRef <- sttLayer $ newSTRef $ revNewEnvs
+            ifM (sttLayer $ getMnull newEnvsRef) (return ()) $ do
 
               -- Process rules queued in the consequence.
               enqueuef <- getEnqueueProcedure atms
               forMM_ (getNodeRules consequence) $ enqueuef
 
-              error "< TODO unimplemented update not isContradictory >"
+              -- Propagate to the justification rules which might
+              -- depend on this node.  If ever the new Env list we are
+              -- accumulating is paired down to the empty list, then
+              -- we can exit these loops.
+              forMMwhile_ (getNodeConsequences consequence)
+                (sttLayer $ notM $ getMnull newEnvsRef) $ \ supportedJust -> do
+                  currentNewEnvs <- sttLayer $ readSTRef newEnvsRef
+                  propagate supportedJust (Just consequence) newEnvs
+                  mlistForCons_ sttLayer newEnvs $ \ mcons -> do
+                    thisEnvMaybe <- sttLayer $ mcar mcons
+                    case thisEnvMaybe of
+                      Just thisEnv -> do
+                        label <- getNodeLabel consequence
+                        unless (elem thisEnv label) $
+                          sttLayer $ rplaca mcons Nothing
+                      Nothing -> return ()
+                  cleanedNewEnvs <- sttLayer $ getMlistStripNothing newEnvsRef
+                  sttLayer $ writeSTRef newEnvsRef cleanedNewEnvs
 
 -- |Internal method to update the label of this node to include the
 -- given environments.  The inclusion is not simply list extension;
@@ -765,8 +813,10 @@ update newEnvs consequence just = do
 -- >
 -- >   (do ((new-envs new-envs (cdr new-envs)))
 -- >       ((null new-envs))
+-- >
 -- >     (do ((nenvs envs (cdr nenvs)))
 -- >         ((null nenvs) (push (car new-envs) envs))
+-- >
 -- >       (cond
 -- >        ((null (car nenvs)))
 -- >        ((null (car new-envs)))
@@ -791,7 +841,7 @@ update newEnvs consequence just = do
 -- >   new-envs)
 updateLabel ::
   Monad m => Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
-    ATMST s m (MList s (Env d i r s m))
+    ATMST s m (MList s (Maybe (Env d i r s m)))
 updateLabel node newEnvs = do
   -- We will edit the label of this node, so we extract it as a
   -- mutable list, and replace it at the end of this function.
@@ -801,13 +851,45 @@ updateLabel node newEnvs = do
   -- These two loops traverse respectively the given newEnvs, and the
   -- node label environments, to see if either is a subset of the
   -- other.
+  mlistForCons_ sttLayer newEnvs $ \ newEnvCons -> do
+    newEnvCarMaybe <- sttLayer $ mcar newEnvCons
+    case newEnvCarMaybe of
+      Nothing -> return ()
+      Just newEnvCar -> do
 
-  error "< TODO unimplemented updateLabel >"
+        mlistForCons_ sttLayer envs $ \ nenvCons -> do
+          nenvCarMaybe <- sttLayer $ mcar nenvCons
+          case nenvCarMaybe of
+            Nothing -> return ()
+            Just nenvCar -> do
 
+              case compareEnv newEnvCar nenvCar of
+                EQenv -> sttLayer $ rplaca newEnvCons Nothing
+                S21env -> sttLayer $ rplaca newEnvCons Nothing
+                S12env -> do
+                  nodeList <- getEnvNodes nenvCar
+                  setEnvNodes nenvCar $ delete node nodeList
+                  sttLayer $ rplaca nenvCons Nothing
+                DisjEnv -> return ()
+
+        sttLayer $ mlistPush newEnvCarMaybe envs
+        return ()
+
+  -- Strip all `Nothing`s from the `newEnvs`, and add the `node` to
+  -- each environment's node list.
+  finalNewEnvs <- sttLayer $ mlistStripNothing newEnvs
+  mlistFor_ sttLayer finalNewEnvs $ \ newEnvMaybe ->
+    case newEnvMaybe of
+      Just newEnv -> sttLayer $ push node $ envNodes newEnv
+      _ -> return ()
+
+  -- Un-lift the working version of the node label list, and write the
+  -- update back to the node label list.
   updatedLabel <- sttLayer $ toUnmaybeList envs
   setNodeLabel node updatedLabel
 
-  error "< TODO unimplemented updateLabel return value >"
+  -- Return the Nothing-stripped version of the newEnvs parameter.
+  return finalNewEnvs
 
 -- |Update the label of node @antecedent@ to include the given @envs@
 -- environments, pruning environments which are a superset of another
@@ -872,12 +954,13 @@ updateLabel node newEnvs = do
 -- >
 -- >   ;; Finally, return the last refinement of ENVS.
 -- >   envs)
-weave ::
-  Monad m => Maybe (Node d i r s m) -> [Env d i r s m] -> [Node d i r s m] ->
-               ATMST s m (MList s (Maybe (Env d i r s m)))
+weave :: Monad m =>
+  Maybe (Node d i r s m) ->
+    (MList s (Maybe (Env d i r s m))) ->
+      [Node d i r s m] ->
+        ATMST s m (MList s (Maybe (Env d i r s m)))
 weave antecedent givenEnvs antecedents = do
-  origEnvs <- sttLayer $ fromListMap Just givenEnvs
-  envsRef <- sttLayer $ newSTRef origEnvs
+  envsRef <- sttLayer $ newSTRef givenEnvs
 
   forM_ antecedents $ \node ->
     unless (maybe False (node ==) antecedent) $ do

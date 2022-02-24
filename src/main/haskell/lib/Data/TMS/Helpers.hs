@@ -154,14 +154,30 @@ commaList f xs = foldl1 (\ x y -> x ++ ", " ++ y) $ map f xs
 
 -- * Mutable lists (cons cells) in `STT`
 
-data MList s a = MCons (STRef s a) (STRef s (MList s a)) | MNil
+-- |Singly linked lists!  But with mutable CARs and CDRs à la Common
+-- Lisp.
+data MList s a = MCons (STRef s a) (STRef s (MList s a))
+                 -- ^ A @cons@ cell with mutable fields.
+               | MNil
+                 -- ^ Regular old @nil@.
 
+-- |Returns `True` for an empty list.
 mnull MNil = True
 mnull _ = False
 
+-- |Returns `True` from an `STT` monad for a reference to an empty
+-- list.
+getMnull :: Monad m => STRef s (MList s a) -> STT s m Bool
+getMnull ref = readSTRef ref >>= return . mnull
+
+-- |Returns the CAR (element) of the first CONS cell of a non-empty
+-- mutable list.
 mcar (MCons x _)  = readSTRef x
+-- |Returns the CDR (next cell) of the first CONS cell of a non-empty
+-- mutable list.
 mcdr (MCons _ xs) = readSTRef xs
 
+-- |Convert a traditional Haskell list into a mutable `MList` list.
 fromList :: Monad m => [a] -> STT s m (MList s a)
 fromList [] = return MNil
 fromList (x : xs) = do
@@ -170,6 +186,8 @@ fromList (x : xs) = do
   cdr <- newSTRef tail
   return $ MCons car cdr
 
+-- |Convert a traditional Haskell list into a mutable `MList` list,
+-- applying the given function to each element.
 fromListMap :: Monad m => (a -> b) -> [a] -> STT s m (MList s b)
 fromListMap _ [] = return MNil
 fromListMap f (x : xs) = do
@@ -178,6 +196,7 @@ fromListMap f (x : xs) = do
   cdr <- newSTRef tail
   return $ MCons car cdr
 
+-- |Convert a mutable `MList` list into a traditional Haskell list.
 toList :: Monad m => MList s a -> STT s m [a]
 toList MNil = return []
 toList (MCons car cdr) = do
@@ -186,6 +205,9 @@ toList (MCons car cdr) = do
   xs <- toList ms
   return $ x : xs
 
+-- |Convert a mutable `MList` list of `Maybe` values into a
+-- traditional Haskell list containing only the values under a `Just`
+-- constructor.
 toUnmaybeList :: Monad m => MList s (Maybe a) -> STT s m [a]
 toUnmaybeList MNil = return []
 toUnmaybeList (MCons car cdr) = do
@@ -240,6 +262,12 @@ mlistUnmaybe (MCons xref xsref) = do
 
 mlistStripNothing :: Monad m => MList s (Maybe a) -> STT s m (MList s (Maybe a))
 mlistStripNothing = mlistFilter (not . null)
+
+getMlistStripNothing ::
+  Monad m => STRef s (MList s (Maybe a)) -> STT s m (MList s (Maybe a))
+getMlistStripNothing ref = do
+  mlist <- readSTRef ref
+  mlistFilter (not . null) mlist
 
 -- |Treating an `MList` as a stack, add a new element at the top of
 -- the stack, and return the new stack top.
