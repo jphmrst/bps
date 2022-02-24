@@ -849,8 +849,8 @@ updateLabel node newEnvs = do
              sttLayer $ fromListMap Just labels
 
   -- These two loops traverse respectively the given newEnvs, and the
-  -- node label environments, to see if either is a subset of the
-  -- other.
+  -- node label environments, to find pairs of environments where one
+  -- of the pair is a subset of the other.
   mlistForCons_ sttLayer newEnvs $ \ newEnvCons -> do
     newEnvCarMaybe <- sttLayer $ mcar newEnvCons
     case newEnvCarMaybe of

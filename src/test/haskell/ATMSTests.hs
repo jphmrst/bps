@@ -56,12 +56,43 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
 
   na <- createNode atms "A" True False
   inGroup "Created Node A" $ do
-    aLabels <- getNodeLabel na
-    "Initially 1 label" ~: 1 !==- length aLabels
+    assertSingleSelfLabel na
 
   nc <- createNode atms "C" True False
+  inGroup "Created Node C" $ do
+    assertSingleSelfLabel nc
+
   ne <- createNode atms "E" True False
+  inGroup "Created Node E" $ do
+    assertSingleSelfLabel ne
+
   nh <- createNode atms "H" False False
+  inGroup "Created Node H" $ do
+    assertNoLabel nh
+
   justifyNode "R1" nh [nc, ne]
+  inGroup "Created Node H" $ do
+    -- TODO Add tests here
+    return ()
+
+  ng <- createNode atms "G" False False
+  inGroup "Created Node G" $ do
+    assertNoLabel ng
+
   return ()
+
+assertNoLabel :: Monad m => Node d i r s (TLT m) -> ATMST s (TLT m) ()
+assertNoLabel node = do
+  labels <- getNodeLabel node
+  "No labels" ~: 0 !==- length labels
+
+assertSingleSelfLabel :: Monad m => Node d i r s (TLT m) -> ATMST s (TLT m) ()
+assertSingleSelfLabel node = do
+  labels <- getNodeLabel node
+  "Initially 1 label" ~: 1 !==- length labels
+  -- TODO Pull the env out of the labels, find only node in the node
+  -- list.
+  case labels of
+    -- [lab] -> "Label is A" ~::- lab == na
+    _ -> return ()
 
