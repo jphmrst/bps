@@ -50,27 +50,32 @@ module Data.TMS.ATMS.ATMST (
   setInitialEnvTableAlloc, setEnvTableIncr,
   getInitialEnvTableAlloc, getEnvTableIncr,
 
-  -- * Top-level ATMS structure
+  -- * ATMS data structures
   ATMS, createATMS, atmsTitle,
 
-  -- * Nodes
+  -- ** Nodes
   Node, createNode,
-  -- ** Setting node status
-  assumeNode, makeContradiction, removeNode,
-  -- ** Node components
+  -- *** Node components
   nodeString, defaultNodeString, getNodeLabel, getNodeRules,
-  getNodeConsequences, getNodeIsContradictory,
-  -- ** Deductions related to a node
-  isTrueNode, isInNode, isOutNode, isNodeConsistentWith,
+  getNodeConsequences,
+  -- *** Setting node status
+  assumeNode, makeContradiction, removeNode,
 
-  -- * Justifications
+  -- ** Justifications
   JustRule, Justification, Explanation, justifyNode,
 
-  -- * Environments and tables
-  Env, EnvTable,
+  -- ** Environments and tables
+  Env, EnvTable, getEnvNodes,
 
   -- * Deduction and search utilities
-  interpretations, explainNode,
+  interpretations,
+
+  -- ** Related to a node
+  isTrueNode, isInNode, isOutNode, isNodeConsistentWith,
+  getNodeIsContradictory, explainNode,
+
+  -- ** Related to environments
+  envIsNogood,
 
   -- * Printing and debugging
   printAtms, printNode, printJust, printEnvStructure,
@@ -460,6 +465,9 @@ data Monad m => Node d i r s m = Node {
 instance Monad m => Eq (Node d i r s m) where
   n1 == n2 = nodeIndex n1 == nodeIndex n2
 
+instance Monad m => Show (Node d i r s m) where
+  show n = "<Node " ++ show (nodeIndex n) ++ ">"
+
 -- |Shortcut maker for reading from a `Node` reference.
 getNodeMutable ::
   Monad m => (Node d i r s m -> STRef s a) -> Node d i r s m  -> ATMST s m a
@@ -569,6 +577,9 @@ data Monad m => Env d i r s m = Env {
 
 instance Monad m => Eq (Env d i r s m) where
   e1 == e2 = (envIndex e1) == (envIndex e2)
+
+instance Monad m => Show (Env d i r s m) where
+  show n = "<Env " ++ show (envIndex n) ++ ">"
 
 -- |Shortcut maker for reading from a `Env` reference.
 getEnvMutable ::

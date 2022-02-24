@@ -71,7 +71,7 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
     assertNoLabel nh
 
   justifyNode "R1" nh [nc, ne]
-  inGroup "Created Node H" $ do
+  inGroup "Added Justification R1" $ do
     -- TODO Add tests here
     return ()
 
@@ -90,9 +90,13 @@ assertSingleSelfLabel :: Monad m => Node d i r s (TLT m) -> ATMST s (TLT m) ()
 assertSingleSelfLabel node = do
   labels <- getNodeLabel node
   "Initially 1 label" ~: 1 !==- length labels
-  -- TODO Pull the env out of the labels, find only node in the node
-  -- list.
   case labels of
-    -- [lab] -> "Label is A" ~::- lab == na
-    _ -> return ()
+    [env] -> do
+      envNodes <- getEnvNodes env
+      case envNodes of
+        [en] ->
+          "Single labelling node should be self" ~: node !==- en
+        l -> "Expected one node in Env" `tltFail`
+               ("Found " ++ (show $ length l))
+    l -> "Expected one Env in label" `tltFail` ("Found " ++ (show $ length l))
 
