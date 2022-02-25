@@ -30,6 +30,7 @@ language governing permissions and limitations under the License.
 
 module ATMSTests where
 
+import Data.List
 import Data.Symbol
 import Data.Void
 import Data.TMS.ATMS.ATMST
@@ -64,27 +65,31 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
 
   nc <- createNode atms "C" True False
   inGroup "Created Node C" $ do
-    assertSingleSelfLabel nc
+    assertSingleSelfLabels [na, nc]
     assertAssumptionsAre atms [na, nc]
 
   ne <- createNode atms "E" True False
   inGroup "Created Node E" $ do
-    assertSingleSelfLabel ne
+    assertSingleSelfLabels [na, nc, ne]
     assertAssumptionsAre atms [na, nc, ne]
 
   nh <- createNode atms "H" False False
   inGroup "Created Node H" $ do
+    assertSingleSelfLabels [na, nc, ne]
     assertNoLabel nh
     assertAssumptionsAre atms [na, nc, ne]
 
   justifyNode "R1" nh [nc, ne]
   inGroup "Added Justification R1" $ do
-    -- TODO Add tests here
+    assertSingleSelfLabels [na, nc, ne]
+    assertSingleLabelEnvBy nh [nc, ne]
     assertAssumptionsAre atms [na, nc, ne]
     return ()
 
   ng <- createNode atms "G" False False
   inGroup "Created Node G" $ do
+    assertSingleSelfLabels [na, nc, ne]
+    -- assertSingleLabelEnvBy nh [nc, ne]
     assertNoLabel ng
     assertAssumptionsAre atms [na, nc, ne]
 
@@ -95,21 +100,29 @@ assertNoLabel node = do
   labels <- getNodeLabel node
   "No labels" ~: 0 !==- length labels
 
+assertSingleSelfLabels ::
+  Monad m => [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
+assertSingleSelfLabels labels =
+  forM_ labels $ \ label -> assertSingleSelfLabel label
+
 assertSingleSelfLabel :: Monad m => Node d i r s (TLT m) -> ATMST s (TLT m) ()
-assertSingleSelfLabel node =
-  inGroup (show node ++ " is self-labelled only") $ do
+assertSingleSelfLabel node = assertSingleLabelEnvBy node [node]
+
+assertSingleLabelEnvBy ::
+  Monad m =>
+    Node d i r s (TLT m) -> [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
+assertSingleLabelEnvBy node nodes =
+  inGroup (show node ++ " labelled by one Env with "
+            ++ intercalate ", " (map show nodes)) $ do
     labels <- getNodeLabel node
-    "Initially 1 label" ~: 1 !==- length labels
-    "Single labelling node should be self" ~:
-      case labels of
-        [env] -> do
-          let envNodes = envAssumptions env
-          case envNodes of
-            [en] -> node !==- en
-            l -> assertFailed $
-                   "Expected one node in Env, found " ++ (show $ length l)
-        l -> assertFailed $
-               "Expected one Env in label, found " ++ (show $ length l)
+    case labels of
+      [env] -> do
+        let envAsmpts = envAssumptions env
+        "Single label should have " ++ show (length nodes) ++ " assumptions" ~:
+          length nodes !==- length envAsmpts
+        forM_ nodes $ \ node -> do
+          "Label should contain " ++ show node ~::- elem node envAsmpts
+      l -> "Expected one Env in label" `tltFail` ("Found " ++ (show $ length l))
 
 assertAssumptionsAre ::
   Monad m =>
