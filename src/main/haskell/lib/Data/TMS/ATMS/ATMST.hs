@@ -51,7 +51,13 @@ module Data.TMS.ATMS.ATMST (
   getInitialEnvTableAlloc, getEnvTableIncr,
 
   -- * ATMS data structures
+
+  -- ** Top-level ATMS
   ATMS, createATMS, atmsTitle,
+  -- *** ATMS components
+  getNodes, getJusts, getContradictions, getAssumptions,
+  getEmptyEnvironment, getNodeString, getJustString,
+  getDatumString, getInformantString, getEnqueueProcedure,
 
   -- ** Nodes
   Node, createNode,
@@ -65,7 +71,7 @@ module Data.TMS.ATMS.ATMST (
   JustRule, Justification, Explanation, justifyNode,
 
   -- ** Environments and tables
-  Env, EnvTable, getEnvNodes,
+  Env, EnvTable, envAssumptions, getEnvNodes,
 
   -- * Deduction and search utilities
   interpretations,
@@ -287,7 +293,7 @@ setATMSMutable ::
 {-# INLINE setATMSMutable #-}
 setATMSMutable refGetter atms envs = sttLayer $ writeSTRef (refGetter atms) envs
 
--- |Return the `ATMS`'s `Node` list.
+-- |Return the `ATMS`'s current `Node` list.
 getNodes ::
   Monad m => ATMS d i r s m -> ATMST s m [Node d i r s m]
 {-# INLINE getNodes #-}
@@ -300,7 +306,7 @@ setNodes ::
 setNodes = setATMSMutable atmsNodes
 -}
 
--- |Return the `ATMS`'s `JustRule` list.
+-- |Return the `ATMS`'s current `JustRule` list.
 getJusts ::
   Monad m => ATMS d i r s m -> ATMST s m [JustRule d i r s m]
 {-# INLINE getJusts #-}
@@ -313,7 +319,7 @@ setJusts ::
 setJusts = setATMSMutable atmsJusts
 -}
 
--- |Return the `ATMS`'s contradictions list.
+-- |Return the `ATMS`'s current contradictions list.
 getContradictions ::
   Monad m => ATMS d i r s m -> ATMST s m [Node d i r s m]
 {-# INLINE getContradictions #-}
@@ -326,7 +332,7 @@ setContradictions ::
 setContradictions = setATMSMutable atmsContradictions
 -}
 
--- |Return the `ATMS`'s assumptions list.
+-- |Return the `ATMS`'s current assumptions list.
 getAssumptions ::
   Monad m => ATMS d i r s m -> ATMST s m [Node d i r s m]
 {-# INLINE getAssumptions #-}
@@ -339,7 +345,7 @@ setAssumptions ::
 setAssumptions = setATMSMutable atmsAssumptions
 -}
 
--- |Return the `ATMS`'s empty environment.
+-- |Return the `ATMS`'s current empty environment.
 getEmptyEnvironment ::
   Monad m => ATMS d i r s m -> ATMST s m (Env d i r s m)
 {-# INLINE getEmptyEnvironment #-}
@@ -349,7 +355,7 @@ getEmptyEnvironment atms = do
     Just env -> return env
     Nothing -> exceptLayer $ throwE InternalNoEmptyEnv
 
--- |Return the `ATMS`'s `Node` formatter.
+-- |Return the `ATMS`'s current `Node` formatter.
 getNodeString ::
   Monad m => ATMS d i r s m -> ATMST s m (Node d i r s m -> String)
 {-# INLINE getNodeString #-}
@@ -360,7 +366,7 @@ setNodeString ::
 {-# INLINE setNodeString #-}
 setNodeString = setATMSMutable atmsNodeString
 
--- |Return the `ATMS`'s `JustRule` formatter.
+-- |Return the `ATMS`'s current `JustRule` formatter.
 getJustString ::
   Monad m => ATMS d i r s m -> ATMST s m (JustRule d i r s m -> String)
 {-# INLINE getJustString #-}
@@ -371,7 +377,7 @@ setJustString ::
 {-# INLINE setJustString #-}
 setJustString = setATMSMutable atmsJustString
 
--- |Return the `ATMS`'s datum formatter.
+-- |Return the `ATMS`'s current datum formatter.
 getDatumString ::
   Monad m => ATMS d i r s m -> ATMST s m (d -> String)
 {-# INLINE getDatumString #-}
@@ -382,7 +388,7 @@ setDatumString ::
 {-# INLINE setDatumString #-}
 setDatumString = setATMSMutable atmsDatumString
 
--- |Return the `ATMS`'s informant formatter.
+-- |Return the `ATMS`'s current informant formatter.
 getInformantString ::
   Monad m => ATMS d i r s m -> ATMST s m (i -> String)
 {-# INLINE getInformantString #-}
@@ -393,7 +399,7 @@ setInformantString ::
 {-# INLINE setInformantString #-}
 setInformantString = setATMSMutable atmsInformantString
 
--- |Return the `ATMS`'s rule-queueing procedure.
+-- |Return the `ATMS`'s current rule-queueing procedure.
 getEnqueueProcedure ::
   Monad m => ATMS d i r s m -> ATMST s m (r -> ATMST s m ())
 {-# INLINE getEnqueueProcedure #-}
