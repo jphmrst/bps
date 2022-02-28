@@ -17,11 +17,11 @@ extra-source-files:
 - Haskell-LICENSE.txt
 
 dependencies:
-- base >= 4.7 && < 5    # https://hackage.haskell.org/packages/base
-- mtl  >= 2.2 && < 2.3  # https://hackage.haskell.org/package/mtl
-- extra >= 1.7 && < 1.8 # https://hackage.haskell.org/package/extra
-- STMonadTrans >= 0.4.6 && < 0.5 # https://hackage.haskell.org/package/STMonadTrans
-- transformers >= 0.5 && < 0.6 # https://hackage.haskell.org/package/transformers-0.6.0.4
+- base         (>= 4.14.3 && < 4.15) || (>= 4.15.1 && < 4.16) || (>= 4.16.0 && < 4.17)
+- mtl          >= 2.2.2 && < 2.3
+- extra        >= 1.7   && < 1.8
+- STMonadTrans >= 0.4.6 && < 0.5
+- transformers >= 0.5   && < 0.6
 
 library:
   source-dirs: src/main/haskell/lib
@@ -48,7 +48,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - BPS
-    - HUnit
-    - symbol
-    - TLT >= 0.1.0.0  ## Remember to remove the extra-deps in
-                      ## stack.yaml when TLT goes external.
+    - symbol >= 0.2.4 && < 0.3
+    - TLT    >= 0.1.0 && < 0.2

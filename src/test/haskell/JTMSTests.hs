@@ -241,7 +241,7 @@ assertAssumptionsOfNode jtms node assumptions = do
   name <- nodeString node
   inGroup ("Checking assumptionsOfNode " ++ name) $ do
     ("Same number of expected and actual assumptions")
-      ~: length assumptions !==- length actuals
+      ~: length assumptions @==- length actuals
     forM_ assumptions $ \ expected -> do
       expName <- nodeString expected
       ("Contains expected node " ++ expName) ~::- (expected `elem` actuals)

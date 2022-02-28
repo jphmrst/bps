@@ -98,7 +98,7 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
 assertNoLabel :: Monad m => Node d i r s (TLT m) -> ATMST s (TLT m) ()
 assertNoLabel node = do
   labels <- getNodeLabel node
-  "No labels" ~: 0 !==- length labels
+  "No labels" ~: 0 @==- length labels
 
 assertSingleSelfLabels ::
   Monad m => [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
@@ -119,7 +119,7 @@ assertSingleLabelEnvBy node nodes =
       [env] -> do
         let envAsmpts = envAssumptions env
         "Single label should have " ++ show (length nodes) ++ " assumptions" ~:
-          length nodes !==- length envAsmpts
+          length nodes @==- length envAsmpts
         forM_ nodes $ \ node -> do
           "Label should contain " ++ show node ~::- elem node envAsmpts
       l -> "Expected one Env in label" `tltFail` ("Found " ++ (show $ length l))
@@ -130,6 +130,6 @@ assertAssumptionsAre ::
 assertAssumptionsAre atms nodes = inGroup "Checking assumptions in ATMS" $ do
   assumptionsList <- getAssumptions atms
   "Should have " ++ (show $ length nodes) ++ " assumptions" ~:
-    length nodes !==- length assumptionsList
+    length nodes @==- length assumptionsList
   forM_ nodes $ \ node -> do
     show node ++ " should be present" ~::- elem node assumptionsList
