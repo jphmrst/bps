@@ -59,6 +59,9 @@ module Data.TMS.ATMS.ATMST (
   getEmptyEnvironment, getNodeString, getJustString,
   getDatumString, getInformantString, getEnqueueProcedure,
 
+  setDatumStringViaString, setDatumStringViaShow,
+  setInformantStringViaString, setInformantStringViaShow,
+
   -- ** Nodes
   Node, createNode,
   -- *** Node components
@@ -68,7 +71,8 @@ module Data.TMS.ATMS.ATMST (
   assumeNode, makeContradiction, removeNode,
 
   -- ** Justifications
-  JustRule, Justification, Explanation, justifyNode,
+  JustRule, justInformant, justConsequence, justAntecedents,
+  Justification, Explanation, justifyNode,
 
   -- ** Environments and tables
   Env, EnvTable, envAssumptions, getEnvNodes,
@@ -84,6 +88,8 @@ module Data.TMS.ATMS.ATMST (
   envIsNogood,
 
   -- * Printing and debugging
+  debugAtms, debugNode, debugJust,
+  debugJustification, debugEnv,  debugEnvs, debugEnvTable, debugNogoods,
   printAtms, printNode, printJust, printEnvStructure,
   printJustification, printEnv, printNogoods,
   printEnvs, printEnvTable, printAtmsStatistics, printTable,
@@ -388,6 +394,12 @@ setDatumString ::
 {-# INLINE setDatumString #-}
 setDatumString = setATMSMutable atmsDatumString
 
+setDatumStringViaString :: Monad m => ATMS String i r s m -> ATMST s m ()
+setDatumStringViaString atms = setDatumString atms id
+
+setDatumStringViaShow :: (Show d, Monad m) => ATMS d i r s m -> ATMST s m ()
+setDatumStringViaShow atms = setDatumString atms show
+
 -- |Return the `ATMS`'s current informant formatter.
 getInformantString ::
   Monad m => ATMS d i r s m -> ATMST s m (i -> String)
@@ -398,6 +410,12 @@ setInformantString ::
   Monad m => ATMS d i r s m -> (i -> String) -> ATMST s m ()
 {-# INLINE setInformantString #-}
 setInformantString = setATMSMutable atmsInformantString
+
+setInformantStringViaString :: Monad m => ATMS d String r s m -> ATMST s m ()
+setInformantStringViaString atms = setInformantString atms id
+
+setInformantStringViaShow :: (Show i, Monad m) => ATMS d i r s m -> ATMST s m ()
+setInformantStringViaShow atms = setInformantString atms show
 
 -- |Return the `ATMS`'s current rule-queueing procedure.
 getEnqueueProcedure ::
@@ -415,7 +433,7 @@ setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
 -- >   (declare (ignore ignore))
 -- >   (format stream "#<ATMS: ~A>" (atms-title atms)))
 printAtms :: MonadIO m => ATMS d i r s m -> ATMST s m ()
-printAtms = error "< TODO unimplemented >"
+printAtms atms = liftIO $ putStrLn $ "#<ATMS: " ++ atmsTitle atms ++ ">"
 
 -- |Get the next node counter value, incrementing for future accesses.
 nextNodeCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
@@ -1705,4 +1723,64 @@ printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
 -- >        (length (cdr entry)))))
 printTable :: MonadIO m => String -> EnvTable d i r s m -> ATMST s m ()
 printTable = error "< TODO unimplemented printTable >"
+
+debugAtms :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugAtms atms = do
+  liftIO $ putStrLn "----------"
+  printAtms atms
+  debugNodes atms
+  debugJusts atms
+  debugEnvs atms
+  debugNogoods atms
+  liftIO $ putStrLn "----------"
+
+debugNodes :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugNodes atms = do
+  nodes <- getNodes atms
+  forM_ nodes debugNode
+
+debugNode :: MonadIO m => Node d i r s m -> ATMST s m ()
+debugNode node = do
+  datumFmt <- getDatumString (nodeATMS node)
+  informantFmt <- getInformantString (nodeATMS node)
+  liftIO $ putStrLn $ "- " ++ datumFmt (nodeDatum node)
+
+  label <- getNodeLabel node
+  case label of
+    [] -> liftIO $ putStrLn "  Empty label"
+    [env] -> do
+      liftIO $ putStr "  Label environment: "
+      debugEnv env
+    _ -> forM_ label $ \env -> do
+      liftIO $ putStrLn "  - "
+      debugEnv env
+
+  conseqs <- getNodeConsequences node
+  case conseqs of
+    [] -> liftIO $ putStrLn "  Antecedent to no justifications"
+    _ -> do
+      liftIO $ putStrLn "  Antecedent to:"
+      forM_ conseqs $ \ conseq -> do
+        liftIO $ putStr $ "  - " ++ informantFmt (justInformant conseq)
+
+debugJustification :: Monad m => Justification d i r s m -> ATMST s m ()
+debugJustification j = error "< TODO unimplemented debugJustification >"
+
+debugJusts :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugJusts atms = error "< TODO unimplemented debugJust >"
+
+debugJust :: MonadIO m => JustRule d i r s m -> ATMST s m ()
+debugJust just = error "< TODO unimplemented debugJust >"
+
+debugEnv :: MonadIO m => Env d i r s m -> ATMST s m ()
+debugEnv env = error "< TODO unimplemented debugEnv >"
+
+debugNogoods :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugNogoods atms = error "< TODO unimplemented debugNogoods >"
+
+debugEnvTable :: MonadIO m => EnvTable d i r s m -> ATMST s m ()
+debugEnvTable table = error "< TODO unimplemented debugEnvTable >"
+
+debugEnvs :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugEnvs atms = error "< TODO unimplemented debugEnvs >"
 
