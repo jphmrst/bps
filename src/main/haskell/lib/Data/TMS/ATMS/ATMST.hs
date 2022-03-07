@@ -1741,8 +1741,9 @@ debugNodes atms = do
 
 debugNode :: MonadIO m => Node d i r s m -> ATMST s m ()
 debugNode node = do
-  datumFmt <- getDatumString (nodeATMS node)
-  informantFmt <- getInformantString (nodeATMS node)
+  let atms = nodeATMS node
+  datumFmt <- getDatumString atms
+  informantFmt <- getInformantString atms
   liftIO $ putStrLn $ "- " ++ datumFmt (nodeDatum node)
 
   label <- getNodeLabel node
@@ -1750,10 +1751,10 @@ debugNode node = do
     [] -> liftIO $ putStrLn "  Empty label"
     [env] -> do
       liftIO $ putStr "  Label environment: "
-      debugEnv env
+      debugEnv atms env
     _ -> forM_ label $ \env -> do
       liftIO $ putStrLn "  - "
-      debugEnv env
+      debugEnv atms env
 
   conseqs <- getNodeConsequences node
   case conseqs of
@@ -1762,6 +1763,7 @@ debugNode node = do
       liftIO $ putStrLn "  Antecedent to:"
       forM_ conseqs $ \ conseq -> do
         liftIO $ putStr $ "  - " ++ informantFmt (justInformant conseq)
+      liftIO $ putStrLn ""
 
 debugJustification :: Monad m => Justification d i r s m -> ATMST s m ()
 debugJustification j = error "< TODO unimplemented debugJustification >"
@@ -1772,8 +1774,13 @@ debugJusts atms = error "< TODO unimplemented debugJust >"
 debugJust :: MonadIO m => JustRule d i r s m -> ATMST s m ()
 debugJust just = error "< TODO unimplemented debugJust >"
 
-debugEnv :: MonadIO m => Env d i r s m -> ATMST s m ()
-debugEnv env = error "< TODO unimplemented debugEnv >"
+debugEnv :: MonadIO m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
+debugEnv atms env = do
+  isNogood <- envIsNogood env
+  envNodes <- getEnvNodes env
+  datumFmt <- getDatumString atms
+  when isNogood $ liftIO $ putStr "[X] "
+  liftIO $ putStrLn $ intercalate ", " $ map (datumFmt . nodeDatum) envNodes
 
 debugNogoods :: MonadIO m => ATMS d i r s m -> ATMST s m ()
 debugNogoods atms = error "< TODO unimplemented debugNogoods >"
