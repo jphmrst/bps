@@ -71,11 +71,11 @@ module Data.TMS.ATMS.ATMST (
   assumeNode, makeContradiction, removeNode,
 
   -- ** Justifications
-  JustRule, justInformant, justConsequence, justAntecedents,
+  JustRule(JustRule), justInformant, justConsequence, justAntecedents,
   Justification, Explanation, justifyNode,
 
   -- ** Environments and tables
-  Env, EnvTable, envAssumptions, getEnvNodes,
+  Env, EnvTable, envIndex, envAssumptions, getEnvNodes,
 
   -- * Deduction and search utilities
   interpretations,
@@ -311,6 +311,18 @@ setNodes ::
 {-# INLINE setNodes #-}
 setNodes = setATMSMutable atmsNodes
 -}
+
+-- |Return the `ATMS`'s current `EnvTable`.
+getEnvTable ::
+  Monad m => ATMS d i r s m -> ATMST s m (EnvTable d i r s m)
+{-# INLINE getEnvTable #-}
+getEnvTable = getATMSMutable atmsEnvTable
+
+-- |Return the `ATMS`'s current `NogoodTable`.
+getNogoodTable ::
+  Monad m => ATMS d i r s m -> ATMST s m (EnvTable d i r s m)
+{-# INLINE getNogoodTable #-}
+getNogoodTable = getATMSMutable atmsNogoodTable
 
 -- |Return the `ATMS`'s current `JustRule` list.
 getJusts ::
@@ -1769,10 +1781,24 @@ debugJustification :: Monad m => Justification d i r s m -> ATMST s m ()
 debugJustification j = error "< TODO unimplemented debugJustification >"
 
 debugJusts :: MonadIO m => ATMS d i r s m -> ATMST s m ()
-debugJusts atms = error "< TODO unimplemented debugJust >"
+debugJusts atms = do
+  justs <- getJusts atms
+  liftIO $ putStrLn "Justifications:"
+  forM_ (sortOn justIndex justs) $ debugJust atms
 
-debugJust :: MonadIO m => JustRule d i r s m -> ATMST s m ()
-debugJust just = error "< TODO unimplemented debugJust >"
+debugJust :: MonadIO m => ATMS d i r s m -> JustRule d i r s m -> ATMST s m ()
+debugJust atms (JustRule idx inf conseq ants) = do
+  informantFmt <- getInformantString atms
+  datumFmt <- getDatumString atms
+  liftIO $ putStrLn $ "  " ++ show idx ++ ". [" ++ informantFmt inf ++ "] "
+    ++ datumFmt (nodeDatum conseq) ++ " <= "
+    ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
+
+debugEnvs :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugEnvs atms = do
+  liftIO $ putStrLn "Environments:"
+  envTable <- getEnvTable atms
+  debugEnvTable atms envTable
 
 debugEnv :: MonadIO m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
 debugEnv atms env = do
@@ -1783,11 +1809,18 @@ debugEnv atms env = do
   liftIO $ putStrLn $ intercalate ", " $ map (datumFmt . nodeDatum) envNodes
 
 debugNogoods :: MonadIO m => ATMS d i r s m -> ATMST s m ()
-debugNogoods atms = error "< TODO unimplemented debugNogoods >"
+debugNogoods atms = do
+  liftIO $ putStrLn "No-good environments:"
+  nogoodTable <- getNogoodTable atms
+  debugEnvTable atms nogoodTable
 
-debugEnvTable :: MonadIO m => EnvTable d i r s m -> ATMST s m ()
-debugEnvTable table = error "< TODO unimplemented debugEnvTable >"
-
-debugEnvs :: MonadIO m => ATMS d i r s m -> ATMST s m ()
-debugEnvs atms = error "< TODO unimplemented debugEnvs >"
+debugEnvTable ::
+  MonadIO m => ATMS d i r s m -> EnvTable d i r s m -> ATMST s m ()
+debugEnvTable atms (EnvTable array) = do
+  let (lo, hi) = boundsSTArray array
+  forM_ [lo..hi] $ \ i -> do
+    envs <- sttLayer $ readSTArray array i
+    forM_ envs $ \ env -> do
+      liftIO $ putStr "- "
+      debugEnv atms env
 
