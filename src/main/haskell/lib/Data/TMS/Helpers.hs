@@ -161,6 +161,16 @@ data MList s a = MCons (STRef s a) (STRef s (MList s a))
                | MNil
                  -- ^ Regular old @nil@.
 
+showM :: (Show a, Monad m) => MList s a -> STT s m String
+showM MNil = return "[]"
+showM (MCons xr xsr) = do
+  x <- readSTRef xr
+  xs <- readSTRef xsr
+  let sx = show x
+  sxs <- showM xs
+  return $ sx ++ " m:: " ++ sxs
+
+
 -- |Returns `True` for an empty list.
 mnull MNil = True
 mnull _ = False

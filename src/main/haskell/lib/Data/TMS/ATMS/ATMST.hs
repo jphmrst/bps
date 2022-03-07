@@ -866,16 +866,28 @@ makeContradiction = error "< TODO unimplemented makeContradiction >"
 -- >         (mapcar #'node-string antecedents))
 -- >   (propagate just nil (list (atms-empty-env atms)))
 -- >   just)
-justifyNode ::
-  Monad m => i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
+justifyNode :: -- TODO Revert to just (Monad m) after debugging.
+  MonadIO m => i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
 justifyNode informant consequence antecedents = do
+  -- Retrieve the ATMS in which we are working
   let atms = nodeATMS consequence
+
+  -- Number and create a new justification record.
   idx <- nextJustCounter atms
   let just = JustRule idx informant consequence antecedents
+
+  -- Register the new justification with the node it can imply.
   sttLayer $ push (ByRule just) (nodeJusts consequence)
+
+  -- Register the new justification with the nodes that can trigger
+  -- it.
   sttLayer $ forM_ antecedents $ \node -> push just $ nodeConsequences node
+
+  -- Register the new justification with the ATMS itself.
   sttLayer $ push just $ atmsJusts atms
-  Just emptyEnv <- sttLayer $ readSTRef $ atmsEmptyEnv atms
+
+  -- Introduce the new justification
+  emptyEnv <- getEmptyEnvironment atms
   envListRef <- sttLayer $ fromListMap Just [emptyEnv]
   propagate just Nothing envListRef
 
@@ -893,8 +905,8 @@ nogoodNodes = error "< TODO unimplemented nogoodNodes >"
 -- > (defun propagate (just antecedent envs &aux new-envs)
 -- >   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
 -- >       (update new-envs (just-consequence just) just)))
-propagate ::
-  Monad m =>
+propagate :: -- TODO Revert to just (Monad m) after debugging.
+  MonadIO m =>
     JustRule d i r s m ->
       Maybe (Node d i r s m) ->
         MList s (Maybe (Env d i r s m)) ->
@@ -938,8 +950,8 @@ propagate just antecedent envs = do
 -- >     (setq new-envs (delete nil new-envs :TEST #'eq))
 -- >     (unless new-envs
 -- >       (return-from update nil))))
-update ::
-  Monad m =>
+update :: -- TODO Back to Monad m
+  MonadIO m =>
     MList s  (Maybe (Env d i r s m)) -> Node d i r s m -> JustRule d i r s m ->
       ATMST s m ()
 update newEnvs consequence just = do
@@ -1137,7 +1149,7 @@ updateLabel node newEnvs = do
 -- >
 -- >   ;; Finally, return the last refinement of ENVS.
 -- >   envs)
-weave :: Monad m =>
+weave :: MonadIO m => -- TODO Revert to just (Monad m) after debugging.
   Maybe (Node d i r s m) ->
     (MList s (Maybe (Env d i r s m))) ->
       [Node d i r s m] ->
@@ -1736,18 +1748,17 @@ printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
 printTable :: MonadIO m => String -> EnvTable d i r s m -> ATMST s m ()
 printTable = error "< TODO unimplemented printTable >"
 
-debugAtms :: MonadIO m => ATMS d i r s m -> ATMST s m ()
-debugAtms atms = do
-  liftIO $ putStrLn "----------"
-  printAtms atms
+debugAtms :: MonadIO m => String -> ATMS d i r s m -> ATMST s m ()
+debugAtms blurb atms = do
+  liftIO $ putStrLn $ "=============== " ++ atmsTitle atms ++ ": " ++ blurb
   debugNodes atms
   debugJusts atms
   debugEnvs atms
   debugNogoods atms
-  liftIO $ putStrLn "----------"
 
 debugNodes :: MonadIO m => ATMS d i r s m -> ATMST s m ()
 debugNodes atms = do
+  liftIO $ putStrLn "Nodes:"
   nodes <- getNodes atms
   forM_ nodes debugNode
 
@@ -1762,7 +1773,7 @@ debugNode node = do
   case label of
     [] -> liftIO $ putStrLn "  Empty label"
     [env] -> do
-      liftIO $ putStr "  Label environment: "
+      liftIO $ putStr "  Single environment label: "
       debugEnv atms env
     _ -> forM_ label $ \env -> do
       liftIO $ putStrLn "  - "
@@ -1803,10 +1814,14 @@ debugEnvs atms = do
 debugEnv :: MonadIO m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
 debugEnv atms env = do
   isNogood <- envIsNogood env
-  envNodes <- getEnvNodes env
-  datumFmt <- getDatumString atms
-  when isNogood $ liftIO $ putStr "[X] "
-  liftIO $ putStrLn $ intercalate ", " $ map (datumFmt . nodeDatum) envNodes
+  case envAssumptions env of
+    [] -> liftIO $ putStrLn "<empty>"
+    nodes -> do
+      datumFmt <- getDatumString atms
+      when isNogood $ liftIO $ putStr "[X] "
+      liftIO $ putStrLn $
+        (intercalate ", " $ map (datumFmt . nodeDatum) nodes)
+        ++ " (count " ++ show (length nodes) ++ ")"
 
 debugNogoods :: MonadIO m => ATMS d i r s m -> ATMST s m ()
 debugNogoods atms = do
