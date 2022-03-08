@@ -1855,7 +1855,7 @@ debugEnvTable atms (EnvTable array) = do
   let (lo, hi) = boundsSTArray array
   forM_ [lo..hi] $ \ i -> do
     envs <- sttLayer $ readSTArray array i
-    forM_ envs $ \ env -> do
+    forM_ (reverse envs) $ \ env -> do
       liftIO $ putStr "- "
       debugEnv atms env
 
