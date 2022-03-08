@@ -41,6 +41,7 @@ language governing permissions and limitations under the License.
 -}
 
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
@@ -52,8 +53,12 @@ module Data.TMS.ATMS.ATMST (
 
   -- * ATMS data structures
 
+  -- ** Component classes
+  NodeDatum, contractionNodeDatum,
+
   -- ** Top-level ATMS
   ATMS, createATMS, atmsTitle,
+
   -- *** ATMS components
   getNodes, getJusts, getContradictions, getAssumptions,
   getEmptyEnvironment, getNodeString, getJustString,
@@ -103,6 +108,7 @@ import Control.Monad.ST.Trans
 import Control.Monad.Trans.Except
 import Control.Monad.Extra
 import Data.List
+import Data.Symbol
 import Data.TMS.Helpers
 
 -- * The @ATMST@ monad transformer
@@ -234,6 +240,13 @@ runATMST atmst = do
 
 {- ----------------------------------------------------------------- -}
 
+class NodeDatum d where contractionNodeDatum :: d
+
+instance NodeDatum String where
+  contractionNodeDatum = "The contradiction"
+instance NodeDatum Symbol where
+  contractionNodeDatum = intern "The contradiction"
+
 -- > ;; In atms.lisp
 -- > (defstruct (atms (:PRINT-FUNCTION print-atms))
 -- >   (title nil)
@@ -251,7 +264,7 @@ runATMST atmst = do
 -- >   (empty-env nil)               ; Empty environment.
 -- >   (node-string nil)
 -- >   (enqueue-procedure nil))
-data Monad m => ATMS d i r s m = ATMS {
+data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   -- |Name of this ATMS.
   atmsTitle :: String,
   -- |Unique namer for nodes.
@@ -289,83 +302,83 @@ data Monad m => ATMS d i r s m = ATMS {
 
 -- |Shortcut maker for reading from an `ATMS` reference.
 getATMSMutable ::
-  Monad m => (ATMS d i r s m -> STRef s a) -> ATMS d i r s m  -> ATMST s m a
+  (Monad m, NodeDatum d) => (ATMS d i r s m -> STRef s a) -> ATMS d i r s m  -> ATMST s m a
 {-# INLINE getATMSMutable #-}
 getATMSMutable refGetter atms = sttLayer $ readSTRef (refGetter atms)
 -- |Shortcut to write to an ATMS reference.
 setATMSMutable ::
-  Monad m =>
+  (Monad m, NodeDatum d) =>
     (ATMS d i r s m -> STRef s a) -> ATMS d i r s m -> a -> ATMST s m ()
 {-# INLINE setATMSMutable #-}
 setATMSMutable refGetter atms envs = sttLayer $ writeSTRef (refGetter atms) envs
 
 -- |Return the `ATMS`'s current `Node` list.
 getNodes ::
-  Monad m => ATMS d i r s m -> ATMST s m [Node d i r s m]
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [Node d i r s m]
 {-# INLINE getNodes #-}
 getNodes = getATMSMutable atmsNodes
 {-
 -- |Shortcut to write to the reference to a ATMS's `Node` list.
 setNodes ::
-  Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
 {-# INLINE setNodes #-}
 setNodes = setATMSMutable atmsNodes
 -}
 
 -- |Return the `ATMS`'s current `EnvTable`.
 getEnvTable ::
-  Monad m => ATMS d i r s m -> ATMST s m (EnvTable d i r s m)
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (EnvTable d i r s m)
 {-# INLINE getEnvTable #-}
 getEnvTable = getATMSMutable atmsEnvTable
 
 -- |Return the `ATMS`'s current `NogoodTable`.
 getNogoodTable ::
-  Monad m => ATMS d i r s m -> ATMST s m (EnvTable d i r s m)
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (EnvTable d i r s m)
 {-# INLINE getNogoodTable #-}
 getNogoodTable = getATMSMutable atmsNogoodTable
 
 -- |Return the `ATMS`'s current `JustRule` list.
 getJusts ::
-  Monad m => ATMS d i r s m -> ATMST s m [JustRule d i r s m]
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [JustRule d i r s m]
 {-# INLINE getJusts #-}
 getJusts = getATMSMutable atmsJusts
 {-
 -- |Shortcut to write to the reference to a ATMS's `JustRule` list.
 setJusts ::
-  Monad m => ATMS d i r s m -> [JustRule d i r s m] -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> [JustRule d i r s m] -> ATMST s m ()
 {-# INLINE setJusts #-}
 setJusts = setATMSMutable atmsJusts
 -}
 
 -- |Return the `ATMS`'s current contradictions list.
 getContradictions ::
-  Monad m => ATMS d i r s m -> ATMST s m [Node d i r s m]
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [Node d i r s m]
 {-# INLINE getContradictions #-}
 getContradictions = getATMSMutable atmsContradictions
 {-
 -- |Shortcut to write to the reference to a ATMS's contradictions list.
 setContradictions ::
-  Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
 {-# INLINE setContradictions #-}
 setContradictions = setATMSMutable atmsContradictions
 -}
 
 -- |Return the `ATMS`'s current assumptions list.
 getAssumptions ::
-  Monad m => ATMS d i r s m -> ATMST s m [Node d i r s m]
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [Node d i r s m]
 {-# INLINE getAssumptions #-}
 getAssumptions = getATMSMutable atmsAssumptions
 {-
 -- |Shortcut to write to the reference to a ATMS's assumptions list.
 setAssumptions ::
-  Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
 {-# INLINE setAssumptions #-}
 setAssumptions = setATMSMutable atmsAssumptions
 -}
 
 -- |Return the `ATMS`'s current empty environment.
 getEmptyEnvironment ::
-  Monad m => ATMS d i r s m -> ATMST s m (Env d i r s m)
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (Env d i r s m)
 {-# INLINE getEmptyEnvironment #-}
 getEmptyEnvironment atms = do
   maybeEnv <- getATMSMutable atmsEmptyEnv atms
@@ -375,68 +388,72 @@ getEmptyEnvironment atms = do
 
 -- |Return the `ATMS`'s current `Node` formatter.
 getNodeString ::
-  Monad m => ATMS d i r s m -> ATMST s m (Node d i r s m -> String)
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (Node d i r s m -> String)
 {-# INLINE getNodeString #-}
 getNodeString = getATMSMutable atmsNodeString
 -- |Shortcut to write to the reference to a ATMS's `Node` formatter.
 setNodeString ::
-  Monad m => ATMS d i r s m -> (Node d i r s m -> String) -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> (Node d i r s m -> String) -> ATMST s m ()
 {-# INLINE setNodeString #-}
 setNodeString = setATMSMutable atmsNodeString
 
 -- |Return the `ATMS`'s current `JustRule` formatter.
 getJustString ::
-  Monad m => ATMS d i r s m -> ATMST s m (JustRule d i r s m -> String)
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (JustRule d i r s m -> String)
 {-# INLINE getJustString #-}
 getJustString = getATMSMutable atmsJustString
 -- |Shortcut to write to the reference to a ATMS's `JustRule` formatter.
 setJustString ::
-  Monad m => ATMS d i r s m -> (JustRule d i r s m -> String) -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> (JustRule d i r s m -> String) -> ATMST s m ()
 {-# INLINE setJustString #-}
 setJustString = setATMSMutable atmsJustString
 
 -- |Return the `ATMS`'s current datum formatter.
 getDatumString ::
-  Monad m => ATMS d i r s m -> ATMST s m (d -> String)
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (d -> String)
 {-# INLINE getDatumString #-}
 getDatumString = getATMSMutable atmsDatumString
 -- |Shortcut to write to the reference to a ATMS's datum formatter.
 setDatumString ::
-  Monad m => ATMS d i r s m -> (d -> String) -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> (d -> String) -> ATMST s m ()
 {-# INLINE setDatumString #-}
 setDatumString = setATMSMutable atmsDatumString
 
 setDatumStringViaString :: Monad m => ATMS String i r s m -> ATMST s m ()
 setDatumStringViaString atms = setDatumString atms id
 
-setDatumStringViaShow :: (Show d, Monad m) => ATMS d i r s m -> ATMST s m ()
+setDatumStringViaShow ::
+  (NodeDatum d, Show d, Monad m) => ATMS d i r s m -> ATMST s m ()
 setDatumStringViaShow atms = setDatumString atms show
 
 -- |Return the `ATMS`'s current informant formatter.
 getInformantString ::
-  Monad m => ATMS d i r s m -> ATMST s m (i -> String)
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (i -> String)
 {-# INLINE getInformantString #-}
 getInformantString = getATMSMutable atmsInformantString
 -- |Shortcut to write to the reference to a ATMS's informant formatter.
 setInformantString ::
-  Monad m => ATMS d i r s m -> (i -> String) -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> (i -> String) -> ATMST s m ()
 {-# INLINE setInformantString #-}
 setInformantString = setATMSMutable atmsInformantString
 
-setInformantStringViaString :: Monad m => ATMS d String r s m -> ATMST s m ()
+setInformantStringViaString :: (Monad m, NodeDatum d) => ATMS d String r s m -> ATMST s m ()
 setInformantStringViaString atms = setInformantString atms id
 
-setInformantStringViaShow :: (Show i, Monad m) => ATMS d i r s m -> ATMST s m ()
+setInformantStringViaShow ::
+  (Show i, Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 setInformantStringViaShow atms = setInformantString atms show
 
 -- |Return the `ATMS`'s current rule-queueing procedure.
 getEnqueueProcedure ::
-  Monad m => ATMS d i r s m -> ATMST s m (r -> ATMST s m ())
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> ATMST s m (r -> ATMST s m ())
 {-# INLINE getEnqueueProcedure #-}
 getEnqueueProcedure = getATMSMutable atmsEnqueueProcedure
 -- |Shortcut to write to the reference to a ATMS's rule-queueing procedure.
 setEnqueueProcedure ::
-  Monad m => ATMS d i r s m -> (r -> ATMST s m ()) -> ATMST s m ()
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> (r -> ATMST s m ()) -> ATMST s m ()
 {-# INLINE setEnqueueProcedure #-}
 setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
 
@@ -444,11 +461,11 @@ setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
 -- > (defun print-atms (atms stream ignore)
 -- >   (declare (ignore ignore))
 -- >   (format stream "#<ATMS: ~A>" (atms-title atms)))
-printAtms :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+printAtms :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printAtms atms = liftIO $ putStrLn $ "#<ATMS: " ++ atmsTitle atms ++ ">"
 
 -- |Get the next node counter value, incrementing for future accesses.
-nextNodeCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
+nextNodeCounter :: (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m Int
 nextNodeCounter jtms = sttLayer $ do
   let nodeCounter = atmsNodeCounter jtms
   nodeId <- readSTRef nodeCounter
@@ -457,7 +474,7 @@ nextNodeCounter jtms = sttLayer $ do
 
 -- |Get the next justification rule counter value, incrementing for
 -- future accesses.
-nextJustCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
+nextJustCounter :: (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m Int
 nextJustCounter atms = sttLayer $ do
   let justCounter = atmsJustCounter atms
   justId <- readSTRef justCounter
@@ -466,7 +483,7 @@ nextJustCounter atms = sttLayer $ do
 
 -- |Get the next environment rule counter value, incrementing for
 -- future accesses.
-nextEnvCounter :: Monad m => ATMS d i r s m -> ATMST s m Int
+nextEnvCounter :: (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m Int
 nextEnvCounter atms = sttLayer $ do
   let envCounter = atmsEnvCounter atms
   envId <- readSTRef envCounter
@@ -486,7 +503,7 @@ nextEnvCounter atms = sttLayer $ do
 -- >   (assumption? nil)             ; flag marking it as n assumption.
 -- >   (rules nil)                   ; run when label non-empty.
 -- >   (atms nil))
-data Monad m => Node d i r s m = Node {
+data (Monad m, NodeDatum d) => Node d i r s m = Node {
   nodeIndex :: Int,
   nodeDatum :: d,
   nodeLabel :: STRef s [Env d i r s m],
@@ -498,55 +515,55 @@ data Monad m => Node d i r s m = Node {
   nodeATMS :: ATMS d i r s m
 }
 
-instance Monad m => Eq (Node d i r s m) where
+instance (Monad m, NodeDatum d) => Eq (Node d i r s m) where
   n1 == n2 = nodeIndex n1 == nodeIndex n2
 
-instance Monad m => Show (Node d i r s m) where
+instance (Monad m, NodeDatum d) => Show (Node d i r s m) where
   show n = "<Node " ++ show (nodeIndex n) ++ ">"
 
 -- |Shortcut maker for reading from a `Node` reference.
 getNodeMutable ::
-  Monad m => (Node d i r s m -> STRef s a) -> Node d i r s m  -> ATMST s m a
+  (Monad m, NodeDatum d) => (Node d i r s m -> STRef s a) -> Node d i r s m  -> ATMST s m a
 {-# INLINE getNodeMutable #-}
 getNodeMutable refGetter node = sttLayer $ readSTRef (refGetter node)
 -- |Shortcut to write to the reference to a node's label.
 setNodeMutable ::
-  Monad m =>
+  (Monad m, NodeDatum d) =>
     (Node d i r s m -> STRef s a) -> Node d i r s m -> a -> ATMST s m ()
 {-# INLINE setNodeMutable #-}
 setNodeMutable refGetter node envs = sttLayer $ writeSTRef (refGetter node) envs
 
 -- |Return the `Node`'s label.
-getNodeLabel :: Monad m => Node d i r s m -> ATMST s m [Env d i r s m]
+getNodeLabel :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [Env d i r s m]
 {-# INLINE getNodeLabel #-}
 getNodeLabel = getNodeMutable nodeLabel
 -- |Shortcut to write to the reference to a node's label.
-setNodeLabel :: Monad m => Node d i r s m -> [Env d i r s m] -> ATMST s m ()
+setNodeLabel :: (Monad m, NodeDatum d) => Node d i r s m -> [Env d i r s m] -> ATMST s m ()
 {-# INLINE setNodeLabel #-}
 setNodeLabel = setNodeMutable nodeLabel
 
 -- |Return the `Node`'s rules.
-getNodeRules :: Monad m => Node d i r s m -> ATMST s m [r]
+getNodeRules :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [r]
 {-# INLINE getNodeRules #-}
 getNodeRules = getNodeMutable nodeRules
 -- |Shortcut to write to the reference to a node's rules.
-setNodeRules :: Monad m => Node d i r s m -> [r] -> ATMST s m ()
+setNodeRules :: (Monad m, NodeDatum d) => Node d i r s m -> [r] -> ATMST s m ()
 {-# INLINE setNodeRules #-}
 setNodeRules = setNodeMutable nodeRules
 
 -- |Return the `Node`'s consequences.
 getNodeConsequences ::
-  Monad m => Node d i r s m -> ATMST s m [JustRule d i r s m]
+  (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [JustRule d i r s m]
 {-# INLINE getNodeConsequences #-}
 getNodeConsequences = getNodeMutable nodeConsequences
 -- |Shortcut to write to the reference to a node's consequences.
 setNodeConsequences ::
-  Monad m => Node d i r s m -> [JustRule d i r s m] -> ATMST s m ()
+  (Monad m, NodeDatum d) => Node d i r s m -> [JustRule d i r s m] -> ATMST s m ()
 {-# INLINE setNodeConsequences #-}
 setNodeConsequences = setNodeMutable nodeConsequences
 
 -- |Return whether the `Node`'s is currently contradictory.
-getNodeIsContradictory :: Monad m => Node d i r s m  -> ATMST s m Bool
+getNodeIsContradictory :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 
 -- > (defun print-tms-node (node stream ignore)
@@ -554,7 +571,7 @@ getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 -- >   (if (tms-node-assumption? node)
 -- >       (format stream "A-~D" (tms-node-index node))
 -- >       (format stream "#<NODE: ~A>" (node-string node))))
-printNode :: MonadIO m => Node d i r s m -> ATMST s m ()
+printNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 printNode = error "< TODO unimplemented >"
 
 -- > ;; In atms.lisp
@@ -563,7 +580,7 @@ printNode = error "< TODO unimplemented >"
 -- >       (informant nil)
 -- >       (consequence nil)
 -- >       (antecedents nil))
-data Monad m => JustRule d i r s m = JustRule {
+data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
   justIndex :: Int,
   justInformant :: i,
   justConsequence :: Node d i r s m,
@@ -575,7 +592,7 @@ data Monad m => JustRule d i r s m = JustRule {
 -- >   (declare (ignore ignore))
 -- >   (format stream "<~A ~D>" (just-informant just)
 -- >      (just-index just)))
-printJust :: MonadIO m => JustRule d i r s m -> ATMST s m ()
+printJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
 printJust = error "< TODO unimplemented printJust >"
 
 data Justification d i r s m =
@@ -602,7 +619,7 @@ isNoGood _ = True
 -- >       (nodes nil)
 -- >       (nogood? nil)
 -- >       (rules nil))                         ; Call this if becomes nogood.
-data Monad m => Env d i r s m = Env {
+data (Monad m, NodeDatum d) => Env d i r s m = Env {
   envIndex :: Int,
   envCount :: Int,
   envAssumptions :: [Node d i r s m],
@@ -611,30 +628,30 @@ data Monad m => Env d i r s m = Env {
   envRules :: STRef s [r]
 }
 
-instance Monad m => Eq (Env d i r s m) where
+instance (Monad m, NodeDatum d) => Eq (Env d i r s m) where
   e1 == e2 = (envIndex e1) == (envIndex e2)
 
-instance Monad m => Show (Env d i r s m) where
+instance (Monad m, NodeDatum d) => Show (Env d i r s m) where
   show n = "<Env " ++ show (envIndex n) ++ ">"
 
 -- |Shortcut maker for reading from a `Env` reference.
 getEnvMutable ::
-  Monad m => (Env d i r s m -> STRef s a) -> Env d i r s m  -> ATMST s m a
+  (Monad m, NodeDatum d) => (Env d i r s m -> STRef s a) -> Env d i r s m  -> ATMST s m a
 {-# INLINE getEnvMutable #-}
 getEnvMutable refGetter env = sttLayer $ readSTRef (refGetter env)
 -- |Shortcut to write to the reference to a env's label.
 setEnvMutable ::
-  Monad m =>
+  (Monad m, NodeDatum d) =>
     (Env d i r s m -> STRef s a) -> Env d i r s m -> a -> ATMST s m ()
 {-# INLINE setEnvMutable #-}
 setEnvMutable refGetter env envs = sttLayer $ writeSTRef (refGetter env) envs
 
-getEnvNodes :: Monad m => Env d i r s m  -> ATMST s m [Node d i r s m]
+getEnvNodes :: (Monad m, NodeDatum d) => Env d i r s m  -> ATMST s m [Node d i r s m]
 getEnvNodes = getEnvMutable envNodes
-setEnvNodes :: Monad m => Env d i r s m  -> [Node d i r s m] -> ATMST s m ()
+setEnvNodes :: (Monad m, NodeDatum d) => Env d i r s m  -> [Node d i r s m] -> ATMST s m ()
 setEnvNodes = setEnvMutable envNodes
 
-envIsNogood :: Monad m => Env d i r s m -> ATMST s m Bool
+envIsNogood :: (Monad m, NodeDatum d) => Env d i r s m -> ATMST s m Bool
 envIsNogood env = do
   fmap isNogood $ sttLayer $ readSTRef $ envWhyNogood env
 
@@ -644,13 +661,13 @@ newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 -- > (defun print-env-structure (env stream ignore)
 -- >   (declare (ignore ignore))
 -- >   (format stream "E-~D" (env-index env)))
-printEnvStructure :: MonadIO m => Env d i r s m -> ATMST s m ()
+printEnvStructure :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 printEnvStructure = error "< TODO unimplemented printEnvStructure >"
 
 -- > ;; In atms.lisp
 -- > (defun node-string (node)
 -- >   (funcall (atms-node-string (tms-node-atms node)) node))
-nodeString :: Monad m => Node d i r s m -> ATMST s m String
+nodeString :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 nodeString = error "< TODO unimplemented nodeString >"
 
 -- > ;; In atms.lisp
@@ -661,7 +678,7 @@ nodeString = error "< TODO unimplemented nodeString >"
 
 -- > ;; In atms.lisp
 -- > (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
-defaultNodeString :: Monad m => Node d i r s m -> ATMST s m String
+defaultNodeString :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 defaultNodeString = error "< TODO unimplemented defaultNodeString >"
 
 -- > ;; In atms.lisp
@@ -687,13 +704,13 @@ orderedPush = error "< TODO unimplemented orderedPush >"
 -- > ;; In atms.lisp
 -- > (defun assumption-order (a1 a2)
 -- >   (< (tms-node-index a1) (tms-node-index a2)))
-assumptionOrder :: Monad m => Node d i r s m -> Node d i r s m -> Bool
+assumptionOrder :: (Monad m, NodeDatum d) => Node d i r s m -> Node d i r s m -> Bool
 assumptionOrder n1 n2 = nodeIndex n1 < nodeIndex n2
 
 -- > ;; In atms.lisp
 -- > (defun env-order (e1 e2)
 -- >   (< (env-index e1) (env-index e2)))
-envOrder :: Monad m => Env d i r s m -> Env d i r s m -> Bool
+envOrder :: (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> Bool
 envOrder e1 e2 = envIndex e1 < envIndex e2
 
 {- ----------------------------------------------------------------- -}
@@ -715,7 +732,7 @@ envOrder e1 e2 = envIndex e1 < envIndex e2
 -- >                       :CONTRADICTORYP t))
 -- >     (setf (atms-empty-env atms) (create-env atms nil))
 -- >     atms))
-createATMS :: Monad m => String -> ATMST s m (ATMS d i r s m)
+createATMS :: (Monad m, NodeDatum d) => String -> ATMST s m (ATMS d i r s m)
 createATMS title = do
   ecInitialAlloc <- getInitialEnvTableAlloc
   emptyEnvRef <- sttLayer $ newSTRef Nothing
@@ -743,6 +760,7 @@ createATMS title = do
                   etableRef ngtableRef emptyEnvRef
                   nodeString justString datumString informantString
                   enqueueProcedure debugging
+  createNode result contractionNodeDatum False True
   emptyEnv <- createEnv result []
   sttLayer $ writeSTRef emptyEnvRef (Just emptyEnv)
   return result
@@ -761,7 +779,7 @@ createATMS title = do
 -- > (defun true-node? (node)
 -- >   (eq (car (tms-node-label node))
 -- >       (atms-empty-env (tms-node-atms node))))
-isTrueNode :: Monad m => Node d i r s m -> ATMST s m Bool
+isTrueNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m Bool
 isTrueNode = error "< TODO unimplemented isTrueNode >"
 
 -- > ;; In atms.lisp
@@ -770,12 +788,12 @@ isTrueNode = error "< TODO unimplemented isTrueNode >"
 -- >       (some #'(lambda (le) (subset-env? le env))
 -- >        (tms-node-label n))
 -- >       (not (null (tms-node-label n)))))
-isInNode :: Monad m => Node d i r s m -> Env d i r s m -> ATMST s m Bool
+isInNode :: (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isInNode = error "< TODO unimplemented isInNode >"
 
 -- > ;; In atms.lisp
 -- > (defun out-node? (n env) (not (in-node? n env)))
-isOutNode :: Monad m => Node d i r s m -> Env d i r s m -> ATMST s m Bool
+isOutNode :: (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isOutNode = error "< TODO unimplemented isOutNode >"
 
 -- > ;; In atms.lisp
@@ -783,7 +801,7 @@ isOutNode = error "< TODO unimplemented isOutNode >"
 -- >   (some #'(lambda (le) (not (env-nogood? (union-env le env))))
 -- >    (tms-node-label n)))
 isNodeConsistentWith ::
-  Monad m => Node d i r s m -> Env d i r s m -> ATMST s m Bool
+  (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isNodeConsistentWith = error "< TODO unimplemented isNodeConsistentWith >"
 
 -- |Create a new `Node` in an `ATMS`.
@@ -803,7 +821,7 @@ isNodeConsistentWith = error "< TODO unimplemented isNodeConsistentWith >"
 -- >     (push (create-env atms (list node)) (tms-node-label node)))
 -- >   node)
 createNode ::
-  Monad m => ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
+  (Monad m, NodeDatum d) => ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
 createNode atms datum isAssumption isContradictory = do
   idx <- nextNodeCounter atms
   label <- sttLayer $ newSTRef []
@@ -834,7 +852,7 @@ createNode atms datum isAssumption isContradictory = do
 -- >     (update (list (create-env atms (list node)))
 -- >        node
 -- >        'ASSUME-NODE)))
-assumeNode :: Monad m => Node d i r s m -> ATMST s m ()
+assumeNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 assumeNode = error "< TODO unimplemented assumeNode >"
 
 -- > ;; In atms.lisp
@@ -847,7 +865,7 @@ assumeNode = error "< TODO unimplemented assumeNode >"
 -- >       (if (setq nogood (car (tms-node-label node)))
 -- >      (new-nogood atms nogood 'MAKE-CONTRADICTION)
 -- >      (return nil)))))
-makeContradiction :: Monad m => Node d i r s m -> ATMST s m ()
+makeContradiction :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 makeContradiction = error "< TODO unimplemented makeContradiction >"
 
 -- > (defun justify-node (informant consequence antecedents &aux just atms)
@@ -867,7 +885,7 @@ makeContradiction = error "< TODO unimplemented makeContradiction >"
 -- >   (propagate just nil (list (atms-empty-env atms)))
 -- >   just)
 justifyNode :: -- TODO Revert to just (Monad m) after debugging.
-  MonadIO m => i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
+  (MonadIO m, NodeDatum d) => i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
 justifyNode informant consequence antecedents = do
   -- Retrieve the ATMS in which we are working
   let atms = nodeATMS consequence
@@ -896,7 +914,7 @@ justifyNode informant consequence antecedents = do
 -- >   (justify-node informant
 -- >            (atms-contra-node (tms-node-atms (car nodes)))
 -- >            nodes))
-nogoodNodes :: Monad m => Node d i r s m -> [Node d i r s m] -> ATMST s m ()
+nogoodNodes :: (Monad m, NodeDatum d) => Node d i r s m -> [Node d i r s m] -> ATMST s m ()
 nogoodNodes = error "< TODO unimplemented nogoodNodes >"
 
 -- * Label updating
@@ -906,7 +924,7 @@ nogoodNodes = error "< TODO unimplemented nogoodNodes >"
 -- >   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
 -- >       (update new-envs (just-consequence just) just)))
 propagate :: -- TODO Revert to just (Monad m) after debugging.
-  MonadIO m =>
+  (MonadIO m, NodeDatum d) =>
     JustRule d i r s m ->
       Maybe (Node d i r s m) ->
         MList s (Maybe (Env d i r s m)) ->
@@ -951,7 +969,7 @@ propagate just antecedent envs = do
 -- >     (unless new-envs
 -- >       (return-from update nil))))
 update :: -- TODO Back to Monad m
-  MonadIO m =>
+  (MonadIO m, NodeDatum d) =>
     MList s  (Maybe (Env d i r s m)) -> Node d i r s m -> JustRule d i r s m ->
       ATMST s m ()
 update newEnvs consequence just = do
@@ -1035,7 +1053,7 @@ update newEnvs consequence just = do
 -- >         (delete nil envs :TEST #'eq))
 -- >   new-envs)
 updateLabel ::
-  Monad m => Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
+  (Monad m, NodeDatum d) => Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
     ATMST s m (MList s (Maybe (Env d i r s m)))
 updateLabel node newEnvs = do
   -- We will edit the label of this node, so we extract it as a
@@ -1149,7 +1167,7 @@ updateLabel node newEnvs = do
 -- >
 -- >   ;; Finally, return the last refinement of ENVS.
 -- >   envs)
-weave :: MonadIO m => -- TODO Revert to just (Monad m) after debugging.
+weave :: (MonadIO m, NodeDatum d) => -- TODO Revert to just (Monad m) after debugging.
   Maybe (Node d i r s m) ->
     (MList s (Maybe (Env d i r s m))) ->
       [Node d i r s m] ->
@@ -1233,7 +1251,7 @@ weave antecedent givenEnvs antecedents = do
 -- > (defun in-antecedent? (nodes)
 -- >   (or (null nodes)
 -- >       (weave? (atms-empty-env (tms-node-atms (car nodes))) nodes)))
-isInAntecedent :: Monad m => [Node d i r s m] -> ATMST s m Bool
+isInAntecedent :: (Monad m, NodeDatum d) => [Node d i r s m] -> ATMST s m Bool
 isInAntecedent = error "< TODO unimplemented isInAntecedent >"
 
 -- > ;; In atms.lisp
@@ -1244,14 +1262,14 @@ isInAntecedent = error "< TODO unimplemented isInAntecedent >"
 -- >         (unless (env-nogood? new-env)
 -- >           (if (weave? new-env (cdr nodes))
 -- >               (return T)))))))
-isWeave :: Monad m => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
+isWeave :: (Monad m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
 isWeave = error "< TODO unimplemented isInAntecedent >"
 
 -- > ;; In atms.lisp
 -- > (defun supporting-antecedent? (nodes env)
 -- >   (dolist (node nodes t) (unless (in-node? node env) (return nil))))
 isSupportingAntecedent ::
-  Monad m => [Node d i r s m] -> Env d i r s m -> ATMST s m Bool
+  (Monad m, NodeDatum d) => [Node d i r s m] -> Env d i r s m -> ATMST s m Bool
 isSupportingAntecedent = error "< TODO unimplemented isSupportingAntecedent >"
 
 -- > ;; In atms.lisp
@@ -1269,7 +1287,7 @@ isSupportingAntecedent = error "< TODO unimplemented isSupportingAntecedent >"
 -- >   (dolist (env (tms-node-label node))
 -- >     (setf (env-nodes env)
 -- >      (delete node (env-nodes env) :test #'eq :count 1))))
-removeNode :: Monad m => Node d i r s m -> ATMST s m ()
+removeNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 removeNode = error "< TODO unimplemented removeNode >"
 
 -- * Creating and extending environments.
@@ -1290,7 +1308,7 @@ removeNode = error "< TODO unimplemented removeNode >"
 -- >   (set-env-contradictory atms e)
 -- >   e)
 createEnv ::
-  Monad m => ATMS d i r s m -> [Node d i r s m] -> ATMST s m (Env d i r s m)
+  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] -> ATMST s m (Env d i r s m)
 createEnv atms assumptions = do
   index <- nextEnvCounter atms
   whyNogood <- sttLayer $ newSTRef Good
@@ -1311,7 +1329,7 @@ createEnv atms assumptions = do
 -- >     (if (env-nogood? e2) (return nil)))
 -- >   e2)
 unionEnv ::
-  Monad m => Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
+  (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 unionEnv e1 e2 =
   if envCount e1 > envCount e2 then unionEnv' e2 e1 else unionEnv' e1 e2
   where unionEnv' e1 e2 = do
@@ -1335,7 +1353,7 @@ unionEnv e1 e2 =
 -- >   (or (lookup-env nassumes)
 -- >       (create-env (tms-node-atms assumption) nassumes)))
 consEnv ::
-  Monad m => Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
+  (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 consEnv assumption env = do
   let nassumes = orderedInsert assumption (envAssumptions env) assumptionOrder
   envByLookup <- lookupEnv nassumes
@@ -1351,7 +1369,7 @@ consEnv assumption env = do
 -- >   (or (lookup-env assumptions)
 -- >       (create-env atms assumptions)))
 findOrMakeEnv ::
-  Monad m => [Node d i r s m] -> ATMS d i r s m -> ATMST s m (Env d i r s m)
+  (Monad m, NodeDatum d) => [Node d i r s m] -> ATMS d i r s m -> ATMST s m (Env d i r s m)
 findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 
 -- * Env tables.
@@ -1365,7 +1383,7 @@ findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 -- >         (list count env) table
 -- >         #'(lambda (entry1 entry2)
 -- >             (< (car entry1) (car entry2)))))))
-insertInTable :: Monad m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
+insertInTable :: (Monad m, NodeDatum d) => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
 insertInTable atms env = do
   let count = envCount env
       tableRef = atmsEnvTable atms
@@ -1399,7 +1417,7 @@ insertInTable atms env = do
 -- >                nil)
 -- >     (if (equal (env-assumptions env) assumes)
 -- >       (return env))))
-lookupEnv :: Monad m => [Node d i r s m] -> ATMST s m (Maybe (Env d i r s m))
+lookupEnv :: (Monad m, NodeDatum d) => [Node d i r s m] -> ATMST s m (Maybe (Env d i r s m))
 lookupEnv [] = return Nothing
 lookupEnv assumptions@(a : _) = do
   let atms = nodeATMS a
@@ -1417,7 +1435,7 @@ lookupEnv assumptions@(a : _) = do
 -- >        (env-count e2)) nil)
 -- >    ((subsetp (env-assumptions e1)
 -- >              (env-assumptions e2)))))
-isSubsetEnv :: Monad m => Env d i r s m -> Env d i r s m -> Bool
+isSubsetEnv :: (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> Bool
 isSubsetEnv = error "< TODO unimplemented isSubsetEnv >"
 
 -- | The possible results of comparing two `Env`s.
@@ -1436,7 +1454,7 @@ data EnvCompare =
 -- >         :S12))
 -- >    ((subsetp (env-assumptions e2) (env-assumptions e1))
 -- >     :S21)))
-compareEnv :: Monad m => Env d i r s m -> Env d i r s m -> EnvCompare
+compareEnv :: (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> EnvCompare
 compareEnv e1 e2 =
   if e1 == e2
   then EQenv
@@ -1450,7 +1468,7 @@ compareEnv e1 e2 =
 
 -- |Return true if the first sorted (by `Env` index) node list is a
 -- subset of the second.
-nodeListIsSubsetEq :: Monad m => [Node d i r s m] -> [Node d i r s m] -> Bool
+nodeListIsSubsetEq :: (Monad m, NodeDatum d) => [Node d i r s m] -> [Node d i r s m] -> Bool
 nodeListIsSubsetEq [] _ = True
 nodeListIsSubsetEq _ [] = False
 nodeListIsSubsetEq l1@(x : xs) (y : ys) =
@@ -1481,7 +1499,7 @@ nodeListIsSubsetEq l1@(x : xs) (y : ys) =
 -- >      (setf (env-nogood? old) cenv)
 -- >      (remove-env-from-labels old atms))))))
 newNogood ::
-  Monad m =>
+  (Monad m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> Justification d i r s m -> ATMST s m ()
 newNogood = error "< TODO unimplemented newNogood >"
 
@@ -1497,7 +1515,7 @@ newNogood = error "< TODO unimplemented newNogood >"
 -- >                           (setf (env-nogood? env) cenv)
 -- >                           (return t)))))))))
 setEnvContradictory ::
-  Monad m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
 setEnvContradictory atms env = do
   ifM (envIsNogood env) (return ()) $ do
     count <- return $ envCount env
@@ -1518,7 +1536,7 @@ setEnvContradictory atms env = do
 -- >     (setf (tms-node-label node)
 -- >      (delete env (tms-node-label node) :COUNT 1))))
 removeEnvFromLabels ::
-  Monad m => Env d i r s m -> ATMS d i r s m -> ATMST s m ()
+  (Monad m, NodeDatum d) => Env d i r s m -> ATMS d i r s m -> ATMST s m ()
 removeEnvFromLabels = error "< TODO unimplemented removeEnvFromLabels >"
 
 -- * Interpretation construction
@@ -1566,7 +1584,7 @@ removeEnvFromLabels = error "< TODO unimplemented removeEnvFromLabels >"
 -- >    (extend-via-defaults solution defaults defaults)))
 -- >     (delete nil *solutions* :TEST #'eq)))
 interpretations ::
-  Monad m => ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m ()
+  (Monad m, NodeDatum d) => ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m ()
 interpretations = error "< TODO unimplemented interpretations >"
 
 -- > ;; In atms.lisp
@@ -1587,7 +1605,7 @@ interpretations = error "< TODO unimplemented interpretations >"
 -- >           (get-depth-solutions1 new-solution
 -- >                                 (cdr choice-sets)))))))
 getDepthSolutions1 ::
-  Monad m => Env d i r s m -> [[Env d i r s m]] -> ATMST s m ()
+  (Monad m, NodeDatum d) => Env d i r s m -> [[Env d i r s m]] -> ATMST s m ()
 getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
 
 -- > ;; In atms.lisp
@@ -1606,7 +1624,7 @@ getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
 -- >     (unless (env-nogood? new-solution)
 -- >       (extend-via-defaults new-solution (cdr defaults) original))))
 extendViaDefaults ::
-  Monad m =>
+  (Monad m, NodeDatum d) =>
     Env d i r s m -> [Node d i r s m] -> [Node d i r s m] -> ATMST s m ()
 extendViaDefaults = error "< TODO unimplemented extendViaDefaults >"
 
@@ -1619,7 +1637,7 @@ extendViaDefaults = error "< TODO unimplemented extendViaDefaults >"
 -- > ;; In atms.lisp
 -- > (defun explain-node (node env) (explain-node-1 env node nil nil))
 explainNode ::
-  Monad m =>
+  (Monad m, NodeDatum d) =>
     Node d i r s m -> Env d i r s m -> ATMST s m [Justification d i r s m]
 explainNode = error "< TODO unimplemented explainNode >"
 
@@ -1645,7 +1663,7 @@ explainNode = error "< TODO unimplemented explainNode >"
 -- >                    (explain-node-1 env a queued-nodes new-explanation))
 -- >              (unless new-explanation (return nil)))))))))
 explainNode1 ::
-  Monad m =>
+  (Monad m, NodeDatum d) =>
     Env d i r s m -> Node d i r s m -> [Node d i r s m] ->
       [Justification d i r s m] ->
         ATMST s m [Explanation d i r s m]
@@ -1657,13 +1675,13 @@ explainNode1 = error "< TODO unimplemented explainNode1 >"
 -- >   (dolist (e (tms-node-label node))
 -- >     (env-string e stream))
 -- >   (format stream "}>"))
-whyNode :: MonadIO m => Node d i r s m -> ATMST s m (Node d i r s m)
+whyNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m (Node d i r s m)
 whyNode = error "< TODO unimplemented whyNode >"
 
 -- > ;; In atms.lisp
 -- > (defun why-nodes (atms &optional (stream t))
 -- >   (dolist (n (reverse (atms-nodes atms))) (why-node n stream)))
-whyNodes :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+whyNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 whyNodes = error "< TODO unimplemented whyNodes >"
 
 -- > ;; In atms.lisp
@@ -1671,7 +1689,7 @@ whyNodes = error "< TODO unimplemented whyNodes >"
 -- >   (format t "~% For ~A:" (node-string node))
 -- >   (dolist (j (tms-node-justs node))
 -- >     (print-justification j stream)))
-nodeJustifications :: Monad m => Node d i r s m -> ATMST s m ()
+nodeJustifications :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 nodeJustifications = error "< TODO unimplemented nodeJustifications >"
 
 -- > ;; In atms.lisp
@@ -1679,7 +1697,7 @@ nodeJustifications = error "< TODO unimplemented nodeJustifications >"
 -- >   (format stream "~%  ~A, " (just-informant j))
 -- >   (dolist (a (just-antecedents j))
 -- >     (why-node a stream "     ")))
-printJustification :: Monad m => Justification d i r s m -> ATMST s m ()
+printJustification :: (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
 printJustification = error "< TODO unimplemented printJustification >"
 
 -- > ;; In atms.lisp
@@ -1687,7 +1705,7 @@ printJustification = error "< TODO unimplemented printJustification >"
 -- >   (dolist (bucket (atms-env-table atms))
 -- >     (dolist (env (cdr bucket))
 -- >     (if (= (env-index env) n) (return-from e env)))))
-e :: Monad m => ATMS d i r s m -> Int -> ATMST s m ()
+e :: (Monad m, NodeDatum d) => ATMS d i r s m -> Int -> ATMST s m ()
 e = error "< TODO unimplemented e >"
 
 -- > ;; In atms.lisp
@@ -1696,7 +1714,7 @@ e = error "< TODO unimplemented e >"
 -- >      e (if (env-nogood? e)
 -- >            "* " " "))
 -- >   (env-string e stream))
-printEnv :: MonadIO m => Env d i r s m -> ATMST s m ()
+printEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 printEnv = error "< TODO unimplemented printEnv >"
 
 -- > ;; In atms.lisp
@@ -1707,7 +1725,7 @@ printEnv = error "< TODO unimplemented printEnv >"
 -- >     (setq printer (atms-node-string (tms-node-atms (car assumptions)))))
 -- >   (dolist (a assumptions) (push (funcall printer a) strings))
 -- >   (format stream "{~{~A~^,~}}" (sort strings #'string-lessp)))
-envString :: Monad m => Env d i r s m -> ATMST s m String
+envString :: (Monad m, NodeDatum d) => Env d i r s m -> ATMST s m String
 envString = error "< TODO unimplemented envString >"
 
 -- * Printing global data
@@ -1715,13 +1733,13 @@ envString = error "< TODO unimplemented envString >"
 -- > ;; In atms.lisp
 -- > (defun print-nogoods (atms &optional (stream t))
 -- >   (print-env-table (atms-nogood-table atms) stream))
-printNogoods :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+printNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printNogoods = error "< TODO unimplemented printNogoods >"
 
 -- > ;; In atms.lisp
 -- > (defun print-envs (atms &optional (stream t))
 -- >   (print-env-table (atms-env-table atms) stream))
-printEnvs :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+printEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printEnvs = error "< TODO unimplemented printEnvs >"
 
 -- > ;; In atms.lisp
@@ -1729,14 +1747,14 @@ printEnvs = error "< TODO unimplemented printEnvs >"
 -- >   (dolist (bucket table)
 -- >     (dolist (env (cdr bucket))
 -- >       (print-env env stream))))
-printEnvTable :: MonadIO m => EnvTable d i r s m -> ATMST s m ()
+printEnvTable :: (MonadIO m, NodeDatum d) => EnvTable d i r s m -> ATMST s m ()
 printEnvTable = error "< TODO unimplemented printEnvTable >"
 
 -- > ;; In atms.lisp
 -- > (defun print-atms-statistics (atms)
 -- >   (print-table "~% For env table:" (atms-env-table atms))
 -- >   (print-table "~% For nogood table:" (atms-nogood-table atms)))
-printAtmsStatistics :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+printAtmsStatistics :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
 
 -- > ;; In atms.lisp
@@ -1745,10 +1763,10 @@ printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
 -- >   (dolist (entry table)
 -- >     (format t "~%   Length ~D, ~D" (car entry)
 -- >        (length (cdr entry)))))
-printTable :: MonadIO m => String -> EnvTable d i r s m -> ATMST s m ()
+printTable :: (MonadIO m, NodeDatum d) => String -> EnvTable d i r s m -> ATMST s m ()
 printTable = error "< TODO unimplemented printTable >"
 
-debugAtms :: MonadIO m => String -> ATMS d i r s m -> ATMST s m ()
+debugAtms :: (MonadIO m, NodeDatum d) => String -> ATMS d i r s m -> ATMST s m ()
 debugAtms blurb atms = do
   liftIO $ putStrLn $ "=============== " ++ atmsTitle atms ++ ": " ++ blurb
   debugNodes atms
@@ -1756,13 +1774,13 @@ debugAtms blurb atms = do
   debugEnvs atms
   debugNogoods atms
 
-debugNodes :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNodes atms = do
-  liftIO $ putStrLn "Nodes:"
   nodes <- getNodes atms
-  forM_ nodes debugNode
+  liftIO $ putStrLn $ show (length nodes) ++ " nodes:"
+  forM_ (reverse nodes) debugNode
 
-debugNode :: MonadIO m => Node d i r s m -> ATMST s m ()
+debugNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 debugNode node = do
   let atms = nodeATMS node
   datumFmt <- getDatumString atms
@@ -1783,35 +1801,36 @@ debugNode node = do
   case conseqs of
     [] -> liftIO $ putStrLn "  Antecedent to no justifications"
     _ -> do
-      liftIO $ putStrLn "  Antecedent to:"
+      liftIO $ putStr "  Antecedent to:"
       forM_ conseqs $ \ conseq -> do
-        liftIO $ putStr $ "  - " ++ informantFmt (justInformant conseq)
+        liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
       liftIO $ putStrLn ""
 
-debugJustification :: Monad m => Justification d i r s m -> ATMST s m ()
+debugJustification :: (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
 debugJustification j = error "< TODO unimplemented debugJustification >"
 
-debugJusts :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugJusts :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugJusts atms = do
   justs <- getJusts atms
-  liftIO $ putStrLn "Justifications:"
+  liftIO $ putStrLn $ show (length justs) ++ " justification structures:"
   forM_ (sortOn justIndex justs) $ debugJust atms
 
-debugJust :: MonadIO m => ATMS d i r s m -> JustRule d i r s m -> ATMST s m ()
+debugJust :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> JustRule d i r s m -> ATMST s m ()
 debugJust atms (JustRule idx inf conseq ants) = do
   informantFmt <- getInformantString atms
   datumFmt <- getDatumString atms
-  liftIO $ putStrLn $ "  " ++ show idx ++ ". [" ++ informantFmt inf ++ "] "
+  liftIO $ putStrLn $ "  "
+    ++ "[" ++ informantFmt inf ++ "." ++ show idx ++ "] "
     ++ datumFmt (nodeDatum conseq) ++ " <= "
     ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
 
-debugEnvs :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugEnvs atms = do
   liftIO $ putStrLn "Environments:"
   envTable <- getEnvTable atms
   debugEnvTable atms envTable
 
-debugEnv :: MonadIO m => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
+debugEnv :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
 debugEnv atms env = do
   isNogood <- envIsNogood env
   case envAssumptions env of
@@ -1823,14 +1842,15 @@ debugEnv atms env = do
         (intercalate ", " $ map (datumFmt . nodeDatum) nodes)
         ++ " (count " ++ show (length nodes) ++ ")"
 
-debugNogoods :: MonadIO m => ATMS d i r s m -> ATMST s m ()
+debugNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNogoods atms = do
   liftIO $ putStrLn "No-good environments:"
   nogoodTable <- getNogoodTable atms
   debugEnvTable atms nogoodTable
 
 debugEnvTable ::
-  MonadIO m => ATMS d i r s m -> EnvTable d i r s m -> ATMST s m ()
+  (MonadIO m, NodeDatum d) =>
+    ATMS d i r s m -> EnvTable d i r s m -> ATMST s m ()
 debugEnvTable atms (EnvTable array) = do
   let (lo, hi) = boundsSTArray array
   forM_ [lo..hi] $ \ i -> do
