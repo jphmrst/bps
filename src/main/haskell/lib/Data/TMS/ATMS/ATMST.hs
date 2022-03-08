@@ -110,6 +110,7 @@ import Control.Monad.Extra
 import Data.List
 import Data.Symbol
 import Data.TMS.Helpers
+import Data.TMS.MList
 
 -- * The @ATMST@ monad transformer
 --
@@ -1173,6 +1174,32 @@ weave :: (MonadIO m, NodeDatum d) => -- TODO Revert to just (Monad m) after debu
       [Node d i r s m] ->
         ATMST s m (MList s (Maybe (Env d i r s m)))
 weave antecedent givenEnvs antecedents = do
+  do liftIO $ putStrLn "WEAVE"
+     case antecedent of
+       Just n -> debugNode n
+       Nothing -> liftIO $ putStrLn ". No antecedent"
+     let atms = case antecedent of
+                  Just a  -> Just $ nodeATMS a
+                  Nothing -> case antecedents of
+                               a : _ -> Just $ nodeATMS a
+                               _ -> Nothing
+     case atms of
+       Just a -> do
+         liftIO $ putStrLn ". Envs:"
+         mlistFor_ sttLayer givenEnvs $ \em -> do
+           liftIO $ putStr "  . "
+           case em of
+             Just e -> debugEnv a e
+             Nothing -> liftIO $ putStrLn "<nulled out>"
+         return ()
+       _ -> return ()
+     liftIO $ putStr ". Antecedents:"
+     forM_ antecedents $ \a -> do
+       let atms = nodeATMS a
+       datumFmt <- getDatumString atms
+       liftIO $ putStr $ " " ++ datumFmt (nodeDatum a)
+     liftIO $ putStrLn " "
+
   envsRef <- sttLayer $ newSTRef givenEnvs
 
   forM_ antecedents $ \node ->
@@ -1812,7 +1839,9 @@ debugJustification j = error "< TODO unimplemented debugJustification >"
 debugJusts :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugJusts atms = do
   justs <- getJusts atms
-  liftIO $ putStrLn $ show (length justs) ++ " justification structures:"
+  let len = length justs
+  liftIO $ putStrLn $ show len ++ " justification structure"
+    ++ (if len == 1 then "" else "s") ++ ":"
   forM_ (sortOn justIndex justs) $ debugJust atms
 
 debugJust :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> JustRule d i r s m -> ATMST s m ()
