@@ -690,7 +690,7 @@ defaultNodeString = error "< TODO unimplemented defaultNodeString >"
 -- >    (t (cons (car list) (ordered-insert item (cdr list) test)))))
 orderedInsert :: Eq a => a -> [a] -> (a -> a -> Bool) -> [a]
 orderedInsert item [] _ = [item]
-orderedInsert item list@(i : _) test | test item i  = i : list
+orderedInsert item list@(i : _) test | test item i  = item : list
 orderedInsert item list@(i : _) _    | item == i    = list
 orderedInsert item (i : is) test = i : orderedInsert item is test
 
