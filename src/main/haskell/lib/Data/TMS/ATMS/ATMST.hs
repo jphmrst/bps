@@ -1200,9 +1200,10 @@ weave antecedent givenEnvs antecedents = do
           Nothing -> return ()
           Just env -> do
             forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
+              debugWeavePairIntro env nodeEnv
 
               newEnv <- unionEnv env nodeEnv
-              debugWeavePair env nodeEnv newEnv
+              debugWeavePairUnion newEnv
 
               -- We are not interested in nogood environments, so we
               -- skip filing the union if it is nogood.
@@ -1251,7 +1252,9 @@ weave antecedent givenEnvs antecedents = do
       sttLayer $ writeSTRef envsRef filteredNewEnvs
 
   -- Finally, return the last refinement of ENVS.
-  sttLayer $ readSTRef envsRef
+  result <- sttLayer $ readSTRef envsRef
+  debugWeaveResult result
+  return result
 
 debugWeaveArgs :: (MonadIO m, NodeDatum d) =>
   Maybe (Node d i r s m) ->
@@ -1291,19 +1294,28 @@ debugWeaveNodeAntecedent antecedent = do
   liftIO $ putStrLn $
     " - For node antecedent " ++ datumFmt (nodeDatum antecedent)
 
-debugWeavePair ::
-  (MonadIO m, NodeDatum d) =>
-    Env d i r s m -> Env d i r s m -> Env d i r s m -> ATMST s m ()
-debugWeavePair srcEnv nodeEnv union = do
+debugWeavePairIntro ::
+  (MonadIO m, NodeDatum d) => Env d i r s m -> Env d i r s m -> ATMST s m ()
+debugWeavePairIntro srcEnv nodeEnv = do
   liftIO $ putStr $ "    - For "
   blurbEnv srcEnv
   liftIO $ putStr $ " from env, "
   blurbEnv nodeEnv
   liftIO $ putStrLn $ " from node label"
+
+debugWeavePairUnion ::
+  (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
+debugWeavePairUnion union = do
   liftIO $ putStr "      Union is "
   blurbEnv union
   liftIO $ putStrLn ""
 
+debugWeaveResult ::
+  (MonadIO m, NodeDatum d) => MList s (Maybe (Env d i r s m)) -> ATMST s m ()
+debugWeaveResult result = do
+  liftIO $ putStr " --> result of weave is "
+  blurbMaybeEnvMList result
+  liftIO $ putStrLn ""
 
 -- > ;; In atms.lisp
 -- > (defun in-antecedent? (nodes)
@@ -1387,21 +1399,52 @@ createEnv atms assumptions = do
 -- >     (if (env-nogood? e2) (return nil)))
 -- >   e2)
 unionEnv ::
-  (Monad m, NodeDatum d) =>
+  (MonadIO m, NodeDatum d) => -- TODO After debugging, switch MonadIO
+                              -- back to Monad
     Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 {- TODO Bug in in here, or in consEnv.
 -}
 unionEnv e1 e2 =
   if envCount e1 > envCount e2 then unionEnv' e2 e1 else unionEnv' e1 e2
   where unionEnv' e1 e2 = do
+          debugUnionEnvStart e1 e2
           acc <- sttLayer $ newSTRef e2
           forMwhile_ (envAssumptions e1)
-                     (do e2 <- sttLayer $ readSTRef acc
-                         notM $ envIsNogood e2) $ \assume -> do
+                     (do thisE2 <- sttLayer $ readSTRef acc
+                         notM $ envIsNogood thisE2) $ \assume -> do
             oldE2 <- sttLayer $ readSTRef acc
+            debugUnionEnvLoopStart assume oldE2
             newE2 <- consEnv assume oldE2
+            debugUnionEnvLoopCons newE2
             sttLayer $ writeSTRef acc newE2
           sttLayer $ readSTRef acc
+
+debugUnionEnvStart ::
+  (MonadIO m, NodeDatum d) => Env d i r s m -> Env d i r s m -> ATMST s m ()
+debugUnionEnvStart e1 e2 = do
+  liftIO $ putStr "       - Starting unionEnv' with "
+  blurbEnv e1
+  liftIO $ putStr "; "
+  blurbEnv e2
+  liftIO $ putStrLn ""
+
+debugUnionEnvLoopStart ::
+  (MonadIO m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m ()
+debugUnionEnvLoopStart node e2 = do
+  datumFmt <- getDatumString $ nodeATMS node
+  liftIO $ putStrLn $ "       - Running loop with"
+  liftIO $ putStrLn $ "         node " ++ datumFmt (nodeDatum node)
+  liftIO $ putStr "         env "
+  blurbEnv e2
+  liftIO $ putStrLn ""
+
+debugUnionEnvLoopCons ::
+  (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
+debugUnionEnvLoopCons e = do
+  liftIO $ putStr "         consEnv is "
+  blurbEnv e
+  liftIO $ putStrLn ""
+
 
 -- |Derive an environment from the addition of one additional
 -- assumption to a previous `Env`'s assumption list.
@@ -1414,11 +1457,39 @@ unionEnv e1 e2 =
 -- >   (or (lookup-env nassumes)
 -- >       (create-env (tms-node-atms assumption) nassumes)))
 consEnv ::
-  (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
+  (MonadIO m, NodeDatum d) =>  -- TODO After debugging, switch MonadIO
+                               -- back to Monad
+    Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 consEnv assumption env = do
+  debugConsEnvStart assumption env
+
   let nassumes = orderedInsert assumption (envAssumptions env) assumptionOrder
+  debugConsEnvInserted nassumes
+
   envByLookup <- lookupEnv nassumes
   maybe (createEnv (nodeATMS assumption) nassumes) (return . id) envByLookup
+
+debugConsEnvStart ::
+  (MonadIO m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m ()
+debugConsEnvStart node e2 = do
+  datumFmt <- getDatumString $ nodeATMS node
+  liftIO $ putStrLn $ "         - Running consEnv with"
+  liftIO $ putStrLn $ "           node " ++ datumFmt (nodeDatum node)
+  liftIO $ putStr "           env "
+  blurbEnv e2
+  liftIO $ putStrLn ""
+
+debugConsEnvInserted ::
+  (MonadIO m, NodeDatum d) => [Node d i r s m] -> ATMST s m ()
+debugConsEnvInserted nodes =
+  case nodes of
+    [] -> liftIO $ putStrLn "            -> result is empty list"
+    (n : _) -> do
+      datumFmt <- getDatumString $ nodeATMS n
+      liftIO $ putStrLn $
+        "            -> result is ["
+        ++ intercalate ", " (map (datumFmt . nodeDatum) nodes)
+        ++ "]"
 
 -- > ;; In atms.lisp
 -- > (defun find-or-make-env (assumptions atms)
@@ -1907,6 +1978,20 @@ debugEnv atms env = do
       liftIO $ putStrLn $
         (intercalate ", " $ map (datumFmt . nodeDatum) nodes)
         ++ " (count " ++ show (length nodes) ++ ")"
+
+blurbMaybeEnvMList ::
+  (MonadIO m, NodeDatum d) => MList s (Maybe (Env d i r s m)) -> ATMST s m ()
+blurbMaybeEnvMList mlist = do
+  sep <- sttLayer $ newSTRef ""
+  liftIO $ putStr "m["
+  mlistFor_ sttLayer mlist $ \envm -> do
+    thisSep <- sttLayer $ readSTRef sep
+    liftIO $ putStr thisSep
+    case envm of
+      Just env -> blurbEnv env
+      Nothing -> liftIO $ putStr "<nothing>"
+    sttLayer $ writeSTRef sep ", "
+  liftIO $ putStr "]"
 
 blurbEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 blurbEnv env = do
