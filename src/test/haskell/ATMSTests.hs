@@ -35,6 +35,7 @@ import Data.Symbol
 import Data.Void
 import Data.TMS.ATMS.ATMST
 import Data.TMS.Helpers
+import Data.TMS.Dbg
 import Control.Monad
 import Control.Monad.Extra
 import Control.Monad.IO.Class

@@ -118,6 +118,7 @@ import Control.Monad.ST.Trans
 import Control.Monad.Except
 import Control.Monad.Extra
 import Data.TMS.Helpers
+import Data.TMS.Dbg
 
 -- * The @JTMST@ monad transformer
 --
@@ -137,6 +138,8 @@ newtype Monad m => JTMST s m a = JtmsT { unwrap :: JTMSTInner s m a }
 -- thread in the wrapper `STT`.
 unwrap2 :: Monad m => (forall s . JTMST s m a) -> (forall s . JTMSTInner s m a)
 unwrap2 (JtmsT m) = m
+
+instance Debuggable m => Debuggable (JTMST s m)
 
 instance (Monad m) => Functor (JTMST s m) where
   fmap f (JtmsT m) = JtmsT $ do
@@ -1567,8 +1570,3 @@ debugJust jtms just = do
 -- >                  olen))))))
 
 -- * Other helpers
-
--- |This instance declaration is not part of `STT`, but it is
--- convenient.
-instance MonadIO m => MonadIO (STT s m) where
-  liftIO = lift . liftIO

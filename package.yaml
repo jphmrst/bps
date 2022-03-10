@@ -17,6 +17,9 @@ extra-source-files:
 - Haskell-LICENSE.txt
 
 dependencies:
+- template-haskell
+- free
+- resourcet
 - base         (>= 4.14.3 && < 4.15) || (>= 4.15.1 && < 4.16) || (>= 4.16.0 && < 4.17)
 - mtl          >= 2.2.2 && < 2.3
 - extra        >= 1.7   && < 1.8

@@ -42,6 +42,7 @@ language governing permissions and limitations under the License.
 
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
@@ -111,6 +112,8 @@ import Data.List
 import Data.Symbol
 import Data.TMS.Helpers
 import Data.TMS.MList
+import Data.TMS.Dbg
+
 
 -- * The @ATMST@ monad transformer
 --
@@ -167,6 +170,8 @@ newtype Monad m => ATMST s m a = AtmsT { unwrap :: ATMSTInner s m a }
 -- thread in the wrapper `STT`.
 unwrap2 :: Monad m => (forall s . ATMST s m a) -> (forall s . ATMSTInner s m a)
 unwrap2 (AtmsT m) = m
+
+instance Debuggable m => Debuggable (ATMST s m)
 
 instance (Monad m) => Functor (ATMST s m) where
   fmap f (AtmsT m) = AtmsT $ do
@@ -886,7 +891,7 @@ makeContradiction = error "< TODO unimplemented makeContradiction >"
 -- >   (propagate just nil (list (atms-empty-env atms)))
 -- >   just)
 justifyNode :: -- TODO Revert to just (Monad m) after debugging.
-  (MonadIO m, NodeDatum d) => i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
+  (Debuggable m, NodeDatum d) => i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
 justifyNode informant consequence antecedents = do
   -- Retrieve the ATMS in which we are working
   let atms = nodeATMS consequence
@@ -915,7 +920,8 @@ justifyNode informant consequence antecedents = do
 -- >   (justify-node informant
 -- >            (atms-contra-node (tms-node-atms (car nodes)))
 -- >            nodes))
-nogoodNodes :: (Monad m, NodeDatum d) => Node d i r s m -> [Node d i r s m] -> ATMST s m ()
+nogoodNodes ::
+  (Monad m, NodeDatum d) => Node d i r s m -> [Node d i r s m] -> ATMST s m ()
 nogoodNodes = error "< TODO unimplemented nogoodNodes >"
 
 -- * Label updating
@@ -925,13 +931,13 @@ nogoodNodes = error "< TODO unimplemented nogoodNodes >"
 -- >   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
 -- >       (update new-envs (just-consequence just) just)))
 propagate :: -- TODO Revert to just (Monad m) after debugging.
-  (MonadIO m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     JustRule d i r s m ->
       Maybe (Node d i r s m) ->
         MList s (Maybe (Env d i r s m)) ->
           ATMST s m ()
 propagate just antecedent envs = do
-  debugPropagateArgs just antecedent envs
+  $(dbg [| debugPropagateArgs just antecedent envs |])
   newEnvs <- weave antecedent envs (justAntecedents just)
   when (not (mnull newEnvs)) $ do
     update newEnvs (justConsequence just) just
@@ -1004,11 +1010,11 @@ debugPropagateArgs justRule antecedent envs = do
 -- >     (unless new-envs
 -- >       (return-from update nil))))
 update :: -- TODO Back to Monad m
-  (MonadIO m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     MList s  (Maybe (Env d i r s m)) -> Node d i r s m -> JustRule d i r s m ->
       ATMST s m ()
 update newEnvs consequence just = do
-  debugUpdateArgs newEnvs consequence just
+  $(dbg [| debugUpdateArgs newEnvs consequence just |])
   let atms = nodeATMS consequence
 
   -- If the consequence node is a contradiction, then all we need to
@@ -1121,11 +1127,11 @@ debugUpdateArgs envs consequence justRule = do
 -- >         (delete nil envs :TEST #'eq))
 -- >   new-envs)
 updateLabel ::
-  (MonadIO m, NodeDatum d) => -- TODO From MonadIO back to Monad
+  (Debuggable m, NodeDatum d) => -- TODO From MonadIO back to Monad
     Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
       ATMST s m (MList s (Maybe (Env d i r s m)))
 updateLabel node newEnvs = do
-  debugUpdateLabelArgs node newEnvs
+  $(dbg [| debugUpdateLabelArgs node newEnvs |])
 
   -- We will edit the label of this node, so we extract it as a
   -- mutable list, and replace it at the end of this function.
@@ -1157,13 +1163,13 @@ updateLabel node newEnvs = do
                   sttLayer $ rplaca nenvCons Nothing
                 DisjEnv -> return ()
 
-        do liftIO $ putStr " >> pushing onto envs: "
-           blurbMaybeEnv newEnvCarMaybe
-           liftIO $ putStrLn ""
+        $(dbg [| do liftIO $ putStr " >> pushing onto envs: "
+                    blurbMaybeEnv newEnvCarMaybe
+                    liftIO $ putStrLn "" |])
         sttLayer $ mlistRefPush newEnvCarMaybe envsR
-        do liftIO $ putStr " >> envs: "
-           blurbMaybeEnvMListRef envsR
-           liftIO $ putStrLn ""
+        $(dbg [| do liftIO $ putStr " >> envs: "
+                    blurbMaybeEnvMListRef envsR
+                    liftIO $ putStrLn "" |])
         return ()
 
   -- Strip all `Nothing`s from the `newEnvs`, and add the `node` to
@@ -1176,14 +1182,14 @@ updateLabel node newEnvs = do
 
   -- Un-lift the working version of the node label list, and write the
   -- update back to the node label list.
-  do liftIO $ putStr " >> envs: "
-     blurbMaybeEnvMListRef envsR
-     liftIO $ putStrLn ""
+  $(dbg [| do liftIO $ putStr " >> envs: "
+              blurbMaybeEnvMListRef envsR
+              liftIO $ putStrLn "" |])
   envs <- sttLayer $ readSTRef envsR
   updatedLabel <- sttLayer $ toUnmaybeList envs
-  do liftIO $ putStr " >> updatedLabel: "
-     blurbEnvList 10000 "" updatedLabel
-     liftIO $ putStrLn ""
+  $(dbg [| do liftIO $ putStr " >> updatedLabel: "
+              blurbEnvList 10000 "" updatedLabel
+              liftIO $ putStrLn "" |])
 
   -- debugNodeLabel node
   -- sttLayer $ writeSTRef (nodeLabel node) updatedLabel
@@ -1191,7 +1197,7 @@ updateLabel node newEnvs = do
   -- debugNodeLabel node
 
   -- Return the Nothing-stripped version of the newEnvs parameter.
-  debugUpdateLabelFinal node updatedLabel finalNewEnvs
+  $(dbg [| debugUpdateLabelFinal node updatedLabel finalNewEnvs |])
   return finalNewEnvs
 
 debugUpdateLabelArgs ::
@@ -1320,19 +1326,19 @@ debugUpdateLabelFinal node labelEnvs newEnvs = do
 -- >
 -- >   ;; Finally, return the last refinement of ENVS.
 -- >   envs)
-weave :: (MonadIO m, NodeDatum d) => -- TODO Revert to just (Monad m) after debugging.
+weave :: (Debuggable m, NodeDatum d) => -- TODO Revert to just (Monad m) after debugging.
   Maybe (Node d i r s m) ->
     (MList s (Maybe (Env d i r s m))) ->
       [Node d i r s m] ->
         ATMST s m (MList s (Maybe (Env d i r s m)))
 weave antecedent givenEnvs antecedents = do
-  debugWeaveArgs antecedent givenEnvs antecedents
+  $(dbg [| debugWeaveArgs antecedent givenEnvs antecedents |])
 
   envsRef <- sttLayer $ newSTRef givenEnvs
 
   forM_ antecedents $ \node ->
     unless (maybe False (node ==) antecedent) $ do
-      debugWeaveNodeAntecedent node
+      $(dbg [| debugWeaveNodeAntecedent node |])
 
       -- From loop to loop we update what's stored under envsRef, so
       -- we start this outer loop by reading what we start off with
@@ -1352,10 +1358,10 @@ weave antecedent givenEnvs antecedents = do
           Nothing -> return ()
           Just env -> do
             forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
-              debugWeavePairIntro env nodeEnv
+              $(dbg [| debugWeavePairIntro env nodeEnv |])
 
               newEnv <- unionEnv env nodeEnv
-              debugWeavePairUnion newEnv
+              $(dbg [| debugWeavePairUnion newEnv |])
 
               -- We are not interested in nogood environments, so we
               -- skip filing the union if it is nogood.
@@ -1387,7 +1393,7 @@ weave antecedent givenEnvs antecedents = do
                           case compareEnv newEnv car of
                             EQenv  -> sttLayer $ writeSTRef addEnv False
                             S12env -> do
-                              debugWeaveLoopRemovingEnv car
+                              $(dbg [| debugWeaveLoopRemovingEnv car |])
                               sttLayer $ rplaca cons Nothing
                             S21env -> sttLayer $ writeSTRef addEnv False
                             DisjEnv -> return ()
@@ -1397,7 +1403,7 @@ weave antecedent givenEnvs antecedents = do
                 sttLayer $ whenM (readSTRef addEnv) $ do
                   newMCons <- mlistPush (Just newEnv) oldMCons
                   writeSTRef newEnvs newMCons
-                debugWeaveLoopPairEnd addEnv newEnvs
+                $(dbg [| debugWeaveLoopPairEnd addEnv newEnvs |])
 
       -- So we have nearly produced the refinement of ENVS for this
       -- NODE in the ANTECEDENTS.  It might have spurious NILs, so we
@@ -1408,7 +1414,7 @@ weave antecedent givenEnvs antecedents = do
 
   -- Finally, return the last refinement of ENVS.
   result <- sttLayer $ readSTRef envsRef
-  debugWeaveResult result
+  $(dbg [| debugWeaveResult result |])
   return result
 
 debugWeaveArgs :: (MonadIO m, NodeDatum d) =>
@@ -1573,7 +1579,7 @@ createEnv atms assumptions = do
 -- >     (if (env-nogood? e2) (return nil)))
 -- >   e2)
 unionEnv ::
-  (MonadIO m, NodeDatum d) => -- TODO After debugging, switch MonadIO
+  (Debuggable m, NodeDatum d) => -- TODO After debugging, switch MonadIO
                               -- back to Monad
     Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 {- TODO Bug in in here, or in consEnv.
@@ -1581,15 +1587,15 @@ unionEnv ::
 unionEnv e1 e2 =
   if envCount e1 > envCount e2 then unionEnv' e2 e1 else unionEnv' e1 e2
   where unionEnv' e1 e2 = do
-          debugUnionEnvStart e1 e2
+          $(dbg [| debugUnionEnvStart e1 e2 |])
           acc <- sttLayer $ newSTRef e2
           forMwhile_ (envAssumptions e1)
                      (do thisE2 <- sttLayer $ readSTRef acc
                          notM $ envIsNogood thisE2) $ \assume -> do
             oldE2 <- sttLayer $ readSTRef acc
-            debugUnionEnvLoopStart assume oldE2
+            $(dbg [| debugUnionEnvLoopStart assume oldE2 |])
             newE2 <- consEnv assume oldE2
-            debugUnionEnvLoopCons newE2
+            $(dbg [| debugUnionEnvLoopCons newE2 |])
             sttLayer $ writeSTRef acc newE2
           sttLayer $ readSTRef acc
 
@@ -1631,14 +1637,14 @@ debugUnionEnvLoopCons e = do
 -- >   (or (lookup-env nassumes)
 -- >       (create-env (tms-node-atms assumption) nassumes)))
 consEnv ::
-  (MonadIO m, NodeDatum d) =>  -- TODO After debugging, switch MonadIO
+  (Debuggable m, NodeDatum d) =>  -- TODO After debugging, switch MonadIO
                                -- back to Monad
     Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 consEnv assumption env = do
-  debugConsEnvStart assumption env
+  $(dbg [| debugConsEnvStart assumption env |])
 
   let nassumes = orderedInsert assumption (envAssumptions env) assumptionOrder
-  debugConsEnvInserted nassumes
+  $(dbg [| debugConsEnvInserted nassumes |])
 
   envByLookup <- lookupEnv nassumes
   maybe (createEnv (nodeATMS assumption) nassumes) (return . id) envByLookup
@@ -2240,3 +2246,4 @@ blurbEnvList multiLineIf lineLead envs =
         blurbEnv env
         liftIO $ putStrLn ""
 
+instance MonadIO m => MonadIO (STT s m) where liftIO = lift . liftIO
