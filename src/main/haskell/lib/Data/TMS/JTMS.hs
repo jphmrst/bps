@@ -139,8 +139,6 @@ newtype Monad m => JTMST s m a = JtmsT { unwrap :: JTMSTInner s m a }
 unwrap2 :: Monad m => (forall s . JTMST s m a) -> (forall s . JTMSTInner s m a)
 unwrap2 (JtmsT m) = m
 
-instance Debuggable m => Debuggable (JTMST s m)
-
 instance (Monad m) => Functor (JTMST s m) where
   fmap f (JtmsT m) = JtmsT $ do
     v <- m
