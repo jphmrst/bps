@@ -49,6 +49,9 @@ type Node1ty s m = Node String String Void s m
 ex1AndTest :: MonadIO m => ATMST s (TLT m) ()
 ex1AndTest = inGroup "ATMS Test 1" $ do
   atms <- createATMS "Ex1"
+  setInformantStringViaString atms
+  setDatumStringViaString atms
+
   inGroup "Freshly created ATMS" $ do
     assertAssumptionsAre atms []
     assertContradictionsAre atms []
