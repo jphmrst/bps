@@ -62,7 +62,7 @@ module Data.TMS.ATMS.ATMST (
 
   -- *** ATMS components
   getNodes, getJusts, getContradictions, getAssumptions,
-  getEmptyEnvironment, getNodeString, getJustString,
+  getContradictionNode, getEmptyEnvironment, getNodeString, getJustString,
   getDatumString, getInformantString, getEnqueueProcedure,
 
   setDatumStringViaString, setDatumStringViaShow,
@@ -132,6 +132,13 @@ data AtmsErr = CannotRemoveNodeWIthConsequences String Int
                -- `createATMS`, since this latter function does set up
                -- the default empty environment before returning the
                -- new `ATMS`.
+             | InternalNoContraNode
+               -- ^ Internal error called when there is no internal
+               -- default contradictory `Node` associated with this
+               -- `ATMS`.  Should never be signaled for an `ATMS`
+               -- created with `createATMS`, since this latter
+               -- function does set up the default contradiction node
+               -- before returning the new `ATMS`.
              | FromMonadFail String
                -- ^ Indicates a pattern-matching failure within an
                -- `ATMST` operation.
@@ -295,7 +302,7 @@ data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   -- than once, but it created after the ATMS is allocated, so we use
   -- a reference to be able to set it up later.
   atmsEmptyEnv :: STRef s (Maybe (Env d i r s m)),
-  -- TODO contra-node
+  atmsContraNode :: STRef s (Maybe (Node d i r s m)),
   atmsNodeString :: STRef s (Node d i r s m -> String),
   atmsJustString :: STRef s (JustRule d i r s m -> String),
   atmsDatumString :: STRef s (d -> String),
@@ -380,7 +387,7 @@ setAssumptions ::
 setAssumptions = setATMSMutable atmsAssumptions
 -}
 
--- |Return the `ATMS`'s current empty environment.
+-- |Return the `ATMS`'s built-in empty environment.
 getEmptyEnvironment ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (Env d i r s m)
 {-# INLINE getEmptyEnvironment #-}
@@ -389,6 +396,16 @@ getEmptyEnvironment atms = do
   case maybeEnv of
     Just env -> return env
     Nothing -> exceptLayer $ throwE InternalNoEmptyEnv
+
+-- |Return the `ATMS`'s built-in contradiction node.
+getContradictionNode ::
+  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (Node d i r s m)
+{-# INLINE getContradictionNode #-}
+getContradictionNode atms = do
+  maybeNode <- getATMSMutable atmsContraNode atms
+  case maybeNode of
+    Just node -> return node
+    Nothing -> exceptLayer $ throwE InternalNoContraNode
 
 -- |Return the `ATMS`'s current `Node` formatter.
 getNodeString ::
@@ -740,6 +757,7 @@ createATMS :: (Monad m, NodeDatum d) => String -> ATMST s m (ATMS d i r s m)
 createATMS title = do
   ecInitialAlloc <- getInitialEnvTableAlloc
   emptyEnvRef <- sttLayer $ newSTRef Nothing
+  contraNodeRef <- sttLayer $ newSTRef Nothing
   result <- sttLayer $ do
     nc <- newSTRef 0
     jc <- newSTRef 0
@@ -761,12 +779,13 @@ createATMS title = do
     debugging <- newSTRef False
     return $ ATMS title nc jc ec etAlloc
                   nodes justs contradictions assumptions
-                  etableRef ngtableRef emptyEnvRef
+                  etableRef ngtableRef emptyEnvRef contraNodeRef
                   nodeString justString datumString informantString
                   enqueueProcedure debugging
-  createNode result contractionNodeDatum False True
   emptyEnv <- createEnv result []
   sttLayer $ writeSTRef emptyEnvRef (Just emptyEnv)
+  contra <- createNode result contractionNodeDatum False True
+  sttLayer $ writeSTRef contraNodeRef (Just contra)
   return result
 
 {- ----------------------------------------------------------------- -}
