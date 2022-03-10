@@ -112,4 +112,6 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
     assertContradictionsAre atms [nx]
     return ()
 
+  justifyNode "R3" nx [ng]
+
   return ()
