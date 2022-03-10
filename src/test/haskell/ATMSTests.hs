@@ -42,14 +42,7 @@ import Control.Monad.IO.Class
 import Control.Monad.ST.Trans
 import Control.Monad.Trans.Class
 import Test.TLT
-
--- Prints result of the string length calculation.
-report :: Either AtmsErr () -> IO ()
-report (Right _) = putStrLn ("Tests passed")
-report (Left e) = putStrLn ("Caught exception: " ++ (show e))
-
-instance MonadTLT m n => MonadTLT (ATMST s m) n where
-  liftTLT = lift . liftTLT
+import Testers
 
 type ATMS1ty s m = ATMS String String Void s m
 type Node1ty s m = Node String String Void s m
@@ -58,81 +51,65 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
   atms <- createATMS "Ex1"
   inGroup "Freshly created ATMS" $ do
     assertAssumptionsAre atms []
+    assertContradictionsAre atms []
 
   na <- createNode atms "A" True False
   inGroup "Created Node A" $ do
     assertSingleSelfLabel na
     assertAssumptionsAre atms [na]
+    assertContradictionsAre atms []
 
   nc <- createNode atms "C" True False
   inGroup "Created Node C" $ do
     assertSingleSelfLabels [na, nc]
     assertAssumptionsAre atms [na, nc]
+    assertContradictionsAre atms []
 
   ne <- createNode atms "E" True False
   inGroup "Created Node E" $ do
     assertSingleSelfLabels [na, nc, ne]
     assertAssumptionsAre atms [na, nc, ne]
+    assertContradictionsAre atms []
 
   nh <- createNode atms "H" False False
   inGroup "Created Node H" $ do
     assertSingleSelfLabels [na, nc, ne]
     assertNoLabel nh
     assertAssumptionsAre atms [na, nc, ne]
+    assertContradictionsAre atms []
 
   justifyNode "R1" nh [nc, ne]
   inGroup "Added Justification R1" $ do
     assertSingleSelfLabels [na, nc, ne]
     assertSingleLabelEnvBy nh [nc, ne]
     assertAssumptionsAre atms [na, nc, ne]
-    return ()
+    assertContradictionsAre atms []
 
   ng <- createNode atms "G" False False
   inGroup "Created Node G" $ do
     assertSingleSelfLabels [na, nc, ne]
-    -- assertSingleLabelEnvBy nh [nc, ne]
+    assertSingleLabelEnvBy nh [nc, ne]
     assertNoLabel ng
     assertAssumptionsAre atms [na, nc, ne]
+    assertContradictionsAre atms []
+
+  justifyNode "R2" ng [na, nc]
+  inGroup "Added Justification R2" $ do
+    assertSingleSelfLabels [na, nc, ne]
+    assertSingleLabelEnvBy nh [nc, ne]
+    assertSingleLabelEnvBy ng [na, nc]
+    assertAssumptionsAre atms [na, nc, ne]
+    assertContradictionsAre atms []
+    return ()
+
+  nx <- createNode atms "X" False True
+  inGroup "Created Node X" $ do
+    assertSingleSelfLabels [na, nc, ne]
+    assertSingleLabelEnvBy nh [nc, ne]
+    assertSingleLabelEnvBy ng [na, nc]
+    assertNoLabel nx
+    assertAssumptionsAre atms [na, nc, ne]
+    assertContradictionsAre atms [nx]
+    return ()
 
   return ()
-
-assertNoLabel ::
-  (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
-assertNoLabel node = do
-  labels <- getNodeLabel node
-  "No labels" ~: 0 @==- length labels
-
-assertSingleSelfLabels ::
-  (MonadIO m, NodeDatum d) => [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
-assertSingleSelfLabels labels =
-  forM_ labels $ \ label -> assertSingleSelfLabel label
-
-assertSingleSelfLabel ::
-  (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
-assertSingleSelfLabel node = assertSingleLabelEnvBy node [node]
-
-assertSingleLabelEnvBy ::
-  (MonadIO m, NodeDatum d) =>
-    Node d i r s (TLT m) -> [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
-assertSingleLabelEnvBy node nodes =
-  inGroup (show node ++ " labelled by one Env with "
-            ++ intercalate ", " (map show nodes)) $ do
-    labels <- getNodeLabel node
-    case labels of
-      [env] -> do
-        let envAsmpts = envAssumptions env
-        "Single label should have " ++ show (length nodes) ++ " assumptions" ~:
-          length nodes @==- length envAsmpts
-        forM_ nodes $ \ node -> do
-          "Label should contain " ++ show node ~::- elem node envAsmpts
-      l -> "Expected one Env in label" `tltFail` ("Found " ++ (show $ length l))
-
-assertAssumptionsAre ::
-  (MonadIO m, NodeDatum d) =>
-    ATMS d i r s (TLT m) -> [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
-assertAssumptionsAre atms nodes = inGroup "Checking assumptions in ATMS" $ do
-  assumptionsList <- getAssumptions atms
-  "Should have " ++ (show $ length nodes) ++ " assumptions" ~:
-    length nodes @==- length assumptionsList
-  forM_ nodes $ \ node -> do
-    show node ++ " should be present" ~::- elem node assumptionsList
