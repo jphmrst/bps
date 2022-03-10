@@ -171,8 +171,6 @@ newtype Monad m => ATMST s m a = AtmsT { unwrap :: ATMSTInner s m a }
 unwrap2 :: Monad m => (forall s . ATMST s m a) -> (forall s . ATMSTInner s m a)
 unwrap2 (AtmsT m) = m
 
-instance Debuggable m => Debuggable (ATMST s m)
-
 instance (Monad m) => Functor (ATMST s m) where
   fmap f (AtmsT m) = AtmsT $ do
     v <- m
@@ -890,8 +888,9 @@ makeContradiction = error "< TODO unimplemented makeContradiction >"
 -- >         (mapcar #'node-string antecedents))
 -- >   (propagate just nil (list (atms-empty-env atms)))
 -- >   just)
-justifyNode :: -- TODO Revert to just (Monad m) after debugging.
-  (Debuggable m, NodeDatum d) => i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
+justifyNode ::
+  (Debuggable m, NodeDatum d) =>
+    i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
 justifyNode informant consequence antecedents = do
   -- Retrieve the ATMS in which we are working
   let atms = nodeATMS consequence
@@ -930,7 +929,7 @@ nogoodNodes = error "< TODO unimplemented nogoodNodes >"
 -- > (defun propagate (just antecedent envs &aux new-envs)
 -- >   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
 -- >       (update new-envs (just-consequence just) just)))
-propagate :: -- TODO Revert to just (Monad m) after debugging.
+propagate ::
   (Debuggable m, NodeDatum d) =>
     JustRule d i r s m ->
       Maybe (Node d i r s m) ->
@@ -1009,7 +1008,7 @@ debugPropagateArgs justRule antecedent envs = do
 -- >     (setq new-envs (delete nil new-envs :TEST #'eq))
 -- >     (unless new-envs
 -- >       (return-from update nil))))
-update :: -- TODO Back to Monad m
+update ::
   (Debuggable m, NodeDatum d) =>
     MList s  (Maybe (Env d i r s m)) -> Node d i r s m -> JustRule d i r s m ->
       ATMST s m ()
@@ -1127,7 +1126,7 @@ debugUpdateArgs envs consequence justRule = do
 -- >         (delete nil envs :TEST #'eq))
 -- >   new-envs)
 updateLabel ::
-  (Debuggable m, NodeDatum d) => -- TODO From MonadIO back to Monad
+  (Debuggable m, NodeDatum d) =>
     Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
       ATMST s m (MList s (Maybe (Env d i r s m)))
 updateLabel node newEnvs = do
@@ -1326,7 +1325,7 @@ debugUpdateLabelFinal node labelEnvs newEnvs = do
 -- >
 -- >   ;; Finally, return the last refinement of ENVS.
 -- >   envs)
-weave :: (Debuggable m, NodeDatum d) => -- TODO Revert to just (Monad m) after debugging.
+weave :: (Debuggable m, NodeDatum d) =>
   Maybe (Node d i r s m) ->
     (MList s (Maybe (Env d i r s m))) ->
       [Node d i r s m] ->
@@ -1579,8 +1578,7 @@ createEnv atms assumptions = do
 -- >     (if (env-nogood? e2) (return nil)))
 -- >   e2)
 unionEnv ::
-  (Debuggable m, NodeDatum d) => -- TODO After debugging, switch MonadIO
-                              -- back to Monad
+  (Debuggable m, NodeDatum d) =>
     Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 {- TODO Bug in in here, or in consEnv.
 -}
@@ -1637,8 +1635,7 @@ debugUnionEnvLoopCons e = do
 -- >   (or (lookup-env nassumes)
 -- >       (create-env (tms-node-atms assumption) nassumes)))
 consEnv ::
-  (Debuggable m, NodeDatum d) =>  -- TODO After debugging, switch MonadIO
-                               -- back to Monad
+  (Debuggable m, NodeDatum d) =>
     Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
 consEnv assumption env = do
   $(dbg [| debugConsEnvStart assumption env |])
