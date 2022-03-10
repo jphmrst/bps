@@ -29,10 +29,12 @@ debugging = if debuggingOn
            then [d| class MonadIO m => Debuggable m
                     instance MonadIO m => Debuggable m
                     dbg :: Q Exp -> Q Exp
+                    {-# INLINE dbg #-}
                     dbg exp = exp
                 |]
            else [d| class Monad m => Debuggable m
                     instance Monad m => Debuggable m
                     dbg :: a -> Q Exp
+                    {-# INLINE dbg #-}
                     dbg _ = unitQ
                 |]
