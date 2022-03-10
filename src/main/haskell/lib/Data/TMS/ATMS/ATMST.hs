@@ -1810,24 +1810,38 @@ nodeListIsSubsetEq l1@(x : xs) (y : ys) =
 -- >   (setf (env-nogood? cenv) just)
 -- >   (remove-env-from-labels cenv atms)
 -- >   (setf (atms-nogood-table atms)
--- >    (insert-in-table (atms-nogood-table atms) cenv))
+-- >         (insert-in-table (atms-nogood-table atms) cenv))
 -- >   (setq count (env-count cenv))
 -- >   (dolist (entry (atms-nogood-table atms))
 -- >     (when (> (car entry) count)
 -- >       (dolist (old (cdr entry))
--- >    (if (subset-env? cenv old)
--- >        (setf (cdr entry) (delete old (cdr entry) :COUNT 1))))))
+-- >         (if (subset-env? cenv old)
+-- >             (setf (cdr entry)
+-- >                   (delete old (cdr entry) :COUNT 1))))))
 -- >   (dolist (entry (atms-env-table atms))
 -- >     (when (> (car entry) count)
 -- >       (dolist (old (cdr entry))
--- >    (when (and (not (env-nogood? old))
--- >               (subset-env? cenv old))
--- >      (setf (env-nogood? old) cenv)
--- >      (remove-env-from-labels old atms))))))
+-- >         (when (and (not (env-nogood? old))
+-- >                    (subset-env? cenv old))
+-- >           (setf (env-nogood? old) cenv)
+-- >           (remove-env-from-labels old atms))))))
 newNogood ::
   (Monad m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> Justification d i r s m -> ATMST s m ()
-newNogood = error "< TODO unimplemented newNogood >"
+newNogood atms cenv why = do
+  -- Record in `cenv` the reason why `cenv` is nogood.
+  sttLayer $ writeSTRef (envWhyNogood cenv) (ByJustification why)
+
+  -- `cenv` can no longer be used in node labels, so remove it from
+  -- any node labels in which it appears, and propagate out any
+  -- changes.
+  removeEnvFromLabels cenv atms
+
+  -- Add `cenv` to the ATMS table of nogoods.
+  error "< TODO unimplemented newNogood --- add to nogood table>"
+
+  -- Remove any nogood table entries made redundant by `cenv`.
+  error "< TODO unimplemented newNogood --- clean nogood table>"
 
 -- > ;; In atms.lisp
 -- > (defun set-env-contradictory (atms env &aux count)
@@ -1860,10 +1874,16 @@ setEnvContradictory atms env = do
 -- >     (setf (env-rules env) nil))
 -- >   (dolist (node (env-nodes env))
 -- >     (setf (tms-node-label node)
--- >      (delete env (tms-node-label node) :COUNT 1))))
+-- >           (delete env (tms-node-label node) :COUNT 1))))
 removeEnvFromLabels ::
   (Monad m, NodeDatum d) => Env d i r s m -> ATMS d i r s m -> ATMST s m ()
-removeEnvFromLabels = error "< TODO unimplemented removeEnvFromLabels >"
+removeEnvFromLabels env atms = do
+  -- Run all rules associated with `env`, and clear the list of
+  -- associated rules.
+  error "< TODO unimplemented removeEnvFromLabels --- run all rules >"
+
+  -- Remove `env` from the label of the nodes currently including it.
+  error "< TODO unimplemented removeEnvFromLabels --- remove from node labels>"
 
 -- * Interpretation construction
 
