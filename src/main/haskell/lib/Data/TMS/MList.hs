@@ -60,6 +60,14 @@ mcar (MCons x _)  = readSTRef x
 mcdr (MCons _ xs) = readSTRef xs
 
 -- |Convert a traditional Haskell list into a mutable `MList` list.
+mlength :: Monad m => MList s a -> STT s m Int
+mlength MNil = return 0
+mlength (MCons _ xs) = do
+  cdr <- readSTRef xs
+  cdrLen <- mlength cdr
+  return $ 1 + cdrLen
+
+-- |Convert a traditional Haskell list into a mutable `MList` list.
 fromList :: Monad m => [a] -> STT s m (MList s a)
 fromList [] = return MNil
 fromList (x : xs) = do
@@ -158,6 +166,16 @@ mlistPush item mlist = do
   itemRef <- newSTRef item
   mlistRef <- newSTRef mlist
   return $ MCons itemRef mlistRef
+
+-- |Treating an `MList` as a stack, add a new element at the top of
+-- the stack, and return the new stack top.
+mlistRefPush :: Monad m => a -> STRef s (MList s a) -> STT s m ()
+mlistRefPush item mlistRef = do
+  carRef <- newSTRef item
+  cdr <- readSTRef mlistRef
+  newCdrRef <- newSTRef cdr
+  let newCons = MCons carRef newCdrRef
+  writeSTRef mlistRef newCons
 
 -- |Iterate over the elements of a `MList`.  The body does not
 -- necessarily need operate in the same monad as where the references

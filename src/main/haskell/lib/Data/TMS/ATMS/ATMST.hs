@@ -94,7 +94,7 @@ module Data.TMS.ATMS.ATMST (
 
   -- * Printing and debugging
   debugAtms, debugNode, debugJust,
-  debugJustification, debugEnv,  debugEnvs, debugEnvTable, debugNogoods,
+  debugJustification, debugEnv,  debugAtmsEnvs, debugEnvTable, debugNogoods,
   printAtms, printNode, printJust, printEnvStructure,
   printJustification, printEnv, printNogoods,
   printEnvs, printEnvTable, printAtmsStatistics, printTable,
@@ -532,7 +532,7 @@ setNodeMutable ::
   (Monad m, NodeDatum d) =>
     (Node d i r s m -> STRef s a) -> Node d i r s m -> a -> ATMST s m ()
 {-# INLINE setNodeMutable #-}
-setNodeMutable refGetter node envs = sttLayer $ writeSTRef (refGetter node) envs
+setNodeMutable refGetter node val = sttLayer $ writeSTRef (refGetter node) val
 
 -- |Return the `Node`'s label.
 getNodeLabel :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [Env d i r s m]
@@ -931,9 +931,43 @@ propagate :: -- TODO Revert to just (Monad m) after debugging.
         MList s (Maybe (Env d i r s m)) ->
           ATMST s m ()
 propagate just antecedent envs = do
+  debugPropagateArgs just antecedent envs
   newEnvs <- weave antecedent envs (justAntecedents just)
   when (not (mnull newEnvs)) $ do
     update newEnvs (justConsequence just) just
+
+debugPropagateArgs ::
+  (MonadIO m, NodeDatum d) =>
+    JustRule d i r s m ->
+      Maybe (Node d i r s m) ->
+        MList s (Maybe (Env d i r s m)) ->
+          ATMST s m ()
+debugPropagateArgs justRule antecedent envs = do
+  liftIO $ putStrLn "Calling propagate with"
+  let atms = nodeATMS $ justConsequence justRule
+  liftIO $ putStr ". Just: "
+  debugJust justRule
+
+  case antecedent of
+    Just n -> debugNode n
+    Nothing -> liftIO $ putStrLn ". No antecedent"
+
+  envLen <- sttLayer $ mlength envs
+  case envLen of
+    0 -> liftIO $ putStrLn ". No envs"
+    1 -> do
+      liftIO $ putStrLn ". Env: "
+      envm <- sttLayer $ mcar envs
+      case envm of
+        Nothing -> liftIO $ putStrLn "<nulled out>"
+        Just env -> debugEnv env
+    _ -> do
+      liftIO $ putStrLn ". Envs:"
+      mlistFor_ sttLayer envs $ \em -> do
+        liftIO $ putStr "  . "
+        case em of
+          Just e -> debugEnv e
+          Nothing -> liftIO $ putStrLn "<nulled out>"
 
 -- > ;; In atms.lisp
 -- > (defun update (new-envs consequence just &aux atms enqueuef)
@@ -946,7 +980,7 @@ propagate just antecedent envs = do
 -- >     (dolist (env new-envs) (new-nogood atms env just))
 -- >     (return-from update nil))
 -- >
--- >   ;; Otherwise we [re[are to propagate further, but if this
+-- >   ;; Otherwise we prepare to propagate further, but if this
 -- >   ;; step prunes out all `Env`s from the `newEnvs`, then we
 -- >   ;; have nothing further to do.
 -- >   (setq new-envs (update-label consequence new-envs))
@@ -974,6 +1008,7 @@ update :: -- TODO Back to Monad m
     MList s  (Maybe (Env d i r s m)) -> Node d i r s m -> JustRule d i r s m ->
       ATMST s m ()
 update newEnvs consequence just = do
+  debugUpdateArgs newEnvs consequence just
   let atms = nodeATMS consequence
 
   -- If the consequence node is a contradiction, then all we need to
@@ -983,37 +1018,69 @@ update newEnvs consequence just = do
     (mlistFor_ sttLayer newEnvs $ \ envmaybe ->
         case envmaybe of
           Nothing -> return ()
-          Just env -> newNogood atms env $ ByRule just) $ do
+          Just env -> newNogood atms env $ ByRule just) $
 
-            -- Otherwise we propagate further.  If this step prunes
-            -- out all `Env`s from the `newEnvs`, then we have nothing
-            -- further to do.
-            revNewEnvs <- updateLabel consequence newEnvs
-            newEnvsRef <- sttLayer $ newSTRef $ revNewEnvs
-            ifM (sttLayer $ getMnull newEnvsRef) (return ()) $ do
+    -- Otherwise we propagate further.  If this step prunes out all
+    -- `Env`s from the `newEnvs`, then we have nothing further to do.
+    do revNewEnvs <- updateLabel consequence newEnvs
+       newEnvsRef <- sttLayer $ newSTRef $ revNewEnvs
+       ifM (sttLayer $ getMnull newEnvsRef) (return ()) $ do
 
-              -- Process rules queued in the consequence.
-              enqueuef <- getEnqueueProcedure atms
-              forMM_ (getNodeRules consequence) $ enqueuef
+         -- Process rules queued in the consequence.
+         enqueuef <- getEnqueueProcedure atms
+         forMM_ (getNodeRules consequence) $ enqueuef
 
-              -- Propagate to the justification rules which might
-              -- depend on this node.  If ever the new Env list we are
-              -- accumulating is paired down to the empty list, then
-              -- we can exit these loops.
-              forMMwhile_ (getNodeConsequences consequence)
-                (sttLayer $ notM $ getMnull newEnvsRef) $ \ supportedJust -> do
-                  currentNewEnvs <- sttLayer $ readSTRef newEnvsRef
-                  propagate supportedJust (Just consequence) newEnvs
-                  mlistForCons_ sttLayer newEnvs $ \ mcons -> do
-                    thisEnvMaybe <- sttLayer $ mcar mcons
-                    case thisEnvMaybe of
-                      Just thisEnv -> do
-                        label <- getNodeLabel consequence
-                        unless (elem thisEnv label) $
-                          sttLayer $ rplaca mcons Nothing
-                      Nothing -> return ()
-                  cleanedNewEnvs <- sttLayer $ getMlistStripNothing newEnvsRef
-                  sttLayer $ writeSTRef newEnvsRef cleanedNewEnvs
+         -- Propagate to the justification rules which might depend on
+         -- this node.  If ever the new Env list we are accumulating is
+         -- paired down to the empty list, then we can exit these loops.
+         forMMwhile_ (getNodeConsequences consequence)
+           (sttLayer $ notM $ getMnull newEnvsRef) $ \ supportedJust -> do
+             currentNewEnvs <- sttLayer $ readSTRef newEnvsRef
+             propagate supportedJust (Just consequence) newEnvs
+             mlistForCons_ sttLayer newEnvs $ \ mcons -> do
+               thisEnvMaybe <- sttLayer $ mcar mcons
+               case thisEnvMaybe of
+                 Just thisEnv -> do
+                   label <- getNodeLabel consequence
+                   unless (elem thisEnv label) $
+                     sttLayer $ rplaca mcons Nothing
+                 Nothing -> return ()
+               cleanedNewEnvs <- sttLayer $ getMlistStripNothing newEnvsRef
+               sttLayer $ writeSTRef newEnvsRef cleanedNewEnvs
+
+debugUpdateArgs ::
+  (MonadIO m, NodeDatum d) =>
+    MList s (Maybe (Env d i r s m)) ->
+      Node d i r s m ->
+        JustRule d i r s m ->
+          ATMST s m ()
+debugUpdateArgs envs consequence justRule = do
+  liftIO $ putStrLn "Calling update with"
+  let atms = nodeATMS $ justConsequence justRule
+
+  envLen <- sttLayer $ mlength envs
+  case envLen of
+    0 -> liftIO $ putStrLn ". No envs"
+    1 -> do
+      liftIO $ putStr ". Env: "
+      envm <- sttLayer $ mcar envs
+      case envm of
+        Nothing -> liftIO $ putStrLn "<nulled out>"
+        Just env -> debugEnv env
+    _ -> do
+      liftIO $ putStrLn ". Envs:"
+      mlistFor_ sttLayer envs $ \em -> do
+        liftIO $ putStr "  . "
+        case em of
+          Just e -> debugEnv e
+          Nothing -> liftIO $ putStrLn "<nulled out>"
+
+  liftIO $ putStr ". Consequence: "
+  blurbNode consequence
+  liftIO $ putStrLn ""
+
+  liftIO $ putStr ". Just: "
+  debugJust justRule
 
 -- |Internal method to update the label of this node to include the
 -- given environments.  The inclusion is not simply list extension;
@@ -1049,18 +1116,22 @@ update newEnvs consequence just = do
 -- >
 -- >   (setq new-envs (delete nil new-envs :TEST #'eq))
 -- >   (dolist (new-env new-envs)
--- >     (push node (env-nodes new-env)))
+-- >     (push node (env-nodes new-env))) ;; [B]
 -- >   (setf (tms-node-label node)
 -- >         (delete nil envs :TEST #'eq))
 -- >   new-envs)
 updateLabel ::
-  (Monad m, NodeDatum d) => Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
-    ATMST s m (MList s (Maybe (Env d i r s m)))
+  (MonadIO m, NodeDatum d) => -- TODO From MonadIO back to Monad
+    Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
+      ATMST s m (MList s (Maybe (Env d i r s m)))
 updateLabel node newEnvs = do
+  debugUpdateLabelArgs node newEnvs
+
   -- We will edit the label of this node, so we extract it as a
   -- mutable list, and replace it at the end of this function.
-  envs <- do labels <- getNodeLabel node
-             sttLayer $ fromListMap Just labels
+  envsR <- do labels <- getNodeLabel node
+              envs <- sttLayer $ fromListMap Just labels
+              sttLayer $ newSTRef envs
 
   -- These two loops traverse respectively the given newEnvs, and the
   -- node label environments, to find pairs of environments where one
@@ -1071,13 +1142,13 @@ updateLabel node newEnvs = do
       Nothing -> return ()
       Just newEnvCar -> do
 
-        mlistForCons_ sttLayer envs $ \ nenvCons -> do
+        thisEnvs <- sttLayer $ readSTRef envsR
+        mlistForCons_ sttLayer thisEnvs $ \ nenvCons -> do
           nenvCarMaybe <- sttLayer $ mcar nenvCons
           case nenvCarMaybe of
             Nothing -> return ()
             Just nenvCar -> do
-
-              case compareEnv newEnvCar nenvCar of
+               case compareEnv newEnvCar nenvCar of
                 EQenv -> sttLayer $ rplaca newEnvCons Nothing
                 S21env -> sttLayer $ rplaca newEnvCons Nothing
                 S12env -> do
@@ -1086,7 +1157,13 @@ updateLabel node newEnvs = do
                   sttLayer $ rplaca nenvCons Nothing
                 DisjEnv -> return ()
 
-        sttLayer $ mlistPush newEnvCarMaybe envs
+        do liftIO $ putStr " >> pushing onto envs: "
+           blurbMaybeEnv newEnvCarMaybe
+           liftIO $ putStrLn ""
+        sttLayer $ mlistRefPush newEnvCarMaybe envsR
+        do liftIO $ putStr " >> envs: "
+           blurbMaybeEnvMListRef envsR
+           liftIO $ putStrLn ""
         return ()
 
   -- Strip all `Nothing`s from the `newEnvs`, and add the `node` to
@@ -1094,16 +1171,91 @@ updateLabel node newEnvs = do
   finalNewEnvs <- sttLayer $ mlistStripNothing newEnvs
   mlistFor_ sttLayer finalNewEnvs $ \ newEnvMaybe ->
     case newEnvMaybe of
-      Just newEnv -> sttLayer $ push node $ envNodes newEnv
+      Just newEnv -> sttLayer $ push node $ envNodes newEnv  -- [B]
       _ -> return ()
 
   -- Un-lift the working version of the node label list, and write the
   -- update back to the node label list.
+  do liftIO $ putStr " >> envs: "
+     blurbMaybeEnvMListRef envsR
+     liftIO $ putStrLn ""
+  envs <- sttLayer $ readSTRef envsR
   updatedLabel <- sttLayer $ toUnmaybeList envs
+  do liftIO $ putStr " >> updatedLabel: "
+     blurbEnvList 10000 "" updatedLabel
+     liftIO $ putStrLn ""
+
+  -- debugNodeLabel node
+  -- sttLayer $ writeSTRef (nodeLabel node) updatedLabel
   setNodeLabel node updatedLabel
+  -- debugNodeLabel node
 
   -- Return the Nothing-stripped version of the newEnvs parameter.
+  debugUpdateLabelFinal node updatedLabel finalNewEnvs
   return finalNewEnvs
+
+debugUpdateLabelArgs ::
+  (MonadIO m, NodeDatum d) =>
+    Node d i r s m -> MList s (Maybe (Env d i r s m)) -> ATMST s m ()
+debugUpdateLabelArgs node newEnvs = do
+  let atms = nodeATMS node
+
+  liftIO $ putStr "Calling updateLabel with node "
+  blurbNode node
+  liftIO $ putStrLn ""
+
+  envLen <- sttLayer $ mlength newEnvs
+  case envLen of
+    0 -> liftIO $ putStrLn ". No envs"
+    1 -> do
+      liftIO $ putStr ". Env: "
+      envm <- sttLayer $ mcar newEnvs
+      case envm of
+        Nothing -> liftIO $ putStrLn "<nulled out>"
+        Just env -> debugEnv env
+    _ -> do
+      liftIO $ putStrLn ". Envs:"
+      mlistFor_ sttLayer newEnvs $ \em -> do
+        liftIO $ putStr "  . "
+        case em of
+          Just e -> debugEnv e
+          Nothing -> liftIO $ putStrLn "<nulled out>"
+
+debugUpdateLabelFinal ::
+  (MonadIO m, NodeDatum d) =>
+    Node d i r s m -> [Env d i r s m] -> MList s (Maybe (Env d i r s m)) ->
+      ATMST s m ()
+debugUpdateLabelFinal node labelEnvs newEnvs = do
+
+  case labelEnvs of
+    [] -> liftIO $ putStrLn ". No label envs"
+    [env] -> do
+      liftIO $ putStr ". Single label env: "
+      debugEnv env
+    _ -> do
+      liftIO $ putStrLn ". Final envs:"
+      forM_ labelEnvs $ \e -> do
+        liftIO $ putStr "  . "
+        debugEnv e
+
+  envLen <- sttLayer $ mlength newEnvs
+  case envLen of
+    0 -> liftIO $ putStrLn ". No final envs"
+    1 -> do
+      liftIO $ putStr ". Single final env: "
+      envm <- sttLayer $ mcar newEnvs
+      case envm of
+        Nothing -> liftIO $ putStrLn "<nulled out>"
+        Just env -> debugEnv env
+    _ -> do
+      liftIO $ putStrLn ". Final envs:"
+      mlistFor_ sttLayer newEnvs $ \em -> do
+        liftIO $ putStr "  . "
+        case em of
+          Just e -> debugEnv e
+          Nothing -> liftIO $ putStrLn "<nulled out>"
+
+  debugNode node
 
 -- |Update the label of node @antecedent@ to include the given @envs@
 -- environments, pruning environments which are a superset of another
@@ -1234,7 +1386,9 @@ weave antecedent givenEnvs antecedents = do
                         Just car ->
                           case compareEnv newEnv car of
                             EQenv  -> sttLayer $ writeSTRef addEnv False
-                            S12env -> sttLayer $ rplaca cons Nothing
+                            S12env -> do
+                              debugWeaveLoopRemovingEnv car
+                              sttLayer $ rplaca cons Nothing
                             S21env -> sttLayer $ writeSTRef addEnv False
                             DisjEnv -> return ()
 
@@ -1243,6 +1397,7 @@ weave antecedent givenEnvs antecedents = do
                 sttLayer $ whenM (readSTRef addEnv) $ do
                   newMCons <- mlistPush (Just newEnv) oldMCons
                   writeSTRef newEnvs newMCons
+                debugWeaveLoopPairEnd addEnv newEnvs
 
       -- So we have nearly produced the refinement of ENVS for this
       -- NODE in the ANTECEDENTS.  It might have spurious NILs, so we
@@ -1262,7 +1417,7 @@ debugWeaveArgs :: (MonadIO m, NodeDatum d) =>
       [Node d i r s m] ->
         ATMST s m ()
 debugWeaveArgs antecedent givenEnvs antecedents = do
-  liftIO $ putStrLn "WEAVE"
+  liftIO $ putStrLn "Calling weave with"
   case antecedent of
     Just n -> debugNode n
     Nothing -> liftIO $ putStrLn ". No antecedent"
@@ -1277,7 +1432,7 @@ debugWeaveArgs antecedent givenEnvs antecedents = do
       mlistFor_ sttLayer givenEnvs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv a e
+          Just e -> debugEnv e
           Nothing -> liftIO $ putStrLn "<nulled out>"
         return ()
     _ -> return ()
@@ -1316,6 +1471,25 @@ debugWeaveResult result = do
   liftIO $ putStr " --> result of weave is "
   blurbMaybeEnvMList result
   liftIO $ putStrLn ""
+
+debugWeaveLoopRemovingEnv ::
+  (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
+debugWeaveLoopRemovingEnv env = do
+  liftIO $ putStr "       - Removing from result: env "
+  blurbEnv env
+  liftIO $ putStrLn ""
+
+debugWeaveLoopPairEnd ::
+  (MonadIO m, NodeDatum d) =>
+    STRef s Bool -> (STRef s (MList s (Maybe (Env d i r s m)))) -> ATMST s m ()
+debugWeaveLoopPairEnd addR envmsR = do
+  add <- sttLayer $ readSTRef addR
+  liftIO $ putStrLn $ "      Adding union: " ++ (if add then "yes" else "no")
+  mlist <- sttLayer $ readSTRef envmsR
+  liftIO $ putStr $ "      Updated result to: "
+  blurbMaybeEnvMList mlist
+  liftIO $ putStrLn ""
+
 
 -- > ;; In atms.lisp
 -- > (defun in-antecedent? (nodes)
@@ -1901,7 +2075,7 @@ debugAtms blurb atms = do
   liftIO $ putStrLn $ "=============== " ++ atmsTitle atms ++ ": " ++ blurb
   debugNodes atms
   debugJusts atms
-  debugEnvs atms
+  debugAtmsEnvs atms
   debugNogoods atms
 
 debugNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
@@ -1927,10 +2101,10 @@ debugNode node = do
     [] -> liftIO $ putStrLn "  Empty label"
     [env] -> do
       liftIO $ putStr "  Single environment label: "
-      debugEnv atms env
+      debugEnv env
     _ -> forM_ label $ \env -> do
       liftIO $ putStrLn "  - "
-      debugEnv atms env
+      debugEnv env
 
   conseqs <- getNodeConsequences node
   case conseqs of
@@ -1950,10 +2124,11 @@ debugJusts atms = do
   let len = length justs
   liftIO $ putStrLn $ show len ++ " justification structure"
     ++ (if len == 1 then "" else "s") ++ ":"
-  forM_ (sortOn justIndex justs) $ debugJust atms
+  forM_ (sortOn justIndex justs) $ debugJust
 
-debugJust :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> JustRule d i r s m -> ATMST s m ()
-debugJust atms (JustRule idx inf conseq ants) = do
+debugJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
+debugJust (JustRule idx inf conseq ants) = do
+  let atms = nodeATMS conseq
   informantFmt <- getInformantString atms
   datumFmt <- getDatumString atms
   liftIO $ putStrLn $ "  "
@@ -1961,18 +2136,19 @@ debugJust atms (JustRule idx inf conseq ants) = do
     ++ datumFmt (nodeDatum conseq) ++ " <= "
     ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
 
-debugEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-debugEnvs atms = do
+debugAtmsEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
+debugAtmsEnvs atms = do
   liftIO $ putStrLn "Environments:"
   envTable <- getEnvTable atms
   debugEnvTable atms envTable
 
-debugEnv :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
-debugEnv atms env = do
+debugEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
+debugEnv env = do
   isNogood <- envIsNogood env
   case envAssumptions env of
     [] -> liftIO $ putStrLn "<empty>"
-    nodes -> do
+    nodes @ (n : _) -> do
+      let atms = nodeATMS n
       datumFmt <- getDatumString atms
       when isNogood $ liftIO $ putStr "[X] "
       liftIO $ putStrLn $
@@ -1993,6 +2169,19 @@ blurbMaybeEnvMList mlist = do
     sttLayer $ writeSTRef sep ", "
   liftIO $ putStr "]"
 
+blurbMaybeEnvMListRef ::
+  (MonadIO m, NodeDatum d) =>
+    STRef s (MList s (Maybe (Env d i r s m))) -> ATMST s m ()
+blurbMaybeEnvMListRef mlistRef = do
+  mlist <- sttLayer $ readSTRef mlistRef
+  blurbMaybeEnvMList mlist
+
+blurbMaybeEnv ::
+  (MonadIO m, NodeDatum d) => Maybe (Env d i r s m) -> ATMST s m ()
+blurbMaybeEnv envm = case envm of
+                       Just env -> blurbEnv env
+                       Nothing -> liftIO $ putStr "<nothing>"
+
 blurbEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 blurbEnv env = do
   isNogood <- envIsNogood env
@@ -2002,7 +2191,7 @@ blurbEnv env = do
       datumFmt <- getDatumString (nodeATMS first)
       when isNogood $ liftIO $ putStr "[X] "
       liftIO $ putStr $
-        intercalate ", " $ map (datumFmt . nodeDatum) nodes
+        "{" ++ (intercalate ", " $ map (datumFmt . nodeDatum) nodes) ++ "}"
 
 debugNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNogoods atms = do
@@ -2019,5 +2208,35 @@ debugEnvTable atms (EnvTable array) = do
     envs <- sttLayer $ readSTArray array i
     forM_ (reverse envs) $ \ env -> do
       liftIO $ putStr "- "
-      debugEnv atms env
+      debugEnv env
+
+debugNodeLabel ::
+  (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+debugNodeLabel node = do
+  -- lbl <- getNodeLabel node
+  lbl <- sttLayer $ readSTRef (nodeLabel node)
+  blurbNode node
+  liftIO $ putStr " label: "
+  blurbEnvList 10000 "\n" lbl
+  liftIO $ putStrLn ""
+
+blurbEnvList ::
+  (MonadIO m, NodeDatum d) => Int -> String -> [Env d i r s m] -> ATMST s m ()
+blurbEnvList multiLineIf lineLead envs =
+  case length envs of
+    0 -> liftIO $ putStr "empty env list"
+    n | n < multiLineIf -> do
+          liftIO $ putStr $ show n ++" envs: "
+          sepR <- sttLayer $ newSTRef ""
+          forM_ envs $ \env -> do
+            sep <- sttLayer $ readSTRef sepR
+            liftIO $ putStr sep
+            blurbEnv env
+            sttLayer $ writeSTRef sepR ", "
+    n -> do
+      liftIO $ putStrLn $ show n ++" envs:"
+      forM_ envs $ \env -> do
+        liftIO $ putStr lineLead
+        blurbEnv env
+        liftIO $ putStrLn ""
 
