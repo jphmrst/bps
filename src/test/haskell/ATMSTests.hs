@@ -52,7 +52,7 @@ instance MonadTLT m n => MonadTLT (ATMST s m) n where
 
 type ATMS1ty s m = ATMS String String Void s m
 type Node1ty s m = Node String String Void s m
-ex1AndTest :: Monad m => ATMST s (TLT m) ()
+ex1AndTest :: MonadIO m => ATMST s (TLT m) ()
 ex1AndTest = inGroup "ATMS Test 1" $ do
   atms <- createATMS "Ex1"
   inGroup "Freshly created ATMS" $ do
@@ -95,21 +95,23 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
 
   return ()
 
-assertNoLabel :: Monad m => Node d i r s (TLT m) -> ATMST s (TLT m) ()
+assertNoLabel ::
+  (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
 assertNoLabel node = do
   labels <- getNodeLabel node
   "No labels" ~: 0 @==- length labels
 
 assertSingleSelfLabels ::
-  Monad m => [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
+  (MonadIO m, NodeDatum d) => [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
 assertSingleSelfLabels labels =
   forM_ labels $ \ label -> assertSingleSelfLabel label
 
-assertSingleSelfLabel :: Monad m => Node d i r s (TLT m) -> ATMST s (TLT m) ()
+assertSingleSelfLabel ::
+  (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
 assertSingleSelfLabel node = assertSingleLabelEnvBy node [node]
 
 assertSingleLabelEnvBy ::
-  Monad m =>
+  (MonadIO m, NodeDatum d) =>
     Node d i r s (TLT m) -> [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
 assertSingleLabelEnvBy node nodes =
   inGroup (show node ++ " labelled by one Env with "
@@ -125,7 +127,7 @@ assertSingleLabelEnvBy node nodes =
       l -> "Expected one Env in label" `tltFail` ("Found " ++ (show $ length l))
 
 assertAssumptionsAre ::
-  Monad m =>
+  (MonadIO m, NodeDatum d) =>
     ATMS d i r s (TLT m) -> [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
 assertAssumptionsAre atms nodes = inGroup "Checking assumptions in ATMS" $ do
   assumptionsList <- getAssumptions atms
