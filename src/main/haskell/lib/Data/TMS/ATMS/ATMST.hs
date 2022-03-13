@@ -43,6 +43,7 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
+{- LANGUAGE ScopedTypeVariables #-}
 
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
@@ -299,9 +300,13 @@ data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   -- |The table of nogood environments.
   atmsNogoodTable :: STRef s (EnvTable d i r s m),
   -- |Canonical empty Env for this ATMS.  This value is not set more
-  -- than once, but it created after the ATMS is allocated, so we use
-  -- a reference to be able to set it up later.
+  -- than once, but it created (by `createATMS`) after the ATMS is
+  -- allocated, so we use a reference to be able to set it up later.
   atmsEmptyEnv :: STRef s (Maybe (Env d i r s m)),
+  -- |Canonical contradiction `Node` for this ATMS.  This value is not
+  -- set more than once, but it written (by `createATMS`) after the
+  -- ATMS is allocated, so we use a reference to be able to set it up
+  -- later.
   atmsContraNode :: STRef s (Maybe (Node d i r s m)),
   atmsNodeString :: STRef s (Node d i r s m -> String),
   atmsJustString :: STRef s (JustRule d i r s m -> String),
@@ -671,6 +676,11 @@ getEnvNodes :: (Monad m, NodeDatum d) => Env d i r s m  -> ATMST s m [Node d i r
 getEnvNodes = getEnvMutable envNodes
 setEnvNodes :: (Monad m, NodeDatum d) => Env d i r s m  -> [Node d i r s m] -> ATMST s m ()
 setEnvNodes = setEnvMutable envNodes
+
+getEnvRules :: (Monad m, NodeDatum d) => Env d i r s m  -> ATMST s m [r]
+getEnvRules = getEnvMutable envRules
+setEnvRules :: (Monad m, NodeDatum d) => Env d i r s m  -> [r] -> ATMST s m ()
+setEnvRules = setEnvMutable envRules
 
 envIsNogood :: (Monad m, NodeDatum d) => Env d i r s m -> ATMST s m Bool
 envIsNogood env = do
@@ -1576,7 +1586,8 @@ removeNode = error "< TODO unimplemented removeNode >"
 -- >   (set-env-contradictory atms e)
 -- >   e)
 createEnv ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] -> ATMST s m (Env d i r s m)
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [Node d i r s m] -> ATMST s m (Env d i r s m)
 createEnv atms assumptions = do
   index <- nextEnvCounter atms
   whyNogood <- sttLayer $ newSTRef Good
@@ -1584,7 +1595,7 @@ createEnv atms assumptions = do
   rules <- sttLayer $ newSTRef []
   env <- return $
     Env index (length assumptions) assumptions nodes whyNogood rules
-  insertInTable atms env
+  insertInTable atms (atmsEnvTable atms) env
   setEnvContradictory atms env
   return env
 
@@ -1709,29 +1720,30 @@ findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 -- >         (list count env) table
 -- >         #'(lambda (entry1 entry2)
 -- >             (< (car entry1) (car entry2)))))))
-insertInTable :: (Monad m, NodeDatum d) => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
-insertInTable atms env = do
+insertInTable ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> STRef s (EnvTable d i r s m) -> Env d i r s m ->
+      ATMST s m ()
+insertInTable atms tableRef env = do
   let count = envCount env
-      tableRef = atmsEnvTable atms
-      ngtRef = atmsNogoodTable atms
-  alloc <- sttLayer $ readSTRef $ atmsEnvTableAlloc atms
+  EnvTable currentTable <- sttLayer $ readSTRef tableRef
+  let (_, alloc) = boundsSTArray currentTable
+
+  -- Re-allocate the array if it needs to grow, and update the
+  -- reference.
   when (alloc < count) $ do
-    EnvTable oldArray <- sttLayer $ readSTRef tableRef
-    EnvTable oldNogoodArray <- sttLayer $ readSTRef ngtRef
     incr <- getEnvTableIncr
     let newAlloc = count + incr
     sttLayer $ do
-      newArray <- newSTArray (1, newAlloc) []
-      newNGArray <- newSTArray (1, newAlloc) []
+      newArray <- newSTArray (0, newAlloc) []
       forM_ [1..alloc] $ \i -> do
-        envs <- readSTArray oldArray i
+        envs <- readSTArray currentTable i
         writeSTArray newArray i envs
-        ngs <- readSTArray oldNogoodArray i
-        writeSTArray newNGArray i ngs
       writeSTRef tableRef $ EnvTable newArray
-      writeSTRef ngtRef $ EnvTable newNGArray
+
+  -- Add the env to its slot in the table.
   sttLayer $ do
-    table@(EnvTable array) <- readSTRef tableRef
+    EnvTable array <- readSTRef tableRef
     oldEnvs <- readSTArray array count
     writeSTArray array count $ env : oldEnvs
 
@@ -1807,17 +1819,29 @@ nodeListIsSubsetEq l1@(x : xs) (y : ys) =
 -- > ;; In atms.lisp
 -- > (defun new-nogood (atms cenv just &aux count)
 -- >   (debugging atms (format nil "~%  ~A new minimal nogood." cenv))
+-- >
+-- >   ;; Record the reason for deciding that cenv is nogood.
 -- >   (setf (env-nogood? cenv) just)
+-- >
+-- >   ;; Remove the cenv from the labels of any nodes which
+-- >   ;; reference it.
 -- >   (remove-env-from-labels cenv atms)
+-- >
+-- >   ;; Add `cenv` to the table of nogoods.
 -- >   (setf (atms-nogood-table atms)
 -- >         (insert-in-table (atms-nogood-table atms) cenv))
 -- >   (setq count (env-count cenv))
+-- >
+-- >   ;; Remove any nogood table entries made redundant by `cenv`.
 -- >   (dolist (entry (atms-nogood-table atms))
 -- >     (when (> (car entry) count)
 -- >       (dolist (old (cdr entry))
 -- >         (if (subset-env? cenv old)
 -- >             (setf (cdr entry)
 -- >                   (delete old (cdr entry) :COUNT 1))))))
+-- >
+-- >   ;; Find currently-non-nogood environments which are supersets
+-- >   ;; of the nogood, and mark them as nogoods.
 -- >   (dolist (entry (atms-env-table atms))
 -- >     (when (> (car entry) count)
 -- >       (dolist (old (cdr entry))
@@ -1838,10 +1862,23 @@ newNogood atms cenv why = do
   removeEnvFromLabels cenv atms
 
   -- Add `cenv` to the ATMS table of nogoods.
-  error "< TODO unimplemented newNogood --- add to nogood table>"
+  insertInTable atms (atmsNogoodTable atms) cenv
 
   -- Remove any nogood table entries made redundant by `cenv`.
-  error "< TODO unimplemented newNogood --- clean nogood table>"
+  let cenvCount = envCount cenv
+  EnvTable nogoodTable <- getNogoodTable atms
+  forM_ [1 .. cenvCount - 1] $ \ i -> do
+    entry <- sttLayer $ readSTArray nogoodTable i
+    sttLayer $ writeSTArray nogoodTable i $
+      filter (not . isSubsetEnv cenv) entry
+
+  -- Find currently-non-nogood environments which are supersets of the
+  -- nogood, and process them as nogoods.
+  EnvTable envTable <- getEnvTable atms
+  let (_, maxCount) = boundsSTArray envTable
+  forM_ [cenvCount + 1, maxCount] $ \ i -> do
+    entry <- sttLayer $ readSTArray envTable i
+    error "< TODO unimplemented newNogood --- find envs which are subsets>"
 
 -- > ;; In atms.lisp
 -- > (defun set-env-contradictory (atms env &aux count)
@@ -1880,10 +1917,15 @@ removeEnvFromLabels ::
 removeEnvFromLabels env atms = do
   -- Run all rules associated with `env`, and clear the list of
   -- associated rules.
-  error "< TODO unimplemented removeEnvFromLabels --- run all rules >"
+  enqueuef <- getEnqueueProcedure atms
+  forMM_ (getEnvRules env) $ \ rule -> do
+    enqueuef rule
+  setEnvRules env []
 
   -- Remove `env` from the label of the nodes currently including it.
-  error "< TODO unimplemented removeEnvFromLabels --- remove from node labels>"
+  forMM_ (getEnvNodes env) $ \ node -> do
+    oldLabel <- getNodeLabel node
+    setNodeLabel node $ delete env oldLabel
 
 -- * Interpretation construction
 
