@@ -1841,7 +1841,8 @@ nodeListIsSubsetEq l1@(x : xs) (y : ys) =
 -- >                   (delete old (cdr entry) :COUNT 1))))))
 -- >
 -- >   ;; Find currently-non-nogood environments which are supersets
--- >   ;; of the nogood, and mark them as nogoods.
+-- >   ;; of the nogood.  Mark each as a nogood, and remove it from
+-- >   ;; node labels.
 -- >   (dolist (entry (atms-env-table atms))
 -- >     (when (> (car entry) count)
 -- >       (dolist (old (cdr entry))
@@ -1878,7 +1879,11 @@ newNogood atms cenv why = do
   let (_, maxCount) = boundsSTArray envTable
   forM_ [cenvCount + 1, maxCount] $ \ i -> do
     entry <- sttLayer $ readSTArray envTable i
-    error "< TODO unimplemented newNogood --- find envs which are subsets>"
+    forM_ entry $ \ old -> do
+      isNogood <- envIsNogood old
+      when (isNogood && isSubsetEnv cenv old) $ do
+        sttLayer $ writeSTRef (envWhyNogood old) (ByEnv cenv)
+        removeEnvFromLabels old atms
 
 -- > ;; In atms.lisp
 -- > (defun set-env-contradictory (atms env &aux count)
