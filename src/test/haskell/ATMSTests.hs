@@ -103,7 +103,6 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
     assertSingleLabelEnvBy ng [na, nc]
     assertAssumptionsAre atms [na, nc, ne]
     assertContradictionsAre atms []
-    return ()
 
   nx <- createNode atms "X" False True
   inGroup "Created Node X" $ do
@@ -113,8 +112,26 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
     assertNoLabel nx
     assertAssumptionsAre atms [na, nc, ne]
     assertContradictionsAre atms [nx]
-    return ()
 
   justifyNode "R3" nx [ng]
+  inGroup "Added Justification R3" $ do
+    assertSingleSelfLabels [na, nc, ne]
+    assertSingleLabelEnvBy nh [nc, ne]
+    assertNoLabel ng
+    assertNoLabel nx
+    assertAssumptionsAre atms [na, nc, ne]
+    assertContradictionsAre atms [nx]
 
-  return ()
+  nb <- createNode atms "B" True False
+  inGroup "Created Node B" $ do
+    assertSingleSelfLabels [na, nb, nc, ne]
+    assertSingleLabelEnvBy nh [nc, ne]
+    assertNoLabel ng
+    assertNoLabel nx
+    assertAssumptionsAre atms [na, nb, nc, ne]
+    assertContradictionsAre atms [nx]
+
+  justifyNode "R4" nh [nb, nc]
+  inGroup "Added Justification R4" $ do
+    return ()
+
