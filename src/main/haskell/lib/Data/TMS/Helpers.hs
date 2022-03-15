@@ -24,6 +24,19 @@ import Control.Monad.ST.Trans
 import Control.Monad.Except
 import Control.Monad.Extra
 
+-- * Ordered lists
+
+-- | Determine whether one list is a subset of the other, under the
+-- assumption that both lists are sorted in ascending order.
+ordSubsetp :: Ord a => [a] -> [a] -> Bool
+ordSubsetp [] _ = True
+ordSubsetp (_ : _) [] = False
+ordSubsetp (n1 : ns1) l2@(n2 : ns2) =
+  case compare n1 n2 of
+    LT -> ordSubsetp ns1 l2
+    EQ -> ordSubsetp ns1 ns2
+    GT -> False
+
 -- * Even more loops
 
 -- | Like `forM_`, but with both the elements source as well as the

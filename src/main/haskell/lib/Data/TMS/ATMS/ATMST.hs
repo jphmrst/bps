@@ -544,6 +544,10 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node {
 instance (Monad m, NodeDatum d) => Eq (Node d i r s m) where
   n1 == n2 = nodeIndex n1 == nodeIndex n2
 
+instance (Monad m, NodeDatum d) => Ord (Node d i r s m) where
+  n1 < n2 = nodeIndex n1 < nodeIndex n2
+  n1 `compare` n2 = nodeIndex n1 `compare` nodeIndex n2
+
 instance (Monad m, NodeDatum d) => Show (Node d i r s m) where
   show n = "<Node " ++ show (nodeIndex n) ++ ">"
 
@@ -1774,7 +1778,10 @@ lookupEnv assumptions@(a : _) = do
 -- >    ((subsetp (env-assumptions e1)
 -- >              (env-assumptions e2)))))
 isSubsetEnv :: (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> Bool
-isSubsetEnv = error "< TODO unimplemented isSubsetEnv >"
+isSubsetEnv e1 e2 =
+  if e1 == e2 then True
+  else if envCount e1 > envCount e2 then False
+  else ordSubsetp (envAssumptions e1) (envAssumptions e2)
 
 -- | The possible results of comparing two `Env`s.
 data EnvCompare =
