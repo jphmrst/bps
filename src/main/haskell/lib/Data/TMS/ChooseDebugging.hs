@@ -24,6 +24,8 @@ unitQ = [| return () |]
 monadIOQ = ''MonadIO
 monadQ = ''Monad
 
+-- | Macro which expands to definitions which either print debugging
+-- statements, or do nothing.
 debugging :: Q [Dec]
 debugging = if debuggingOn
            then [d| class MonadIO m => Debuggable m
