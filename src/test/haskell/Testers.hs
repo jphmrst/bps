@@ -82,6 +82,19 @@ assertSingleLabelEnvBy node nodes =
           "Label should contain " ++ show node ~::- elem node envAsmpts
       l -> "Expected one Env in label" `tltFail` ("Found " ++ (show $ length l))
 
+assertNodeLabelAssumptions ::
+  (MonadIO m, NodeDatum d) =>
+    Node d i r s (TLT m) -> [[Node d i r s (TLT m)]] -> ATMST s (TLT m) ()
+assertNodeLabelAssumptions node nodeLists = do
+  labelNodeLists <- fmap (fmap envAssumptions) $ getNodeLabel node
+  inGroup (show node ++ " label " ++ show labelNodeLists
+           ++ " has given assumption lists") $ do
+    "Expect " ++ show (length nodeLists) ++ " environments" ~:
+      length nodeLists @==- length labelNodeLists
+    forM_ nodeLists $ \ nodeList -> do
+      "Should have environment with assumptions " ++ show nodeList
+        ~::- elem nodeList labelNodeLists
+
 assertAssumptionsAre ::
   (MonadIO m, NodeDatum d) =>
     ATMS d i r s (TLT m) -> [Node d i r s (TLT m)] -> ATMST s (TLT m) ()

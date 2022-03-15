@@ -133,5 +133,10 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
 
   justifyNode "R4" nh [nb, nc]
   inGroup "Added Justification R4" $ do
-    return ()
+    assertSingleSelfLabels [na, nb, nc, ne]
+    assertNodeLabelAssumptions nh [[nc, ne], [nb, nc]]
+    assertNoLabel ng
+    assertNoLabel nx
+    assertAssumptionsAre atms [na, nb, nc, ne]
+    assertContradictionsAre atms [nx]
 

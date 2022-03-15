@@ -564,7 +564,8 @@ setNodeMutable ::
 setNodeMutable refGetter node val = sttLayer $ writeSTRef (refGetter node) val
 
 -- |Return the `Node`'s label.
-getNodeLabel :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [Env d i r s m]
+getNodeLabel ::
+  (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [Env d i r s m]
 {-# INLINE getNodeLabel #-}
 getNodeLabel = getNodeMutable nodeLabel
 -- |Shortcut to write to the reference to a node's label.
