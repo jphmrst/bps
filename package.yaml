@@ -65,8 +65,6 @@ library:
   - -Wunused-packages
   - -Wunused-type-patterns
   - -Wsafe
-  - -Wimplicit-lift
-  - -Wmissing-kind-signatures
 #  - -Wsimplifiable-class-constraints # Spurious warnings from tracing code
 #  - -Wredundant-constraints          # Too much
 #  - -Wimplicit-prelude               # TODO later
@@ -77,7 +75,9 @@ library:
 #  - -Wmissing-exported-signatures    # TODO later
 #  - -Wambiguous-fields 
 #  - -Woperator-whitespace-ext-conflict
-#  - -Wduplicate-constraints # GHC says it's redundant
+#  - -Wduplicate-constraints    # GHC says it's redundant
+#  - -Wimplicit-lift            # GHC says unrecognized
+#  - -Wmissing-kind-signatures  # GHC says unrecognized
 
 executables:
   hbps:
