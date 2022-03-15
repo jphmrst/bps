@@ -70,9 +70,9 @@ module Data.TMS.ATMS.ATMST (
   setInformantStringViaString, setInformantStringViaShow,
 
   -- ** Nodes
-  Node, createNode,
+  Node, nodeDatum, createNode,
   -- *** Node components
-  nodeString, defaultNodeString, getNodeLabel, getNodeRules,
+  nodeATMS, nodeString, defaultNodeString, getNodeLabel, getNodeRules,
   getNodeConsequences,
   -- *** Setting node status
   assumeNode, makeContradiction, removeNode,
@@ -95,12 +95,25 @@ module Data.TMS.ATMS.ATMST (
   envIsNogood,
 
   -- * Printing and debugging
-  debugAtms, debugNode, debugJust,
-  debugJustification, debugEnv,  debugAtmsEnvs, debugEnvTable, debugNogoods,
-  printAtms, printNode, printJust, printEnvStructure,
-  printJustification, printEnv, printNogoods,
-  printEnvs, printEnvTable, printAtmsStatistics, printTable,
-  whyNodes, whyNode
+
+  -- | Functions prefixed @format@ build a computation returning a
+  -- `String`.  Functions prefixed @debug@ or @print@ build a unit
+  -- computation printing the artifact in question to standard output;
+  -- those with prefix @debug@ are generally more verbose.
+  debugAtms, printAtms, debugAtmsEnvs,
+  printAtmsStatistics,
+
+  -- ** Nodes and node lists
+  formatNode, formatNodes, debugNode, printNode,
+  whyNodes, whyNode,
+
+  -- ** Environments, labels, and tables
+  debugEnv, debugEnvTable, formatNodeLabel,
+  debugNogoods, printEnvStructure,
+  printEnv, printNogoods, printEnvs, printEnvTable, printTable,
+
+  -- ** Justifications
+  debugJust, printJust, debugJustification, printJustification
 
   ) where
 
@@ -2183,10 +2196,28 @@ debugNodes atms = do
   liftIO $ putStrLn $ show (length nodes) ++ " nodes:"
   forM_ (reverse nodes) debugNode
 
-blurbNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-blurbNode node = do
+formatNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
+formatNode node = do
   datumFmt <- getDatumString $ nodeATMS node
-  liftIO $ putStr $ datumFmt (nodeDatum node)
+  return $ datumFmt (nodeDatum node)
+
+formatNodes ::
+  (Monad m, NodeDatum d) => String -> [Node d i r s m] -> ATMST s m String
+formatNodes sep = formatList sep formatNode
+
+formatNodeLists ::
+  (Monad m, NodeDatum d) => String -> [[Node d i r s m]] -> ATMST s m String
+formatNodeLists sep = formatList sep $ formatNodes ","
+
+formatNodeLabel :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
+formatNodeLabel node = do
+  label <- getNodeLabel node
+  case label of
+    [] -> return "empty"
+    _ -> formatNodeLists ", " $ map envAssumptions label
+
+blurbNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+blurbNode node = formatNode node >>= liftIO . putStr
 
 debugNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 debugNode node = do
@@ -2214,7 +2245,8 @@ debugNode node = do
         liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
       liftIO $ putStrLn ""
 
-debugJustification :: (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
+debugJustification ::
+  (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
 debugJustification j = error "< TODO unimplemented debugJustification >"
 
 debugJusts :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
@@ -2310,6 +2342,18 @@ debugEnvTable atms (EnvTable array) = do
     forM_ (reverse envs) $ \ env -> do
       liftIO $ putStr "- "
       debugEnv env
+
+{-
+blurbNodeLabel ::
+  (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m String
+blurbNodeLabel node = do
+  -- lbl <- getNodeLabel node
+  lbl <- sttLayer $ readSTRef (nodeLabel node)
+  blurbNode node
+  liftIO $ putStr " label: "
+  blurbEnvList 10000 "\n" lbl
+  liftIO $ putStrLn ""
+-}
 
 debugNodeLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()

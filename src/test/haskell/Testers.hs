@@ -86,13 +86,17 @@ assertNodeLabelAssumptions ::
   (MonadIO m, NodeDatum d) =>
     Node d i r s (TLT m) -> [[Node d i r s (TLT m)]] -> ATMST s (TLT m) ()
 assertNodeLabelAssumptions node nodeLists = do
+  let atms = nodeATMS node
+  datumFmt <- getDatumString atms
+  showLabel <- formatNodeLabel node
   labelNodeLists <- fmap (fmap envAssumptions) $ getNodeLabel node
-  inGroup (show node ++ " label " ++ show labelNodeLists
-           ++ " has given assumption lists") $ do
+  inGroup ("Checking node " ++ (datumFmt $ nodeDatum node)
+           ++ " label " ++ showLabel) $ do
     "Expect " ++ show (length nodeLists) ++ " environments" ~:
       length nodeLists @==- length labelNodeLists
     forM_ nodeLists $ \ nodeList -> do
-      "Should have environment with assumptions " ++ show nodeList
+      nl <- formatNodes "," nodeList
+      "Should have environment with assumptions " ++ nl
         ~::- elem nodeList labelNodeLists
 
 assertAssumptionsAre ::

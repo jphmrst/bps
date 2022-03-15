@@ -23,6 +23,7 @@ import Control.Monad.State
 import Control.Monad.ST.Trans
 import Control.Monad.Except
 import Control.Monad.Extra
+import Data.List
 
 -- * Ordered lists
 
@@ -38,6 +39,11 @@ ordSubsetp (n1 : ns1) l2@(n2 : ns2) =
     GT -> False
 
 -- * Even more loops
+
+-- | Convert a list to a string, where the converter for each element
+-- is a monadic computation.
+formatList :: Monad m => String -> (a -> m String) -> [a] -> m String
+formatList s f xs = mapM f xs >>= return . intercalate s
 
 -- | Like `forM_`, but with both the elements source as well as the
 -- loop body as computations over the monad.
@@ -102,6 +108,31 @@ whenNonnullR :: (Monad m0, Monad m) =>
 whenNonnullR lifter ref bodyf = do
   xs <- lifter $ readSTRef ref
   if (null xs) then return () else bodyf xs
+
+-- |Map over the values contained within a list of references.
+mapRefs :: Monad m => (a -> b) -> [STRef s a] -> STT s m [b]
+mapRefs f [] = return []
+mapRefs f (xr : xrs) = do
+  x <- readSTRef xr
+  xs' <- mapRefs f xrs
+  return $ f x : xs'
+
+-- |Fold (right-associatively) the values contained within a list of
+-- references.
+foldrRefs :: Monad m => (a -> b -> b) -> b -> [STRef s a] -> STT s m b
+foldrRefs f z [] = return z
+foldrRefs f z (xr : xrs) = do
+  x <- readSTRef xr
+  z' <- foldrRefs f z xrs
+  return $ f x z'
+
+-- |Fold (left-associatively) the values contained within a list of
+-- references.
+foldlRefs :: Monad m => (b -> a -> b) -> b -> [STRef s a] -> STT s m b
+foldlRefs f z [] = return z
+foldlRefs f z (xr : xrs) = do
+  x <- readSTRef xr
+  foldlRefs f (f z x) xrs
 
 -- ** Stack-like operations
 
