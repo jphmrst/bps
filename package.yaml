@@ -55,9 +55,29 @@ library:
   - -Wunrecognised-warning-flags
   - -Winaccessible-code
   - -Wstar-binder
+  - -Wmonomorphism-restriction
+  - -Wmissing-home-modules
+  - -Widentities
+  - -Wpartial-fields
+  - -Wmissed-specialisations
+  - -Wall-missed-specialisations
+  - -Wcpp-undef
+  - -Wunused-packages
+  - -Wunused-type-patterns
+  - -Wsafe
+  - -Wimplicit-lift
+  - -Wmissing-kind-signatures
+#  - -Wsimplifiable-class-constraints # Spurious warnings from tracing code
+#  - -Wredundant-constraints          # Too much
+#  - -Wimplicit-prelude               # TODO later
+#  - -Wmissing-import-lists           # TODO later
+#  - -Wmissing-local-signatures       # Maybe later
+#  - -Wmissing-export-lists           # TODO later
+#  - -Wmissing-deriving-strategies    # TODO later
+#  - -Wmissing-exported-signatures    # TODO later
 #  - -Wambiguous-fields 
-#  - -Wsimplifiable-class-constraints
 #  - -Woperator-whitespace-ext-conflict
+#  - -Wduplicate-constraints # GHC says it's redundant
 
 executables:
   hbps:
