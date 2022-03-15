@@ -29,6 +29,35 @@ dependencies:
 
 library:
   source-dirs: src/main/haskell/lib
+  ghc-options:
+  - -w
+  - -Woverlapping-patterns
+  - -Wwarnings-deprecations
+  - -Wdeprecations
+  - -Wdeprecated-flags
+  - -Wunrecognised-pragmas
+  - -Wduplicate-exports
+  - -Wderiving-defaults
+  - -Woverflowed-literals
+  - -Wempty-enumerations
+  - -Wmissing-fields
+  - -Wmissing-methods
+  - -Wwrong-do-bind
+  - -Wtyped-holes
+  - -Wdeferred-type-errors
+  - -Wpartial-type-signatures
+  - -Wunsupported-calling-conventions
+  - -Wdodgy-foreign-imports
+  - -Winline-rule-shadowing
+  - -Wunsupported-llvm-version
+  - -Wmissed-extra-shared-lib
+  - -Wtabs
+  - -Wunrecognised-warning-flags
+  - -Winaccessible-code
+  - -Wstar-binder
+#  - -Wambiguous-fields 
+#  - -Wsimplifiable-class-constraints
+#  - -Woperator-whitespace-ext-conflict
 
 executables:
   hbps:

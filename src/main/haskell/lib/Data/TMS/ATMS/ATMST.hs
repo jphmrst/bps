@@ -636,7 +636,7 @@ data WhyNogood d i r s m =
 
 isNogood :: WhyNogood d i r s m -> Bool
 isNogood Good = False
-isNoGood _ = True
+isNogood _ = True
 
 {- ----------------------------------------------------------------- -}
 
@@ -1799,7 +1799,8 @@ data EnvCompare =
 -- >         :S12))
 -- >    ((subsetp (env-assumptions e2) (env-assumptions e1))
 -- >     :S21)))
-compareEnv :: (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> EnvCompare
+compareEnv ::
+  (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> EnvCompare
 compareEnv e1 e2 =
   if e1 == e2
   then EQenv
@@ -1907,13 +1908,15 @@ setEnvContradictory ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
 setEnvContradictory atms env = do
   ifM (envIsNogood env) (return ()) $ do
-    count <- return $ envCount env
+    let count = envCount env
     EnvTable nogoodTableArray <- sttLayer $ readSTRef $ atmsNogoodTable atms
     forM_ [1..count] $ \i -> do
-      forMM_ (sttLayer $ readSTArray nogoodTableArray i) $ \cenv ->
-        when (isSubsetEnv cenv env) $ do
-          sttLayer $ writeSTRef (envWhyNogood env) $ ByEnv cenv
-          error "< TODO unimplemented setEnvContradictory Quit from here >"
+      continueLoop <- sttLayer $ newSTRef True
+      forMMwhile_ (sttLayer $ readSTArray nogoodTableArray i)
+                  (sttLayer $ readSTRef continueLoop) $ \cenv ->
+        when (isSubsetEnv cenv env) $ sttLayer $ do
+          writeSTRef (envWhyNogood env) $ ByEnv cenv
+          writeSTRef continueLoop False
 
 -- > ;; In atms.lisp
 -- > (defun remove-env-from-labels (env atms &aux enqueuef)
@@ -2280,9 +2283,11 @@ blurbMaybeEnv envm = case envm of
 
 blurbEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 blurbEnv env = do
+  wng <- sttLayer $ readSTRef $ envWhyNogood env
   isNogood <- envIsNogood env
   case envAssumptions env of
-    [] -> liftIO $ putStr "<empty>"
+    [] -> do
+      liftIO $ putStr "<empty>"
     nodes @ (first : _) -> do
       datumFmt <- getDatumString (nodeATMS first)
       when isNogood $ liftIO $ putStr "[X] "
