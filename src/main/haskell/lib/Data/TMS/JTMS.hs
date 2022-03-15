@@ -827,7 +827,7 @@ justifyNode informant consequence antecedents =
   let jtms = nodeJTMS consequence
   in do
     justIdx <- JtmsT $ nextJustCounter jtms
-    just <- return $ JustRule justIdx informant consequence antecedents
+    let just = JustRule justIdx informant consequence antecedents
 
     -- Add this new JustRule as a possible justification of the
     -- consequent.

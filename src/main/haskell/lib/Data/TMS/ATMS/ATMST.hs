@@ -1597,8 +1597,7 @@ createEnv atms assumptions = do
   whyNogood <- sttLayer $ newSTRef Good
   nodes <- sttLayer $ newSTRef []
   rules <- sttLayer $ newSTRef []
-  env <- return $
-    Env index (length assumptions) assumptions nodes whyNogood rules
+  let env = Env index (length assumptions) assumptions nodes whyNogood rules
   insertInTable atms (atmsEnvTable atms) env
   setEnvContradictory atms env
   return env
