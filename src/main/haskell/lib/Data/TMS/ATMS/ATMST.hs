@@ -113,7 +113,7 @@ module Data.TMS.ATMS.ATMST (
   printEnv, printNogoods, printEnvs, printEnvTable, printTable,
 
   -- ** Justifications
-  debugJust, printJust, debugJustification, printJustification
+  debugJust, printJust, formatJustification
 
   ) where
 
@@ -1642,7 +1642,9 @@ unionEnv e1 e2 =
             newE2 <- consEnv assume oldE2
             $(dbg [| debugUnionEnvLoopCons newE2 |])
             sttLayer $ writeSTRef acc newE2
-          sttLayer $ readSTRef acc
+          result <- sttLayer $ readSTRef acc
+          $(dbg [| debugUnionEnvResult result |])
+          return result
 
 debugUnionEnvStart ::
   (MonadIO m, NodeDatum d) => Env d i r s m -> Env d i r s m -> ATMST s m ()
@@ -1657,17 +1659,24 @@ debugUnionEnvLoopStart ::
   (MonadIO m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m ()
 debugUnionEnvLoopStart node e2 = do
   datumFmt <- getDatumString $ nodeATMS node
-  liftIO $ putStrLn $ "       - Running loop with"
-  liftIO $ putStrLn $ "         node " ++ datumFmt (nodeDatum node)
-  liftIO $ putStr "         env "
+  liftIO $ putStrLn $ "         - Running loop with"
+  liftIO $ putStrLn $ "           node " ++ datumFmt (nodeDatum node)
+  liftIO $ putStr "           env "
   blurbEnv e2
   liftIO $ putStrLn ""
 
 debugUnionEnvLoopCons ::
   (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 debugUnionEnvLoopCons e = do
-  liftIO $ putStr "         consEnv is "
+  liftIO $ putStr "           consEnv returns "
   blurbEnv e
+  liftIO $ putStrLn ""
+
+debugUnionEnvResult ::
+  (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
+debugUnionEnvResult result = do
+  liftIO $ putStr "         unionEnv returns "
+  blurbEnv result
   liftIO $ putStrLn ""
 
 
@@ -1691,15 +1700,16 @@ consEnv assumption env = do
   $(dbg [| debugConsEnvInserted nassumes |])
 
   envByLookup <- lookupEnv nassumes
+  $(dbg [| debugConsEnvLookup envByLookup |])
   maybe (createEnv (nodeATMS assumption) nassumes) (return . id) envByLookup
 
 debugConsEnvStart ::
   (MonadIO m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m ()
 debugConsEnvStart node e2 = do
   datumFmt <- getDatumString $ nodeATMS node
-  liftIO $ putStrLn $ "         - Running consEnv with"
-  liftIO $ putStrLn $ "           node " ++ datumFmt (nodeDatum node)
-  liftIO $ putStr "           env "
+  liftIO $ putStrLn $ "         - Running consEnv"
+  liftIO $ putStrLn $ "           inserting node " ++ datumFmt (nodeDatum node)
+  liftIO $ putStr "           into env "
   blurbEnv e2
   liftIO $ putStrLn ""
 
@@ -1707,13 +1717,22 @@ debugConsEnvInserted ::
   (MonadIO m, NodeDatum d) => [Node d i r s m] -> ATMST s m ()
 debugConsEnvInserted nodes =
   case nodes of
-    [] -> liftIO $ putStrLn "            -> result is empty list"
+    [] -> liftIO $ putStrLn "           list after insertion: empty list"
     (n : _) -> do
       datumFmt <- getDatumString $ nodeATMS n
       liftIO $ putStrLn $
-        "            -> result is ["
+        "           list after insertion: ["
         ++ intercalate ", " (map (datumFmt . nodeDatum) nodes)
         ++ "]"
+
+debugConsEnvLookup ::
+  (MonadIO m, NodeDatum d) => Maybe (Env d i r s m) -> ATMST s m ()
+debugConsEnvLookup Nothing =
+  liftIO $ putStrLn $ "           lookup gives Nothing"
+debugConsEnvLookup (Just env) = do
+  liftIO $ putStr $ "           lookup gives "
+  blurbEnv env
+  liftIO $ putStrLn ""
 
 -- > ;; In atms.lisp
 -- > (defun find-or-make-env (assumptions atms)
@@ -1872,9 +1891,11 @@ nodeListIsSubsetEq l1@(x : xs) (y : ys) =
 -- >           (setf (env-nogood? old) cenv)
 -- >           (remove-env-from-labels old atms))))))
 newNogood ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> Justification d i r s m -> ATMST s m ()
 newNogood atms cenv why = do
+  $(dbg [| debugNewNogoodStart cenv why |])
+
   -- Record in `cenv` the reason why `cenv` is nogood.
   sttLayer $ writeSTRef (envWhyNogood cenv) (ByJustification why)
 
@@ -1905,6 +1926,15 @@ newNogood atms cenv why = do
       when (isNogood && isSubsetEnv cenv old) $ do
         sttLayer $ writeSTRef (envWhyNogood old) (ByEnv cenv)
         removeEnvFromLabels old atms
+
+debugNewNogoodStart ::
+  (MonadIO m, NodeDatum d) =>
+    Env d i r s m -> Justification d i r s m -> ATMST s m ()
+debugNewNogoodStart cenv why = do
+  liftIO $ putStr "Starting newNogood with "
+  debugEnv cenv
+  formatJustification why >>= (liftIO . putStrLn)
+
 
 -- > ;; In atms.lisp
 -- > (defun set-env-contradictory (atms env &aux count)
@@ -2109,14 +2139,6 @@ nodeJustifications :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 nodeJustifications = error "< TODO unimplemented nodeJustifications >"
 
 -- > ;; In atms.lisp
--- > (defun print-justification (j &optional (stream t))
--- >   (format stream "~%  ~A, " (just-informant j))
--- >   (dolist (a (just-antecedents j))
--- >     (why-node a stream "     ")))
-printJustification :: (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
-printJustification = error "< TODO unimplemented printJustification >"
-
--- > ;; In atms.lisp
 -- > (defun e (atms n)
 -- >   (dolist (bucket (atms-env-table atms))
 -- >     (dolist (env (cdr bucket))
@@ -2189,6 +2211,7 @@ debugAtms blurb atms = do
   debugJusts atms
   debugAtmsEnvs atms
   debugNogoods atms
+  liftIO $ putStrLn "=============== "
 
 debugNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNodes atms = do
@@ -2245,9 +2268,14 @@ debugNode node = do
         liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
       liftIO $ putStrLn ""
 
-debugJustification ::
-  (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
-debugJustification j = error "< TODO unimplemented debugJustification >"
+formatJustification ::
+  (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m String
+formatJustification (ByRule j) = return $ "By rule " ++ show (justIndex j)
+formatJustification (ByAssumption n) = do
+  nodeFmt <- getNodeString (nodeATMS n)
+  return $ "By assumption " ++ nodeFmt n
+formatJustification ByContradiction = return "By contradiction"
+
 
 debugJusts :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugJusts atms = do

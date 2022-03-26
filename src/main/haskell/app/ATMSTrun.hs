@@ -17,7 +17,7 @@ runATMS1 = do
     ne <- createNode atms "E" True False
     -- debugAtms "Added assumption node E" atms
     nh <- createNode atms "H" False False
-    -- debugAtms "Added non-assuption node H" atms
+    -- debugAtms "Added non-assumption node H" atms
     justifyNode "R1" nh [nc, ne]
     -- debugAtms "After rule R1" atms
     ng <- createNode atms "G" False False
@@ -25,6 +25,10 @@ runATMS1 = do
     justifyNode "R2" ng [na, nc]
     -- debugAtms "After rule R2" atms
     nx <- createNode atms "X" False True
-    debugAtms "After contradiction node X" atms
+    -- debugAtms "After contradiction node X" atms
     justifyNode "R3" nx [ng]
-    debugAtms "After rule R3" atms
+    -- debugAtms "After rule R3" atms
+    nb <- createNode atms "B" True False
+    debugAtms "Added assumption node B" atms
+    justifyNode "R4" nh [nb, nc]
+    debugAtms "After rule R4" atms
