@@ -20,22 +20,22 @@ import scala.collection.mutable.{ListBuffer, HashSet, HashMap, Queue}
 
 @main def traceConstruction1: Unit = {
   val atms = new ATMS[Symbol, String, Nothing]("atms-test0", debugging = true)
-  atms.debugging = true
+  atms.debugging = false
   val a = atms.createNode("A", isAssumption = true)
   val c = atms.createNode("C", isAssumption = true)
   val e = atms.createNode("E", isAssumption = true)
   val h = atms.createNode("H")
-  atms.debugAtms
   val j1 = atms.justifyNode("R1", h, List(c, e))
-  atms.debugAtms
-  /*
   val g = atms.createNode("G")
   val j2 = atms.justifyNode("R2", g, List(a, c))
   val x = atms.createNode("X", isContradictory = true)
   val j3 = atms.justifyNode("R3", x, List(g))
+  atms.debugging = true
+  atms.debugAtms
   val b = atms.createNode("B", isAssumption = true)
+  atms.debugAtms
   val j4 = atms.justifyNode("R4", h, List(b, c))
-   */
+  atms.debugAtms
 }
 
 def traceInterpretations1: Unit = {
