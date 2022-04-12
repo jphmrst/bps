@@ -25,6 +25,16 @@ import Control.Monad.Except
 import Control.Monad.Extra
 import Data.List
 
+-- * Lists and monads
+
+-- | Check whether a list contains a value which, when applied to a
+-- computation, returns @True@.
+anyByM :: (Monad m) => (a -> m Bool) -> [a] -> m Bool
+anyByM _ [] = return False
+anyByM k (x : xs) = do
+  b <- k x
+  if b then return True else anyByM k xs
+
 -- * Ordered lists
 
 -- | Determine whether one list is a subset of the other, under the

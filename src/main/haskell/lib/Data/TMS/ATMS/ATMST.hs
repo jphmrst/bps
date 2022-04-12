@@ -88,7 +88,7 @@ module Data.TMS.ATMS.ATMST (
   interpretations,
 
   -- ** Related to a node
-  isTrueNode, isInNode, isOutNode, isNodeConsistentWith,
+  isTrueNode, isInNode, isInNodeByEnv, isOutNode, isNodeConsistentWith,
   getNodeIsContradictory, explainNode,
 
   -- ** Related to environments
@@ -828,13 +828,26 @@ isTrueNode node = do
 -- >       (some #'(lambda (le) (subset-env? le env))
 -- >        (tms-node-label n))
 -- >       (not (null (tms-node-label n)))))
-isInNode :: (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
-isInNode = error "< TODO unimplemented isInNode >"
+isInNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m Bool
+isInNode node = fmap (not . null) (getNodeLabel node)
+
+-- > ;; In atms.lisp
+-- > (defun in-node? (n &optional env)
+-- >   (if env
+-- >       (some #'(lambda (le) (subset-env? le env))
+-- >        (tms-node-label n))
+-- >       (not (null (tms-node-label n)))))
+isInNodeByEnv ::
+  (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
+isInNodeByEnv node env = do
+  labelEnvs <- getNodeLabel node
+  return $ any (\ le -> isSubsetEnv le env) labelEnvs
 
 -- > ;; In atms.lisp
 -- > (defun out-node? (n env) (not (in-node? n env)))
-isOutNode :: (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
-isOutNode = error "< TODO unimplemented isOutNode >"
+isOutNode ::
+  (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
+isOutNode node env = fmap not $ isInNodeByEnv node env
 
 -- > ;; In atms.lisp
 -- > (defun node-consistent-with? (n env)
@@ -842,7 +855,12 @@ isOutNode = error "< TODO unimplemented isOutNode >"
 -- >    (tms-node-label n)))
 isNodeConsistentWith ::
   (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
-isNodeConsistentWith = error "< TODO unimplemented isNodeConsistentWith >"
+isNodeConsistentWith node env = do
+  labelEnvs <- getNodeLabel node
+  anyByM (\ le -> do
+             union <- unionEnv le env
+             fmap not $ envIsNogood union)
+    labelEnvs
 
 -- |Create a new `Node` in an `ATMS`.
 --

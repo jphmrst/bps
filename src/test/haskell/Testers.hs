@@ -55,6 +55,10 @@ assertTrueNode ::
   (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
 assertTrueNode node = "Node is true" ~:: isTrueNode node
 
+assertInNode ::
+  (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
+assertInNode node = "Node is in" ~:: isInNode node
+
 assertNotTrueNode ::
   (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
 assertNotTrueNode node = "Node is not true" ~:: (fmap not $ isTrueNode node)
@@ -68,10 +72,7 @@ assertNoLabel node = do
 assertSingleSelfLabels ::
   (MonadIO m, NodeDatum d) => [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
 assertSingleSelfLabels nodes =
-  forM_ nodes $ \ node -> do
-    inGroup (show node ++ " labelled by one singleton self Env") $ do
-      assertSingleSelfLabel node
-      assertNotTrueNode node
+  forM_ nodes $ \ node -> assertSingleSelfLabel node
 
 assertSingleSelfLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
@@ -84,6 +85,7 @@ assertSingleLabelEnvBy node nodes =
   inGroup (show node ++ " labelled by one Env with "
             ++ intercalate ", " (map show nodes)) $ do
     assertNotTrueNode node
+    assertInNode node
     labels <- getNodeLabel node
     case labels of
       [env] -> do
