@@ -32,11 +32,11 @@ import Data.List
 ordSubsetp :: Ord a => [a] -> [a] -> Bool
 ordSubsetp [] _ = True
 ordSubsetp (_ : _) [] = False
-ordSubsetp (n1 : ns1) l2@(n2 : ns2) =
+ordSubsetp l1@(n1 : ns1) l2@(n2 : ns2) =
   case compare n1 n2 of
-    LT -> ordSubsetp ns1 l2
+    LT -> False
     EQ -> ordSubsetp ns1 ns2
-    GT -> False
+    GT -> ordSubsetp l1 ns2
 
 -- * Even more loops
 

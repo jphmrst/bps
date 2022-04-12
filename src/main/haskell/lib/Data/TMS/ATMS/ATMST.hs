@@ -781,7 +781,8 @@ envOrder e1 e2 = envIndex e1 < envIndex e2
 -- >                       :CONTRADICTORYP t))
 -- >     (setf (atms-empty-env atms) (create-env atms nil))
 -- >     atms))
-createATMS :: (Monad m, NodeDatum d) => String -> ATMST s m (ATMS d i r s m)
+createATMS ::
+  (Debuggable m, NodeDatum d) => String -> ATMST s m (ATMS d i r s m)
 createATMS title = do
   ecInitialAlloc <- getInitialEnvTableAlloc
   emptyEnvRef <- sttLayer $ newSTRef Nothing
@@ -871,8 +872,8 @@ isNodeConsistentWith = error "< TODO unimplemented isNodeConsistentWith >"
 -- >     (push node (atms-assumptions atms))
 -- >     (push (create-env atms (list node)) (tms-node-label node)))
 -- >   node)
-createNode ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
+createNode :: (Debuggable m, NodeDatum d) =>
+  ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
 createNode atms datum isAssumption isContradictory = do
   idx <- nextNodeCounter atms
   label <- sttLayer $ newSTRef []
@@ -1604,17 +1605,35 @@ removeNode = error "< TODO unimplemented removeNode >"
 -- >   (set-env-contradictory atms e)
 -- >   e)
 createEnv ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [Node d i r s m] -> ATMST s m (Env d i r s m)
 createEnv atms assumptions = do
+  $(dbg [| debugCreateEnvStart assumptions |])
   index <- nextEnvCounter atms
   whyNogood <- sttLayer $ newSTRef Good
   nodes <- sttLayer $ newSTRef []
   rules <- sttLayer $ newSTRef []
   let env = Env index (length assumptions) assumptions nodes whyNogood rules
+  $(dbg [| debugCreateEnvEnv env |])
   insertInTable atms (atmsEnvTable atms) env
+  $(dbg [| debugCreateEnvEnv env |])
   setEnvContradictory atms env
+  $(dbg [| debugCreateEnvEnv env |])
   return env
+
+debugCreateEnvStart ::
+  (MonadIO m, NodeDatum d) => [Node d i r s m] -> ATMST s m ()
+debugCreateEnvStart nodes = do
+  liftIO $ putStrLn $ "             - Running createEnv"
+  astr <- formatNodes "," nodes
+  liftIO $ putStrLn $ "               assumptions " ++ astr
+
+debugCreateEnvEnv ::
+  (MonadIO m, NodeDatum d) => (Env d i r s m) -> ATMST s m ()
+debugCreateEnvEnv env = do
+  liftIO $ putStr $ "               env "
+  blurbEnv env
+  liftIO $ putStrLn ""
 
 -- > ;; In atms.lisp
 -- > (defun union-env (e1 e2)
@@ -1948,18 +1967,55 @@ debugNewNogoodStart cenv why = do
 -- >                           (setf (env-nogood? env) cenv)
 -- >                           (return t)))))))))
 setEnvContradictory ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
+  (Debuggable m, NodeDatum d) => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
 setEnvContradictory atms env = do
-  ifM (envIsNogood env) (return ()) $ do
+  $(dbg [| setEnvContradictoryStart env |])
+  ifM (envIsNogood env)
+    (do $(dbg [| liftIO $ putStr "                 Already nogood \n" |])
+        return ()) $ do
     let count = envCount env
     EnvTable nogoodTableArray <- sttLayer $ readSTRef $ atmsNogoodTable atms
     forM_ [1..count] $ \i -> do
       continueLoop <- sttLayer $ newSTRef True
+      $(dbg [| setEnvContradictoryStartOuter i |])
       forMMwhile_ (sttLayer $ readSTArray nogoodTableArray i)
-                  (sttLayer $ readSTRef continueLoop) $ \cenv ->
-        when (isSubsetEnv cenv env) $ sttLayer $ do
-          writeSTRef (envWhyNogood env) $ ByEnv cenv
-          writeSTRef continueLoop False
+                  (sttLayer $ readSTRef continueLoop) $ \cenv -> do
+        $(dbg [| setEnvContradictoryStartInner cenv |])
+        when (isSubsetEnv cenv env) $ do
+          $(dbg [| setEnvContradictoryStartInnerWhen cenv env |])
+          sttLayer $ do
+            writeSTRef (envWhyNogood env) $ ByEnv cenv
+            writeSTRef continueLoop False
+
+setEnvContradictoryStart ::
+  (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
+setEnvContradictoryStart e = do
+  liftIO $ putStr "               - Running setEnvContradictory with "
+  blurbEnv e
+  liftIO $ putStrLn ""
+
+setEnvContradictoryStartOuter ::
+  (MonadIO m) => Int -> ATMST s m ()
+setEnvContradictoryStartOuter i = do
+  liftIO $ putStrLn $ ("                 Starting outer loop for "
+                       ++ show i
+                       ++ "-length envs")
+
+setEnvContradictoryStartInner ::
+  (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
+setEnvContradictoryStartInner cenv = do
+  liftIO $ putStr "                   Starting inner loop with nogood env "
+  blurbEnv cenv
+  liftIO $ putStrLn ""
+
+setEnvContradictoryStartInnerWhen ::
+  (MonadIO m, NodeDatum d) => Env d i r s m -> Env d i r s m -> ATMST s m ()
+setEnvContradictoryStartInnerWhen cenv env = do
+  liftIO $ putStr "                   Nogood "
+  blurbEnv cenv
+  liftIO $ putStr " is subset of "
+  blurbEnv env
+  liftIO $ putStrLn ", marking latter nogood"
 
 -- > ;; In atms.lisp
 -- > (defun remove-env-from-labels (env atms &aux enqueuef)

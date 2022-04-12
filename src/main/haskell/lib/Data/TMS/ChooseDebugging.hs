@@ -16,7 +16,7 @@ import qualified Control.Monad.Trans.State.Lazy as SL
 import qualified Control.Monad.Trans.Writer.Lazy as WL
 import qualified Control.Monad.Trans.Writer.Strict as WS
 
-debuggingOn = True
+debuggingOn = False
 
 unitQ :: Q Exp
 unitQ = [| return () |]
