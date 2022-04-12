@@ -109,7 +109,7 @@ module Data.TMS.ATMS.ATMST (
 
   -- ** Environments, labels, and tables
   debugEnv, debugEnvTable, formatNodeLabel,
-  debugNogoods, printEnvStructure,
+  debugNogoods,
   printEnv, printNogoods, printEnvs, printEnvTable, printTable,
 
   -- ** Justifications
@@ -610,14 +610,6 @@ setNodeConsequences = setNodeMutable nodeConsequences
 getNodeIsContradictory :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 
--- > (defun print-tms-node (node stream ignore)
--- >   (declare (ignore ignore))
--- >   (if (tms-node-assumption? node)
--- >       (format stream "A-~D" (tms-node-index node))
--- >       (format stream "#<NODE: ~A>" (node-string node))))
-printNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-printNode = error "< TODO unimplemented >"
-
 -- > ;; In atms.lisp
 -- > (defstruct (just (:PRINT-FUNCTION print-just))
 -- >       (index 0)
@@ -630,14 +622,6 @@ data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
   justConsequence :: Node d i r s m,
   justAntecedents :: [Node d i r s m]
 }
-
--- > ;; In atms.lisp
--- > (defun print-just (just stream ignore)
--- >   (declare (ignore ignore))
--- >   (format stream "<~A ~D>" (just-informant just)
--- >      (just-index just)))
-printJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
-printJust = error "< TODO unimplemented printJust >"
 
 data Justification d i r s m =
   ByRule (JustRule d i r s m) | ByAssumption (Node d i r s m) | ByContradiction
@@ -707,17 +691,12 @@ envIsNogood env = do
 newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 
 -- > ;; In atms.lisp
--- > (defun print-env-structure (env stream ignore)
--- >   (declare (ignore ignore))
--- >   (format stream "E-~D" (env-index env)))
-printEnvStructure :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
-printEnvStructure = error "< TODO unimplemented printEnvStructure >"
-
--- > ;; In atms.lisp
 -- > (defun node-string (node)
 -- >   (funcall (atms-node-string (tms-node-atms node)) node))
 nodeString :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
-nodeString = error "< TODO unimplemented nodeString >"
+nodeString node = do
+  nodeFmt <- getNodeString $ nodeATMS node
+  return $ nodeFmt node
 
 -- > ;; In atms.lisp
 -- > (defmacro debugging (atms msg &optional node &rest args)
@@ -727,8 +706,11 @@ nodeString = error "< TODO unimplemented nodeString >"
 
 -- > ;; In atms.lisp
 -- > (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
-defaultNodeString :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
-defaultNodeString = error "< TODO unimplemented defaultNodeString >"
+defaultNodeString ::
+  (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
+defaultNodeString node = do
+  datumFormatter <- getDatumString $ nodeATMS node
+  return $ datumFormatter $ nodeDatum node
 
 -- > ;; In atms.lisp
 -- > (defun ordered-insert (item list test)
@@ -742,11 +724,13 @@ orderedInsert item list@(i : _) test | test item i  = item : list
 orderedInsert item list@(i : _) _    | item == i    = list
 orderedInsert item (i : is) test = i : orderedInsert item is test
 
+{- Does not seem to be used
 -- > ;; In atms.lisp
 -- > (defmacro ordered-push (item list test)
 -- >   `(setq ,list (ordered-insert ,item ,list ,test)))
 orderedPush :: a -> [a] -> (a -> a -> Bool) -> [a]
-orderedPush = error "< TODO unimplemented orderedPush >"
+orderedPush = error "< unimplemented orderedPush >"
+-}
 
 -- |We order assumptions in `Env` lists by their index.
 --
@@ -832,7 +816,11 @@ createATMS title = do
 -- >   (eq (car (tms-node-label node))
 -- >       (atms-empty-env (tms-node-atms node))))
 isTrueNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m Bool
-isTrueNode = error "< TODO unimplemented isTrueNode >"
+isTrueNode node = do
+  envs <- getNodeLabel node
+  return $ case envs of
+    [] -> False
+    e : _ -> null $ envAssumptions e
 
 -- > ;; In atms.lisp
 -- > (defun in-node? (n &optional env)
@@ -2298,6 +2286,16 @@ formatNodeLabel node = do
 blurbNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 blurbNode node = formatNode node >>= liftIO . putStr
 
+-- > (defun print-tms-node (node stream ignore)
+-- >   (declare (ignore ignore))
+-- >   (if (tms-node-assumption? node)
+-- >       (format stream "A-~D" (tms-node-index node))
+-- >       (format stream "#<NODE: ~A>" (node-string node))))
+printNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+printNode node = do
+  str <- nodeString node
+  liftIO $ putStr $ "<NODE: " ++ str ++ ">"
+
 debugNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 debugNode node = do
   let atms = nodeATMS node
@@ -2340,6 +2338,22 @@ debugJusts atms = do
   liftIO $ putStrLn $ show len ++ " justification structure"
     ++ (if len == 1 then "" else "s") ++ ":"
   forM_ (sortOn justIndex justs) $ debugJust
+
+formatJustInformant ::
+  (Monad m, NodeDatum d) => JustRule d i r s m -> ATMST s m String
+formatJustInformant rule = do
+  informantFmt <- getInformantString $ nodeATMS $ justConsequence rule
+  return $ informantFmt $ justInformant rule
+
+-- > ;; In atms.lisp
+-- > (defun print-just (just stream ignore)
+-- >   (declare (ignore ignore))
+-- >   (format stream "<~A ~D>" (just-informant just)
+-- >      (just-index just)))
+printJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
+printJust rule = do
+  infStr <- formatJustInformant rule
+  liftIO $ putStr $ "<" ++ infStr ++ " " ++ show (justIndex rule) ++ ">"
 
 debugJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
 debugJust (JustRule idx inf conseq ants) = do

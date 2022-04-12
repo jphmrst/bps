@@ -51,6 +51,14 @@ report (Left e) = putStrLn ("Caught exception: " ++ (show e))
 instance MonadTLT m n => MonadTLT (ATMST s m) n where
   liftTLT = lift . liftTLT
 
+assertTrueNode ::
+  (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
+assertTrueNode node = "Node is true" ~:: isTrueNode node
+
+assertNotTrueNode ::
+  (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
+assertNotTrueNode node = "Node is not true" ~:: (fmap not $ isTrueNode node)
+
 assertNoLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
 assertNoLabel node = do
@@ -59,8 +67,11 @@ assertNoLabel node = do
 
 assertSingleSelfLabels ::
   (MonadIO m, NodeDatum d) => [Node d i r s (TLT m)] -> ATMST s (TLT m) ()
-assertSingleSelfLabels labels =
-  forM_ labels $ \ label -> assertSingleSelfLabel label
+assertSingleSelfLabels nodes =
+  forM_ nodes $ \ node -> do
+    inGroup (show node ++ " labelled by one singleton self Env") $ do
+      assertSingleSelfLabel node
+      assertNotTrueNode node
 
 assertSingleSelfLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s (TLT m) -> ATMST s (TLT m) ()
@@ -72,6 +83,7 @@ assertSingleLabelEnvBy ::
 assertSingleLabelEnvBy node nodes =
   inGroup (show node ++ " labelled by one Env with "
             ++ intercalate ", " (map show nodes)) $ do
+    assertNotTrueNode node
     labels <- getNodeLabel node
     case labels of
       [env] -> do

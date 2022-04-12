@@ -139,4 +139,3 @@ ex1AndTest = inGroup "ATMS Test 1" $ do
     assertNoLabel nx
     assertAssumptionsAre atms [na, nb, nc, ne]
     assertContradictionsAre atms [nx]
-
