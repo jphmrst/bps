@@ -423,9 +423,14 @@ setDatumString ::
 {-# INLINE setDatumString #-}
 setDatumString = setATMSMutable atmsDatumString
 
+-- | When the data associated with `Node`s are all `String`s, we can
+-- direct the `ATMS` to display each datum as itself.
 setDatumStringViaString :: Monad m => ATMS String i r s m -> ATMST s m ()
 setDatumStringViaString atms = setDatumString atms id
 
+-- | When the data associated with `Node`s are of a type of class
+-- `Show`, we can direct the `ATMS` to display each datum using the
+-- `show` instance.
 setDatumStringViaShow ::
   (NodeDatum d, Show d, Monad m) => ATMS d i r s m -> ATMST s m ()
 setDatumStringViaShow atms = setDatumString atms show
@@ -441,9 +446,16 @@ setInformantString ::
 {-# INLINE setInformantString #-}
 setInformantString = setATMSMutable atmsInformantString
 
-setInformantStringViaString :: (Monad m, NodeDatum d) => ATMS d String r s m -> ATMST s m ()
+-- | When the informants associated with `JustRule`s are all
+-- `String`s, we can direct the `ATMS` to display each informant as
+-- itself.
+setInformantStringViaString ::
+  (Monad m, NodeDatum d) => ATMS d String r s m -> ATMST s m ()
 setInformantStringViaString atms = setInformantString atms id
 
+-- | When the informants associated with `JustRule`s are of a type of
+-- class `Show`, we can direct the `ATMS` to display each datum using
+-- the `show` instance.
 setInformantStringViaShow ::
   (Show i, Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 setInformantStringViaShow atms = setInformantString atms show
@@ -461,12 +473,9 @@ setEnqueueProcedure ::
 {-# INLINE setEnqueueProcedure #-}
 setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
 
--- Translated from @print-atms@ in @atms.lisp@.
+-- | Print the internal title signifying an ATMS.
 --
--- > ;; In atms.lisp
--- > (defun print-atms (atms stream ignore)
--- >   (declare (ignore ignore))
--- >   (format stream "#<ATMS: ~A>" (atms-title atms)))
+-- Translated from @print-atms@ in @atms.lisp@.
 printAtms :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printAtms atms = liftIO $ putStrLn $ "#<ATMS: " ++ atmsTitle atms ++ ">"
 
@@ -498,19 +507,9 @@ nextEnvCounter atms = sttLayer $ do
 
 {- ----------------------------------------------------------------- -}
 
--- Translated from @(tms-node@ in @atms.lisp@.
+-- | Wrapper for the datum associated with a node of the `ATMS`.
 --
--- > ;; In atms.lisp
--- > (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
--- >   (index 0)                                        ;; Unique name.
--- >   (datum nil)                   ; Pointer to IE data structures.
--- >   (label nil)                   ; minimal envs believed under
--- >   (justs nil)                   ; providers of support
--- >   (consequences nil)            ; provides support for.
--- >   (contradictory? nil)          ; flag marking it as contradictory.
--- >   (assumption? nil)             ; flag marking it as n assumption.
--- >   (rules nil)                   ; run when label non-empty.
--- >   (atms nil))
+-- Translated from @(tms-node@ in @atms.lisp@.
 data (Monad m, NodeDatum d) => Node d i r s m = Node {
   nodeIndex :: Int,
   -- | Retrieve the datum associated with a `Node`.
