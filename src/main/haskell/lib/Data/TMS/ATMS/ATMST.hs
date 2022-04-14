@@ -339,13 +339,6 @@ getNodes ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [Node d i r s m]
 {-# INLINE getNodes #-}
 getNodes = getATMSMutable atmsNodes
-{-
--- |Shortcut to write to the reference to a ATMS's `Node` list.
-setNodes ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
-{-# INLINE setNodes #-}
-setNodes = setATMSMutable atmsNodes
--}
 
 -- |Return the `ATMS`'s current `EnvTable`.
 getEnvTable ::
@@ -364,39 +357,18 @@ getJusts ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [JustRule d i r s m]
 {-# INLINE getJusts #-}
 getJusts = getATMSMutable atmsJusts
-{-
--- |Shortcut to write to the reference to a ATMS's `JustRule` list.
-setJusts ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> [JustRule d i r s m] -> ATMST s m ()
-{-# INLINE setJusts #-}
-setJusts = setATMSMutable atmsJusts
--}
 
 -- |Return the `ATMS`'s current contradictions list.
 getContradictions ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [Node d i r s m]
 {-# INLINE getContradictions #-}
 getContradictions = getATMSMutable atmsContradictions
-{-
--- |Shortcut to write to the reference to a ATMS's contradictions list.
-setContradictions ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
-{-# INLINE setContradictions #-}
-setContradictions = setATMSMutable atmsContradictions
--}
 
 -- |Return the `ATMS`'s current assumptions list.
 getAssumptions ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [Node d i r s m]
 {-# INLINE getAssumptions #-}
 getAssumptions = getATMSMutable atmsAssumptions
-{-
--- |Shortcut to write to the reference to a ATMS's assumptions list.
-setAssumptions ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] -> ATMST s m ()
-{-# INLINE setAssumptions #-}
-setAssumptions = setATMSMutable atmsAssumptions
--}
 
 -- |Return the `ATMS`'s built-in empty environment.
 getEmptyEnvironment ::
