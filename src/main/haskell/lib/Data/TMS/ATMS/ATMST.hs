@@ -678,6 +678,29 @@ envIsNogood env = do
 -- length.
 newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 
+findInEnvTable ::
+  (Monad m, NodeDatum d) =>
+    (Env d i r s m -> Bool) -> EnvTable d i r s m ->
+      ATMST s m (Maybe (Env d i r s m))
+findInEnvTable pred (EnvTable arr) =
+  let (lo, hi) = boundsSTArray arr
+  in findInEnvTableEntries pred  [lo..hi] arr
+  where findInEnvTableEntries ::
+          Monad m =>
+            (Env d i r s m -> Bool) -> [Int] -> STArray s Int [Env d i r s m] ->
+              ATMST s m (Maybe (Env d i r s m))
+        findInEnvTableEntries pred [] arr = return Nothing
+        findInEnvTableEntries pred (i : idxs) arr = do
+          entries <- sttLayer $ readSTArray arr i
+          case find pred entries of
+            Nothing -> findInEnvTableEntries pred idxs arr
+            res -> return res
+
+        findInEnvTableEntry ::
+          Monad m =>
+            (Env d i r s m -> Bool) -> [Env d i r s m] -> Maybe (Env d i r s m)
+        findInEnvTableEntry pred envs = find pred envs
+
 -- |Shortcut for retrieving the `Node` formatter from an `ATMS`, and
 -- applying it to the given `Node`.
 --
@@ -1967,15 +1990,18 @@ nodeJustifications node = do
 
 -- |Retrieve an `ATMS`'s `Env`ironment with the given index number.
 --
--- TO BE TRANSLATED from @e@ in @atms.lisp@.
+-- Translated from @e@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun e (atms n)
 -- >   (dolist (bucket (atms-env-table atms))
 -- >     (dolist (env (cdr bucket))
 -- >     (if (= (env-index env) n) (return-from e env)))))
-e :: (Monad m, NodeDatum d) => ATMS d i r s m -> Int -> ATMST s m ()
-e = error "< TODO unimplemented e >"
+e :: (Monad m, NodeDatum d) =>
+  ATMS d i r s m -> Int -> ATMST s m (Maybe (Env d i r s m))
+e atms i = do
+  table <- getEnvTable atms
+  findInEnvTable (\env -> envIndex env == i) table
 
 -- |Print an environment.
 --
