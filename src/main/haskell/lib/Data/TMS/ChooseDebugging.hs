@@ -1,6 +1,20 @@
 {-# LANGUAGE TemplateHaskell, KindSignatures, RankNTypes #-}
 
-module Data.TMS.ChooseDebugging (debugging) where
+{-|
+Module      : ChooseDebugging
+Description : The main switch for activating tracing messages for debugging in output.
+Copyright   : (c) John Maraist, 2022
+License     : AllRightsReserved
+Maintainer  : haskell-tms@maraist.org
+Stability   : experimental
+Portability : POSIX
+
+The module contains the flag which indicates whether debugging output
+should be compiled into modules using this system for runtime trace
+output.
+-}
+
+module Data.TMS.ChooseDebugging (debuggingOn, debugging) where
 import Language.Haskell.TH
 import Control.Monad
 import Control.Monad.IO.Class
@@ -16,9 +30,12 @@ import qualified Control.Monad.Trans.State.Lazy as SL
 import qualified Control.Monad.Trans.Writer.Lazy as WL
 import qualified Control.Monad.Trans.Writer.Strict as WS
 
+-- | Flag which indicates whether debugging output should be compiled
+-- into modules using this system for runtime trace output.
 debuggingOn = False
 
 unitQ :: Q Exp
+{-# INLINE unitQ #-}
 unitQ = [| return () |]
 
 monadIOQ = ''MonadIO

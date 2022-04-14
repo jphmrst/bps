@@ -33,6 +33,7 @@ data MList s a = MCons (STRef s a) (STRef s (MList s a))
                | MNil
                  -- ^ Regular old @nil@.
 
+-- |Convert an `MList` to a `String`.
 showM :: (Show a, Monad m) => MList s a -> STT s m String
 showM MNil = return "[]"
 showM (MCons xr xsr) = do
@@ -40,7 +41,7 @@ showM (MCons xr xsr) = do
   xs <- readSTRef xsr
   let sx = show x
   sxs <- showM xs
-  return $ sx ++ " m:: " ++ sxs
+  return $ sx ++ " m: " ++ sxs
 
 
 -- |Returns `True` for an empty list.
@@ -108,6 +109,7 @@ toUnmaybeList (MCons car cdr) = do
     Nothing -> return xs
     Just x -> return $ x : xs
 
+-- |A version of @map@ for `MList`s.
 mlistMap :: Monad m => (a -> b) -> MList s a -> STT s m (MList s b)
 mlistMap f MNil = return MNil
 mlistMap f (MCons xref xsref) = do
@@ -118,6 +120,7 @@ mlistMap f (MCons xref xsref) = do
   xsref' <- newSTRef xs'
   return $ MCons xref' xsref'
 
+-- |A version of @filter@ for `MList`s.
 mlistFilter :: Monad m => (a -> Bool) -> MList s a -> STT s m (MList s a)
 mlistFilter p l = do
   (_, result) <- flt p l
@@ -137,6 +140,8 @@ mlistFilter p l = do
            else return (False, l)
       else return (True, xs')
 
+-- |Return a new `MList` which strips off the `Just` constructor from
+-- its elements, dropping and elements which are `Nothing`.
 mlistUnmaybe :: Monad m => MList s (Maybe a) -> STT s m (MList s a)
 mlistUnmaybe MNil = return MNil
 mlistUnmaybe (MCons xref xsref) = do
@@ -150,9 +155,12 @@ mlistUnmaybe (MCons xref xsref) = do
       xsref' <- newSTRef xs'
       return $ MCons xref' xsref'
 
+-- |Return a new `MList` which drops elements which are `Nothing`.
 mlistStripNothing :: Monad m => MList s (Maybe a) -> STT s m (MList s (Maybe a))
 mlistStripNothing = mlistFilter (not . null)
 
+-- |Return a new `MList` which drops elements which are `Nothing` from
+-- the `MList` under the reference argument.
 getMlistStripNothing ::
   Monad m => STRef s (MList s (Maybe a)) -> STT s m (MList s (Maybe a))
 getMlistStripNothing ref = do

@@ -206,6 +206,8 @@ commaList :: (a -> String) -> [a] -> String
 commaList f [] = ""
 commaList f xs = foldl1 (\ x y -> x ++ ", " ++ y) $ map f xs
 
+-- |Remove the `Just` constructors from the elements of a list,
+-- discarding elements which are `Nothing`.
 unmaybe [] = []
 unmaybe (Just a : xs) = a : unmaybe xs
 unmaybe (_ : xs) = unmaybe xs

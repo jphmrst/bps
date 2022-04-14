@@ -265,6 +265,8 @@ runATMST atmst = do
 
 {- ----------------------------------------------------------------- -}
 
+-- |Class of type which can be used as the datum underlying `Node`s in
+-- an `ATMS`.
 class NodeDatum d where contractionNodeDatum :: d
 
 instance NodeDatum String where
@@ -272,23 +274,8 @@ instance NodeDatum String where
 instance NodeDatum Symbol where
   contractionNodeDatum = intern "The contradiction"
 
--- > ;; In atms.lisp
--- > (defstruct (atms (:PRINT-FUNCTION print-atms))
--- >   (title nil)
--- >   (node-counter 0)              ; unique namer for nodes.
--- >   (just-counter 0)              ; unique namer for justifications.
--- >   (env-counter 0)               ; Unique id for environments.
--- >   (nodes nil)                   ; List of all atms nodes.
--- >   (justs nil)                   ; List of all justifications.
--- >   (contradictions nil)          ; List of contradiction nodes.
--- >   (assumptions nil)             ; List of all atms assumptions.
--- >   (debugging nil)               ; Trace grungy details.
--- >   (nogood-table nil)
--- >   (contra-node nil)             ; A dummy contradiction node.
--- >   (env-table nil)
--- >   (empty-env nil)               ; Empty environment.
--- >   (node-string nil)
--- >   (enqueue-procedure nil))
+-- | Top-level representation of an assumption-based truth maintenance
+-- system.
 data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   -- |Name of this ATMS.
   atmsTitle :: String,
@@ -321,11 +308,17 @@ data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   -- ATMS is allocated, so we use a reference to be able to set it up
   -- later.
   atmsContraNode :: STRef s (Maybe (Node d i r s m)),
+  -- | Function for formatting a `Node` of this ATMS.
   atmsNodeString :: STRef s (Node d i r s m -> String),
+  -- | Function for representing a justification rule.
   atmsJustString :: STRef s (JustRule d i r s m -> String),
+  -- | Function for representing the data associated with `Node`s.
   atmsDatumString :: STRef s (d -> String),
+  -- | Function for representing the informants of justifications.
   atmsInformantString :: STRef s (i -> String),
+  -- | List of external procedures to be executed for this ATMS.
   atmsEnqueueProcedure :: STRef s (r -> ATMST s m ()),
+  -- | Set to `True` when we wish to debug this ATMS.
   atmsDebugging :: STRef s Bool
 }
 
@@ -610,12 +603,7 @@ setNodeConsequences = setNodeMutable nodeConsequences
 getNodeIsContradictory :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 
--- > ;; In atms.lisp
--- > (defstruct (just (:PRINT-FUNCTION print-just))
--- >       (index 0)
--- >       (informant nil)
--- >       (consequence nil)
--- >       (antecedents nil))
+-- | The justification of one `ATMS` `Node` by zero or more others.
 data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
   justIndex :: Int,
   justInformant :: i,
@@ -623,30 +611,30 @@ data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
   justAntecedents :: [Node d i r s m]
 }
 
+-- | Description of why a `Node` may be believed by the `ATMS`.
 data Justification d i r s m =
   ByRule (JustRule d i r s m) | ByAssumption (Node d i r s m) | ByContradiction
 
+-- | Explanation of why a `Node` may be believed by the `ATMS` for
+-- output to a query.
 data Explanation d i r s m =
   IsRule (JustRule d i r s m) | IsAssumption (Node d i r s m)
 
+-- | Explanation of why a `Node` may be classified as no-good by the
+-- `ATMS`.
 data WhyNogood d i r s m =
   Good | ByJustification (Justification d i r s m) | ByEnv (Env d i r s m)
 
+-- | Translation of the explanation of why a `Node` may be classified
+-- (or not) as no-good to a boolean value.
 isNogood :: WhyNogood d i r s m -> Bool
 isNogood Good = False
 isNogood _ = True
 
 {- ----------------------------------------------------------------- -}
 
--- > ;; In atms.lisp
--- > (defstruct (env (:PREDICATE env?)
--- >            (:PRINT-FUNCTION print-env-structure))
--- >       (index 0)
--- >       (count 0)                            ; Number of assumptions.
--- >       (assumptions nil)
--- >       (nodes nil)
--- >       (nogood? nil)
--- >       (rules nil))                         ; Call this if becomes nogood.
+-- | An environment of `Node`s which may be used as the basis of
+-- reasoning in an `ATMS`.
 data (Monad m, NodeDatum d) => Env d i r s m = Env {
   envIndex :: Int,
   envCount :: Int,
@@ -674,16 +662,21 @@ setEnvMutable ::
 {-# INLINE setEnvMutable #-}
 setEnvMutable refGetter env envs = sttLayer $ writeSTRef (refGetter env) envs
 
+-- |Shortcut for reading the `Node`s of an `Env`.
 getEnvNodes :: (Monad m, NodeDatum d) => Env d i r s m  -> ATMST s m [Node d i r s m]
 getEnvNodes = getEnvMutable envNodes
+-- |Shortcut for writing the `Node`s of an `Env`.
 setEnvNodes :: (Monad m, NodeDatum d) => Env d i r s m  -> [Node d i r s m] -> ATMST s m ()
 setEnvNodes = setEnvMutable envNodes
 
+-- |Shortcut for reading the rules of an `Env`.
 getEnvRules :: (Monad m, NodeDatum d) => Env d i r s m  -> ATMST s m [r]
 getEnvRules = getEnvMutable envRules
+-- |Shortcut for writing the rules of an `Env`.
 setEnvRules :: (Monad m, NodeDatum d) => Env d i r s m  -> [r] -> ATMST s m ()
 setEnvRules = setEnvMutable envRules
 
+-- |Shortcut for testing whether an `Env` is nogood.
 envIsNogood :: (Monad m, NodeDatum d) => Env d i r s m -> ATMST s m Bool
 envIsNogood env = do
   fmap isNogood $ sttLayer $ readSTRef $ envWhyNogood env
@@ -973,9 +966,10 @@ justifyNode informant consequence antecedents = do
 -- >   (justify-node informant
 -- >            (atms-contra-node (tms-node-atms (car nodes)))
 -- >            nodes))
-nogoodNodes ::
-  (Monad m, NodeDatum d) => Node d i r s m -> [Node d i r s m] -> ATMST s m ()
-nogoodNodes = error "< TODO unimplemented nogoodNodes >"
+nogoodNodes :: (Monad m, NodeDatum d) => i -> [Node d i r s m] -> ATMST s m ()
+nogoodNodes informant nodes = do
+  contra <- getContradictionNode (nodeATMS (head nodes))
+  justifyNode informant contra nodes
 
 -- * Label updating
 
@@ -1555,7 +1549,10 @@ debugWeaveLoopPairEnd addR envmsR = do
 -- >   (or (null nodes)
 -- >       (weave? (atms-empty-env (tms-node-atms (car nodes))) nodes)))
 isInAntecedent :: (Monad m, NodeDatum d) => [Node d i r s m] -> ATMST s m Bool
-isInAntecedent = error "< TODO unimplemented isInAntecedent >"
+isInAntecedent [] = return True
+isInAntecedent nodes = do
+  empty <- getEmptyEnvironment (nodeATMS (head nodes))
+  isWeave empty nodes
 
 -- > ;; In atms.lisp
 -- > (defun weave? (env nodes &aux new-env)
