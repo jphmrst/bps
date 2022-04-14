@@ -897,6 +897,8 @@ makeContradiction = error "< TODO unimplemented makeContradiction >"
 -- | Direct the `ATMS` to believe a particular `Node` when all of the
 -- given list of `Node`s are also believed.  The first argument is the
 -- informant associated with this inference.
+--
+-- Translated from @justify-node@ in @atms.lisp@.
 justifyNode ::
   (Debuggable m, NodeDatum d) =>
     i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
@@ -925,6 +927,8 @@ justifyNode informant consequence antecedents = do
 
 -- | Direct the `ATMS` to find the combination of all of the given
 -- `Node`s to be a contradiction associated with the given informant.
+--
+-- Translated from @nogood-nodes@ in @atms.lisp@.
 nogoodNodes :: (Monad m, NodeDatum d) => i -> [Node d i r s m] -> ATMST s m ()
 nogoodNodes informant nodes = do
   contra <- getContradictionNode (nodeATMS (head nodes))
@@ -932,6 +936,8 @@ nogoodNodes informant nodes = do
 
 -- * Label updating
 
+--
+-- Translated from @propagate@ in @atms.lisp@.
 propagate ::
   (Debuggable m, NodeDatum d) =>
     JustRule d i r s m ->
@@ -977,6 +983,8 @@ debugPropagateArgs justRule antecedent envs = do
           Just e -> debugEnv e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
+--
+-- Translated from @update@ in @atms.lisp@.
 update ::
   (Debuggable m, NodeDatum d) =>
     MList s  (Maybe (Env d i r s m)) -> Node d i r s m -> JustRule d i r s m ->
@@ -1061,6 +1069,8 @@ debugUpdateArgs envs consequence justRule = do
 -- new environments subsumed by an existing label environment will be
 -- omitted, and existing label environments subsumed by a new
 -- environment will be removed.
+--
+-- Translated from @update-label@ in @atms.lisp@.
 updateLabel ::
   (Debuggable m, NodeDatum d) =>
     Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
@@ -1203,6 +1213,8 @@ debugUpdateLabelFinal node labelEnvs newEnvs = do
 -- included enviroment.
 --
 -- Implements Algorithm 12.3 of /Building Problem Solvers/.
+--
+-- Translated from @weave@ in @atms.lisp@.
 weave :: (Debuggable m, NodeDatum d) =>
   Maybe (Node d i r s m) ->
     (MList s (Maybe (Env d i r s m))) ->
@@ -1375,7 +1387,7 @@ debugWeaveLoopPairEnd addR envmsR = do
 
 
 -- Translated from @in-antecedent?@ in @atms.lisp@.
-
+--
 -- > ;; In atms.lisp
 -- > (defun in-antecedent? (nodes)
 -- >   (or (null nodes)
