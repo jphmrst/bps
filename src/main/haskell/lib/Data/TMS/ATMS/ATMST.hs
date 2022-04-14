@@ -847,8 +847,7 @@ createNode atms datum isAssumption isContradictory = do
 assumeNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 assumeNode = error "< TODO unimplemented assumeNode >"
 
--- | Mark the given list of `Node`s as a contradiction when taken
--- together in its `ATMS`.
+-- | Mark the given `Node` a contradiction when believed in its `ATMS`.
 --
 -- > ;; In atms.lisp
 -- > (defun make-contradiction
@@ -863,22 +862,9 @@ assumeNode = error "< TODO unimplemented assumeNode >"
 makeContradiction :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 makeContradiction = error "< TODO unimplemented makeContradiction >"
 
--- > (defun justify-node (informant consequence antecedents &aux just atms)
--- >   (setq atms (tms-node-atms consequence)
--- >    just (make-just :INDEX (incf (atms-just-counter atms))
--- >                    :INFORMANT informant
--- >                    :CONSEQUENCE consequence
--- >                    :ANTECEDENTS antecedents))
--- >   (push just (tms-node-justs consequence))
--- >   (dolist (node antecedents) (push just (tms-node-consequences node)))
--- >   (push just (atms-justs atms))
--- >   (debugging atms
--- >         "~%Justifying ~A in terms of ~A on ~A"
--- >         consequence
--- >         informant
--- >         (mapcar #'node-string antecedents))
--- >   (propagate just nil (list (atms-empty-env atms)))
--- >   just)
+-- | Direct the `ATMS` to believe a particular `Node` when all of the
+-- given list of `Node`s are also believed.  The first argument is the
+-- informant associated with this inference.
 justifyNode ::
   (Debuggable m, NodeDatum d) =>
     i -> Node d i r s m -> [Node d i r s m] -> ATMST s m ()
@@ -905,11 +891,8 @@ justifyNode informant consequence antecedents = do
   envListRef <- sttLayer $ fromListMap Just [emptyEnv]
   propagate just Nothing envListRef
 
--- > ;; In atms.lisp
--- > (defun nogood-nodes (informant nodes)
--- >   (justify-node informant
--- >            (atms-contra-node (tms-node-atms (car nodes)))
--- >            nodes))
+-- | Direct the `ATMS` to find the combination of all of the given
+-- `Node`s to be a contradiction associated with the given informant.
 nogoodNodes :: (Monad m, NodeDatum d) => i -> [Node d i r s m] -> ATMST s m ()
 nogoodNodes informant nodes = do
   contra <- getContradictionNode (nodeATMS (head nodes))
@@ -917,10 +900,6 @@ nogoodNodes informant nodes = do
 
 -- * Label updating
 
--- > ;; In atms.lisp
--- > (defun propagate (just antecedent envs &aux new-envs)
--- >   (if (setq new-envs (weave antecedent envs (just-antecedents just)))
--- >       (update new-envs (just-consequence just) just)))
 propagate ::
   (Debuggable m, NodeDatum d) =>
     JustRule d i r s m ->
@@ -966,40 +945,6 @@ debugPropagateArgs justRule antecedent envs = do
           Just e -> debugEnv e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
--- > ;; In atms.lisp
--- > (defun update (new-envs consequence just &aux atms enqueuef)
--- >   (setq atms (tms-node-atms consequence))
--- >
--- >   ;; If the consequence node is a contradiction, then all we need to
--- >   ;; do is mark all of the environments implying it as contradictory
--- >   ;; as well.
--- >   (when (tms-node-contradictory? consequence)
--- >     (dolist (env new-envs) (new-nogood atms env just))
--- >     (return-from update nil))
--- >
--- >   ;; Otherwise we prepare to propagate further, but if this
--- >   ;; step prunes out all `Env`s from the `newEnvs`, then we
--- >   ;; have nothing further to do.
--- >   (setq new-envs (update-label consequence new-envs))
--- >   (unless new-envs (return-from update nil))
--- >
--- >   ;; Process rules queued in the consequence.
--- >   (when (setq enqueuef (atms-enqueue-procedure atms))
--- >     (dolist (rule (tms-node-rules consequence))
--- >       (funcall enqueuef rule))
--- >     (setf (tms-node-rules consequence) nil))
--- >
--- >   ;; Propagate to the justification rules which might depend on
--- >   ;; this node.
--- >   (dolist (supported-just (tms-node-consequences consequence))
--- >     (propagate supported-just consequence new-envs)
--- >     (do ((new-envs new-envs (cdr new-envs)))
--- >         ((null new-envs))
--- >       (unless (member (car new-envs) (tms-node-label consequence))
--- >         (rplaca new-envs nil)))
--- >     (setq new-envs (delete nil new-envs :TEST #'eq))
--- >     (unless new-envs
--- >       (return-from update nil))))
 update ::
   (Debuggable m, NodeDatum d) =>
     MList s  (Maybe (Env d i r s m)) -> Node d i r s m -> JustRule d i r s m ->
@@ -1084,39 +1029,6 @@ debugUpdateArgs envs consequence justRule = do
 -- new environments subsumed by an existing label environment will be
 -- omitted, and existing label environments subsumed by a new
 -- environment will be removed.
---
--- > ;; In atms.lisp
--- > (defun update-label (node new-envs &aux envs)
--- >   (setq envs (tms-node-label node))
--- >
--- >   (do ((new-envs new-envs (cdr new-envs)))
--- >       ((null new-envs))
--- >
--- >     (do ((nenvs envs (cdr nenvs)))
--- >         ((null nenvs) (push (car new-envs) envs))
--- >
--- >       (cond
--- >        ((null (car nenvs)))
--- >        ((null (car new-envs)))
--- >        ((case (compare-env (car new-envs) (car nenvs))
--- >           ((:EQ :S21) (rplaca new-envs nil))
--- >           (:S12 (setf (env-nodes (car nenvs))
--- >                       (delete node (env-nodes (car nenvs))
--- >                               :COUNT 1))
--- >                 (rplaca nenvs nil))))))
--- >
--- >     ;; Note that at the exit from the inner DO-loop, the
--- >     ;; exit statement will push the car of the NEW-ENVS
--- >     ;; scanner (which may be NULL) onto ENVS.
--- >
--- >     )
--- >
--- >   (setq new-envs (delete nil new-envs :TEST #'eq))
--- >   (dolist (new-env new-envs)
--- >     (push node (env-nodes new-env))) ;; [B]
--- >   (setf (tms-node-label node)
--- >         (delete nil envs :TEST #'eq))
--- >   new-envs)
 updateLabel ::
   (Debuggable m, NodeDatum d) =>
     Node d i r s m -> MList s (Maybe (Env d i r s m)) ->
@@ -1259,64 +1171,6 @@ debugUpdateLabelFinal node labelEnvs newEnvs = do
 -- included enviroment.
 --
 -- Implements Algorithm 12.3 of /Building Problem Solvers/.
---
--- > ;; In atms.lisp
--- > (defun weave (antecedent envs antecedents &aux new-envs new-env)
--- >   (setq envs (copy-list envs))
--- >   (dolist (node antecedents)
--- >     (unless (eq node antecedent)
--- >
--- >       ;; We will update ENVS with the list built in NEW-ENVS.
--- >       (setq new-envs nil)
--- >
--- >       ;; We look at all pairs of
--- >       ;;  - An Env from the passed-in ENVS, plus
--- >       ;;  - An Env from the NODE's label.
--- >       ;; The union of these two is NEW-ENV, and the body of
--- >       ;; the loop considers how we should incorporate NEW-ENV
--- >       ;; into NEW-ENVS.
--- >       (dolist (env envs)
--- >         (if env
--- >             (dolist (node-env (tms-node-label node))
--- >               (setq new-env (union-env env node-env))
--- >               (unless (env-nogood? new-env)
--- >
--- >                 ;; If NEW-ENV is a superset of (or is equal to)
--- >                 ;; anything already in NEW-ENVS, then NEW-ENV
--- >                 ;; is redundant, and we abort the body of the
--- >                 ;; inner match-searching loop without adding
--- >                 ;; NEW-ENV to NEW-ENVS.
--- >
--- >                 ;; Otherwise if anything already in NEW-ENVS is
--- >                 ;; a superset of NEW-ENV, then (1) NEW-ENV
--- >                 ;; makes that element redundant, and we strip
--- >                 ;; it out of NEW-ENVS; and (2) we add NEW-ENV
--- >                 ;; to NEW-ENVS.
--- >                 (do ((nnew-envs new-envs (cdr nnew-envs)))
--- >                     ((null nnew-envs) (push new-env new-envs))
--- >                   (when (car nnew-envs)
--- >                     (case (compare-env new-env (car nnew-envs))
--- >                       ((:EQ :S21) (return nil))
--- >                       (:S12 (rplaca nnew-envs nil))
--- >                           ; Could also be NIL, for mutually
--- >                           ; non-contained sets --- ignored.
--- >                      ))) ;; End of DO-macro.
--- >
--- >                 ;; Note that at this point the exit condition of the
--- >                 ;; DO will have added NEW-ENV to the NEW-ENVS list.
--- >
--- >                 ))))
--- >
--- >       ;; So we have nearly produced the refinement of ENVS for
--- >       ;; this NODE in the ANTECEDENTS.  It might have spurious
--- >       ;; NILs, so we strip those out and update ENVS.  If ever
--- >       ;; we narrow ENVS down to nothing, then we can short-
--- >       ;; circuit returning that empty list.
--- >       (setq envs (delete nil new-envs :TEST #'eq))
--- >       (unless envs (return-from weave nil))))
--- >
--- >   ;; Finally, return the last refinement of ENVS.
--- >   envs)
 weave :: (Debuggable m, NodeDatum d) =>
   Maybe (Node d i r s m) ->
     (MList s (Maybe (Env d i r s m))) ->
@@ -1648,14 +1502,6 @@ debugUnionEnvResult result = do
 
 -- |Derive an environment from the addition of one additional
 -- assumption to a previous `Env`'s assumption list.
---
--- > ;; In atms.lisp
--- > (defun cons-env (assumption env &aux nassumes)
--- >   (setq nassumes (ordered-insert assumption
--- >                             (env-assumptions env)
--- >                             #'assumption-order))
--- >   (or (lookup-env nassumes)
--- >       (create-env (tms-node-atms assumption) nassumes)))
 consEnv ::
   (Debuggable m, NodeDatum d) =>
     Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)

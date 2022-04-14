@@ -166,7 +166,8 @@
 	    'ASSUME-NODE)))
 
 (defun make-contradiction
-       (node &aux (atms (tms-node-atms node)) nogood)
+    (node &aux (atms (tms-node-atms node)) nogood)
+  "Mark the given NODE a contradiction when believed in its ATMS."
   (unless (tms-node-contradictory? node)
     (setf (tms-node-contradictory? node) t)
     (push node (atms-contradictions atms))
@@ -205,15 +206,28 @@
 
 (defun update (new-envs consequence just &aux atms enqueuef)
   (setq atms (tms-node-atms consequence))
+
+  ;; If the consequence node is a contradiction, then all we need to
+  ;; do is mark all of the environments implying it as contradictory
+  ;; as well.
   (when (tms-node-contradictory? consequence)
     (dolist (env new-envs) (new-nogood atms env just))
     (return-from update nil))
+
+  ;; Otherwise we prepare to propagate further, but if this
+  ;; step prunes out all `Env`s from the `newEnvs`, then we
+  ;; have nothing further to do.
   (setq new-envs (update-label consequence new-envs))
   (unless new-envs (return-from update nil))
+
+  ;; Process rules queued in the consequence.
   (when (setq enqueuef (atms-enqueue-procedure atms))
     (dolist (rule (tms-node-rules consequence))
       (funcall enqueuef rule))
     (setf (tms-node-rules consequence) nil))
+
+  ;; Propagate to the justification rules which might depend on
+  ;; this node.
   (dolist (supported-just (tms-node-consequences consequence))
     (propagate supported-just consequence new-envs)
   (do ((new-envs new-envs (cdr new-envs)))
@@ -224,6 +238,7 @@
   (unless new-envs (return-from update nil))))
 
 (defun update-label (node new-envs &aux envs)
+  "Internal method to update the label of this node to include the given environments.  The inclusion is not simply list extension; new environments subsumed by an existing label environment will be omitted, and existing label environments subsumed by a new environment will be removed."
   (setq envs (tms-node-label node))
   (do ((new-envs new-envs (cdr new-envs)))
       ((null new-envs))
@@ -236,30 +251,74 @@
 	       (:S12 (setf (env-nodes (car nenvs))
 			   (delete node (env-nodes (car nenvs))
 				   :COUNT 1))
-		     (rplaca nenvs nil)))))))
+		     (rplaca nenvs nil)
+		     ;; Note that at the exit from the inner DO-loop,
+		     ;; the exit statement will push the car of the
+		     ;; NEW-ENVS scanner (which may be NULL) onto
+		     ;; ENVS.
+		     ))))))
   (setq new-envs (delete nil new-envs :TEST #'eq))
   (dolist (new-env new-envs) (push node (env-nodes new-env)))
   (setf (tms-node-label node) (delete nil envs :TEST #'eq))
   new-envs)
 
 (defun weave (antecedent envs antecedents &aux new-envs new-env)
+  "Update the label of node ANTECEDENT to include the given ENVS environments, pruning environments which are a superset of another included enviroment.
+
+Implements Algorithm 12.3 of /Building Problem Solvers/."
+
   (setq envs (copy-list envs))
   (dolist (node antecedents)
     (unless (eq node antecedent)
+
+      ;; We will update ENVS with the list built in NEW-ENVS.
       (setq new-envs nil)
+      
+      ;; We look at all pairs of
+      ;;  - An Env from the passed-in ENVS, plus
+      ;;  - An Env from the NODE's label.      
+      ;; The union of these two is NEW-ENV, and the body of the loop
+      ;; considers how we should incorporate NEW-ENV into NEW-ENVS.
       (dolist (env envs)
 	(if env
-	    (dolist (node-env (tms-node-label node))
-	      (setq new-env (union-env env node-env))
-	      (unless (env-nogood? new-env)
-		(do ((nnew-envs new-envs (cdr nnew-envs)))
-		    ((null nnew-envs) (push new-env new-envs))
-		  (when (car nnew-envs)
-		    (case (compare-env new-env (car nnew-envs))
-		      ((:EQ :S21) (return nil))
-		      (:S12 (rplaca nnew-envs nil)))))))))
+	  (dolist (node-env (tms-node-label node))
+	    (setq new-env (union-env env node-env))
+	    (unless (env-nogood? new-env)
+	      
+	      ;; If NEW-ENV is a superset of (or is equal to) anything
+	      ;; already in NEW-ENVS, then NEW-ENV is redundant, and
+	      ;; we abort the body of the inner match-searching loop
+	      ;; without adding NEW-ENV to NEW-ENVS.
+	      
+	      ;; Otherwise if anything already in NEW-ENVS is a
+	      ;; superset of NEW-ENV, then (1) NEW-ENV makes that
+	      ;; element redundant, and we strip it out of NEW-ENVS;
+	      ;; and (2) we add NEW-ENV to NEW-ENVS.
+	      (do ((nnew-envs new-envs (cdr nnew-envs)))
+		  ((null nnew-envs) (push new-env new-envs))
+		(when (car nnew-envs)
+		  (case (compare-env new-env (car nnew-envs))
+		    ((:EQ :S21) (return nil))
+		    (:S12 (rplaca nnew-envs nil))
+					; Could also be NIL, for
+					; mutually non-contained sets
+					; --- ignored.
+		    ))) ;; End of DO-macro.
+	      
+	      ;; Note that at this point the exit condition of the DO
+	      ;; will have added NEW-ENV to the NEW-ENVS list.
+	      
+	      ))))
+
+      ;; So we have nearly produced the refinement of ENVS for this
+      ;; NODE in the ANTECEDENTS.  It might have spurious NILs, so we
+      ;; strip those out and update ENVS.  If ever we narrow ENVS down
+      ;; to nothing, then we can short- circuit returning that empty
+      ;; list.
       (setq envs (delete nil new-envs :TEST #'eq))
       (unless envs (return-from weave nil))))
+
+  ;; Finally, return the last refinement of ENVS.
   envs)
 
 (defun in-antecedent? (nodes)
@@ -314,6 +373,7 @@
   e2)
 
 (defun cons-env (assumption env &aux nassumes)
+  "Derive an environment from the addition of one additional assumption to a previous ENV's assumption list."
   (setq nassumes (ordered-insert assumption
 				 (env-assumptions env)
 				 #'assumption-order))
