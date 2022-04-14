@@ -349,7 +349,7 @@ getEnvTable ::
 {-# INLINE getEnvTable #-}
 getEnvTable = getATMSMutable atmsEnvTable
 
--- |Return the `ATMS`'s current `NogoodTable`.
+-- |Return the `ATMS`'s current `EnvTable` for nogood `Env`s.
 getNogoodTable ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (EnvTable d i r s m)
 {-# INLINE getNogoodTable #-}

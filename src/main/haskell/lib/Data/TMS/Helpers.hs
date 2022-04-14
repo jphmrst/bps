@@ -95,7 +95,7 @@ whileReturnJust gen f = do
 unlessMM :: Monad m => m Bool -> m () -> m ()
 unlessMM cnd body = whenM (notM cnd) body
 
--- * Lists under references in the `STS` monad transformer
+-- * Lists under references in the `STT` monad transformer
 
 -- |Monadic version of @null@ for a list stored in an `STRef`: returns
 -- `True` when the list is empty.

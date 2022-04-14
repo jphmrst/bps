@@ -209,10 +209,11 @@ mlistForCons_ lifter mc@(MCons _ _) bodyf = do
   xs <- lifter $ mcdr mc
   mlistForCons_ lifter xs bodyf
 
--- |A combination of `mlistForCons_` and `forMwhile_`: iterate over
--- the `MCons` cell of a list, with a trigger for an early exit.  Note
--- that the monad for the continuation condition is over the overall
--- monad @m@, not the `STT` wrapped monad @m0@.
+-- |A combination of `mlistForCons_` and
+-- `Data.TMS.Helpers.forMwhile_`: iterate over the `MCons` cell of a
+-- list, with a trigger for an early exit.  Note that the monad for
+-- the continuation condition is over the overall monad @m@, not the
+-- `STT` wrapped monad @m0@.
 mlistForConsWhile_ ::
   (Monad m0, Monad m) =>
     (forall r . STT s m0 r -> m r) -> MList s a -> m Bool -> (MList s a -> m ())
