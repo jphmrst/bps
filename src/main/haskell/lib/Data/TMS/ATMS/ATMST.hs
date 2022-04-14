@@ -489,6 +489,8 @@ setEnqueueProcedure ::
 {-# INLINE setEnqueueProcedure #-}
 setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
 
+-- Translated from @print-atms@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun print-atms (atms stream ignore)
 -- >   (declare (ignore ignore))
@@ -524,6 +526,8 @@ nextEnvCounter atms = sttLayer $ do
 
 {- ----------------------------------------------------------------- -}
 
+-- Translated from @(tms-node@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
 -- >   (index 0)                                        ;; Unique name.
@@ -690,12 +694,16 @@ newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 
 -- | Shortcut for retrieving the `Node` formatter from an `ATMS`, and
 -- applying it to the given `Node`.
+--
+-- Translated from @node-string@ in @atms.lisp@.
 nodeString :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 nodeString node = do
   nodeFmt <- getNodeString $ nodeATMS node
   return $ nodeFmt node
 
 -- | Default formatter for the `Node`s of an `ATMS`.
+--
+-- Translated from @default-node-string@ in @atms.lisp@.
 defaultNodeString ::
   (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 defaultNodeString node = do
@@ -703,6 +711,8 @@ defaultNodeString node = do
   return $ datumFormatter $ nodeDatum node
 
 -- | Insert an element into a sorted list.
+--
+-- Translated from @ordered-insert@ in @atms.lisp@.
 orderedInsert :: Eq a => a -> [a] -> (a -> a -> Bool) -> [a]
 orderedInsert item [] _ = [item]
 orderedInsert item list@(i : _) test | test item i  = item : list
@@ -710,6 +720,8 @@ orderedInsert item list@(i : _) _    | item == i    = list
 orderedInsert item (i : is) test = i : orderedInsert item is test
 
 {- Does not seem to be used
+-- Translated from @ordered-push@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defmacro ordered-push (item list test)
 -- >   `(setq ,list (ordered-insert ,item ,list ,test)))
@@ -718,10 +730,14 @@ orderedPush = error "< unimplemented orderedPush >"
 -}
 
 -- |We order assumptions in `Env` lists by their index.
+--
+-- Translated from @assumptio-order@ in @atms.lisp@.
 assumptionOrder :: (Monad m, NodeDatum d) => Node d i r s m -> Node d i r s m -> Bool
 assumptionOrder n1 n2 = nodeIndex n1 < nodeIndex n2
 
 -- Ordering predicate for two `Env`s; uses their internal index.
+--
+-- Translated from @env-order@ in @atms.lisp@.
 envOrder :: (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> Bool
 envOrder e1 e2 = envIndex e1 < envIndex e2
 
@@ -770,6 +786,8 @@ createATMS title = do
 
 -- | Returns `True` if the given `Node` is axiomatic, following from
 -- the assumption of zero other nodes.
+--
+-- Translated from @true-node?@ in @atms.lisp@.
 isTrueNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m Bool
 isTrueNode node = do
   envs <- getNodeLabel node
@@ -779,11 +797,15 @@ isTrueNode node = do
 
 -- | Returns `True` if the given `Node` is justified by some labelling
 -- `Env` environment of `Node`s in the `ATMS`.
+--
+-- Translated from @in-node?@ in @atms.lisp@.
 isInNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m Bool
 isInNode node = fmap (not . null) (getNodeLabel node)
 
 -- | Returns `True` if the given `Node` is justified by some subset of
 -- the given environment in the `ATMS`.
+--
+-- Translated from @in-node?@ in @atms.lisp@.
 isInNodeByEnv ::
   (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isInNodeByEnv node env = do
@@ -792,6 +814,8 @@ isInNodeByEnv node env = do
 
 -- | Returns `True` if the given `Node` is justified by no labelling
 -- `Env` environment of `Node`s in the `ATMS`.
+--
+-- Translated from @out-node?@ in @atms.lisp@.
 isOutNode ::
   (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isOutNode node env = fmap not $ isInNodeByEnv node env
@@ -799,6 +823,8 @@ isOutNode node env = fmap not $ isInNodeByEnv node env
 -- | Returns `True` if some environment justifying the given `Node` is
 -- consistent with the given environment, where two environments are
 -- consistent when their union is not no-good.
+--
+-- Translated from @node-consistent-with?@ in @atms.lisp@.
 isNodeConsistentWith ::
   (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isNodeConsistentWith node env = do
@@ -809,6 +835,8 @@ isNodeConsistentWith node env = do
     labelEnvs
 
 -- | Create a new `Node` in an `ATMS`.
+--
+-- Translated from @create-node@ in @atms.lisp@.
 createNode :: (Debuggable m, NodeDatum d) =>
   ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
 createNode atms datum isAssumption isContradictory = do
@@ -834,6 +862,8 @@ createNode atms datum isAssumption isContradictory = do
 -- | Mark the given `Node` as to be believed as an assumption by its
 -- `ATMS`.
 --
+-- Translated from @assume-node@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun assume-node (node &aux atms)
 -- >   (unless (tms-node-assumption? node)
@@ -848,6 +878,8 @@ assumeNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 assumeNode = error "< TODO unimplemented assumeNode >"
 
 -- | Mark the given `Node` a contradiction when believed in its `ATMS`.
+--
+-- Translated from @make-contradiction@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun make-contradiction
@@ -1342,6 +1374,8 @@ debugWeaveLoopPairEnd addR envmsR = do
   liftIO $ putStrLn ""
 
 
+-- Translated from @in-antecedent?@ in @atms.lisp@.
+
 -- > ;; In atms.lisp
 -- > (defun in-antecedent? (nodes)
 -- >   (or (null nodes)
@@ -1352,6 +1386,8 @@ isInAntecedent nodes = do
   empty <- getEmptyEnvironment (nodeATMS (head nodes))
   isWeave empty nodes
 
+-- Translated from @weave?@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun weave? (env nodes &aux new-env)
 -- >   (cond ((null nodes) t)
@@ -1363,6 +1399,8 @@ isInAntecedent nodes = do
 isWeave :: (Monad m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
 isWeave = error "< TODO unimplemented isInAntecedent >"
 
+-- Translated from @supporting-antecedent?@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun supporting-antecedent? (nodes env)
 -- >   (dolist (node nodes t) (unless (in-node? node env) (return nil))))
@@ -1370,6 +1408,8 @@ isSupportingAntecedent ::
   (Monad m, NodeDatum d) => [Node d i r s m] -> Env d i r s m -> ATMST s m Bool
 isSupportingAntecedent = error "< TODO unimplemented isSupportingAntecedent >"
 
+-- Translated from @remove-node@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun remove-node (node &aux atms)
 -- >   (if (tms-node-consequences node)
@@ -1395,6 +1435,8 @@ removeNode = error "< TODO unimplemented removeNode >"
 -- @assumptions@, and it only called with an empty or singleton list.
 -- Instead, it is `consEnv` which inserts nodes in order when one
 -- environement is defined in terms of another.
+--
+-- Translated from @create-env@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun create-env (atms assumptions &aux e)
@@ -1436,6 +1478,8 @@ debugCreateEnvEnv env = do
   blurbEnv env
   liftIO $ putStrLn ""
 
+-- Translated from @union-env@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun union-env (e1 e2)
 -- >   (when (> (env-count e1) (env-count e2))
@@ -1546,6 +1590,8 @@ debugConsEnvLookup (Just env) = do
   blurbEnv env
   liftIO $ putStrLn ""
 
+-- Translated from @find-or-make-env@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun find-or-make-env (assumptions atms)
 -- >   (unless assumptions
@@ -1559,6 +1605,8 @@ findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 
 -- * Env tables.
 
+-- Translated from @insert-in-table@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun insert-in-table (table env &aux count entry)
 -- >   (setq count (env-count env)
@@ -1595,6 +1643,8 @@ insertInTable atms tableRef env = do
     oldEnvs <- readSTArray array count
     writeSTArray array count $ env : oldEnvs
 
+-- Translated from @lookup-env@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun lookup-env (assumes)
 -- >   (dolist (env (cdr (assoc (length assumes)
@@ -1614,6 +1664,8 @@ lookupEnv assumptions@(a : _) = do
     [] -> return Nothing
     (x : _) -> return $ Just x
 
+-- Translated from @subset-env?@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun subset-env? (e1 e2)
 -- >   (cond ((eq e1 e2) t)
@@ -1634,6 +1686,8 @@ data EnvCompare =
   | S21env  -- ^ The second `Env` is a subset of the first.
   | DisjEnv -- ^ Two `Env`s are disjoint.
 
+-- Translated from @compare-env@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun compare-env (e1 e2)
 -- >   (cond ((eq e1 e2) :EQ)
@@ -1668,6 +1722,8 @@ nodeListIsSubsetEq l1@(x : xs) (y : ys) =
     GT -> nodeListIsSubsetEq l1 ys
 -- * Processing nogoods
 
+-- Translated from @new-nogood@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun new-nogood (atms cenv just &aux count)
 -- >   (debugging atms (format nil "~%  ~A new minimal nogood." cenv))
@@ -1748,6 +1804,8 @@ debugNewNogoodStart cenv why = do
   formatJustification why >>= (liftIO . putStrLn)
 
 
+-- Translated from @set-env-contradictory@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun set-env-contradictory (atms env &aux count)
 -- >   (cond ((env-nogood? env) t)
@@ -1810,6 +1868,8 @@ setEnvContradictoryStartInnerWhen cenv env = do
   blurbEnv env
   liftIO $ putStrLn ", marking latter nogood"
 
+-- Translated from @remove-env-from-labels@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun remove-env-from-labels (env atms &aux enqueuef)
 -- >   (when (setq enqueuef (atms-enqueue-procedure atms))
@@ -1836,6 +1896,8 @@ removeEnvFromLabels env atms = do
 
 -- * Interpretation construction
 
+-- Translated from @'(special@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (proclaim '(special *solutions*))
 -- > (defun interpretations (atms choice-sets &optional defaults
@@ -1882,6 +1944,8 @@ interpretations ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m ()
 interpretations = error "< TODO unimplemented interpretations >"
 
+-- Translated from @get-depth-solutions1@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun get-depth-solutions1 (solution choice-sets
 -- >                                  &aux new-solution)
@@ -1903,6 +1967,8 @@ getDepthSolutions1 ::
   (Monad m, NodeDatum d) => Env d i r s m -> [[Env d i r s m]] -> ATMST s m ()
 getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
 
+-- Translated from @extend-via-defaults@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun extend-via-defaults (solution remaining original)
 -- >   (do ((new-solution)
@@ -1929,6 +1995,8 @@ extendViaDefaults = error "< TODO unimplemented extendViaDefaults >"
 -- derivation. This is quite complicated because this is really a
 -- simple consequent JTMS.
 
+-- Translated from @explain-node@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun explain-node (node env) (explain-node-1 env node nil nil))
 explainNode ::
@@ -1936,6 +2004,8 @@ explainNode ::
     Node d i r s m -> Env d i r s m -> ATMST s m [Justification d i r s m]
 explainNode = error "< TODO unimplemented explainNode >"
 
+-- Translated from @explain-node-1@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun explain-node-1 (env node queued-nodes explanation)
 -- >   (cond ((member node queued-nodes) nil)
@@ -1964,6 +2034,8 @@ explainNode1 ::
         ATMST s m [Explanation d i r s m]
 explainNode1 = error "< TODO unimplemented explainNode1 >"
 
+-- Translated from @why-node@ in @atms.lisp@.
+--
 -- > ;;; Printing
 -- > (defun why-node (node &optional (stream t) (prefix ""))
 -- >   (format stream "~%<~A~A,{" prefix (tms-node-datum node))
@@ -1973,12 +2045,16 @@ explainNode1 = error "< TODO unimplemented explainNode1 >"
 whyNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m (Node d i r s m)
 whyNode = error "< TODO unimplemented whyNode >"
 
+-- Translated from @why-nodes@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun why-nodes (atms &optional (stream t))
 -- >   (dolist (n (reverse (atms-nodes atms))) (why-node n stream)))
 whyNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 whyNodes = error "< TODO unimplemented whyNodes >"
 
+-- Translated from @node-justifications@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun node-justifications (node &optional (stream t))
 -- >   (format t "~% For ~A:" (node-string node))
@@ -1987,6 +2063,8 @@ whyNodes = error "< TODO unimplemented whyNodes >"
 nodeJustifications :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 nodeJustifications = error "< TODO unimplemented nodeJustifications >"
 
+-- Translated from @e@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun e (atms n)
 -- >   (dolist (bucket (atms-env-table atms))
@@ -1995,6 +2073,8 @@ nodeJustifications = error "< TODO unimplemented nodeJustifications >"
 e :: (Monad m, NodeDatum d) => ATMS d i r s m -> Int -> ATMST s m ()
 e = error "< TODO unimplemented e >"
 
+-- Translated from @print-env@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun print-env (e &optional (stream t))
 -- >   (format stream "~%~A:~A"
@@ -2004,6 +2084,8 @@ e = error "< TODO unimplemented e >"
 printEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 printEnv = error "< TODO unimplemented printEnv >"
 
+-- Translated from @env-string@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun env-string (e &optional stream
 -- >                      &aux assumptions strings printer)
@@ -2017,18 +2099,24 @@ envString = error "< TODO unimplemented envString >"
 
 -- * Printing global data
 
+-- Translated from @print-nogoods@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun print-nogoods (atms &optional (stream t))
 -- >   (print-env-table (atms-nogood-table atms) stream))
 printNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printNogoods = error "< TODO unimplemented printNogoods >"
 
+-- Translated from @print-envs@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun print-envs (atms &optional (stream t))
 -- >   (print-env-table (atms-env-table atms) stream))
 printEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printEnvs = error "< TODO unimplemented printEnvs >"
 
+-- Translated from @print-env-table@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun print-env-table (table stream)
 -- >   (dolist (bucket table)
@@ -2037,6 +2125,8 @@ printEnvs = error "< TODO unimplemented printEnvs >"
 printEnvTable :: (MonadIO m, NodeDatum d) => EnvTable d i r s m -> ATMST s m ()
 printEnvTable = error "< TODO unimplemented printEnvTable >"
 
+-- Translated from @print-atms-statistics@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun print-atms-statistics (atms)
 -- >   (print-table "~% For env table:" (atms-env-table atms))
@@ -2044,6 +2134,8 @@ printEnvTable = error "< TODO unimplemented printEnvTable >"
 printAtmsStatistics :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
 
+-- Translated from @print-table@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun print-table (msg table)
 -- >   (format t msg)
@@ -2150,6 +2242,8 @@ formatJustInformant rule = do
   informantFmt <- getInformantString $ nodeATMS $ justConsequence rule
   return $ informantFmt $ justInformant rule
 
+-- Translated from @print-just@ in @atms.lisp@.
+--
 -- > ;; In atms.lisp
 -- > (defun print-just (just stream ignore)
 -- >   (declare (ignore ignore))
