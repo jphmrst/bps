@@ -167,7 +167,7 @@
 
 (defun make-contradiction
     (node &aux (atms (tms-node-atms node)) nogood)
-  "Mark the given NODE a contradiction when believed in its ATMS."
+  "Mark the given NODE as an additional contradiction node of its ATMS."
   (unless (tms-node-contradictory? node)
     (setf (tms-node-contradictory? node) t)
     (push node (atms-contradictions atms))

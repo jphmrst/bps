@@ -56,7 +56,7 @@ module Data.TMS.ATMS.ATMST (
   -- * ATMS data structures
 
   -- ** Component classes
-  NodeDatum, contractionNodeDatum,
+  NodeDatum, contradictionNodeDatum,
 
   -- ** Top-level ATMS
   ATMS, createATMS, atmsTitle,
@@ -267,12 +267,15 @@ runATMST atmst = do
 
 -- |Class of type which can be used as the datum underlying `Node`s in
 -- an `ATMS`.
-class NodeDatum d where contractionNodeDatum :: d
+class NodeDatum d where
+  -- | The datum associated with the contradiction node in a
+  -- newly-initialized `ATMS` with `Node` data of this type.
+  contradictionNodeDatum :: d
 
 instance NodeDatum String where
-  contractionNodeDatum = "The contradiction"
+  contradictionNodeDatum = "The contradiction"
 instance NodeDatum Symbol where
-  contractionNodeDatum = intern "The contradiction"
+  contradictionNodeDatum = intern "The contradiction"
 
 -- | Top-level representation of an assumption-based truth maintenance
 -- system.
@@ -583,8 +586,11 @@ getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 -- | The justification of one `ATMS` `Node` by zero or more others.
 data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
   justIndex :: Int,
+  -- | The informant associated with applying this inference rule.
   justInformant :: i,
+  -- | The conclusion of this inference rule.
   justConsequence :: Node d i r s m,
+  -- | The antecedents of this inference rule.
   justAntecedents :: [Node d i r s m]
 }
 
@@ -749,7 +755,7 @@ createATMS title = do
                   enqueueProcedure debugging
   emptyEnv <- createEnv result []
   sttLayer $ writeSTRef emptyEnvRef (Just emptyEnv)
-  contra <- createNode result contractionNodeDatum False True
+  contra <- createNode result contradictionNodeDatum False True
   sttLayer $ writeSTRef contraNodeRef (Just contra)
   return result
 
@@ -848,7 +854,8 @@ createNode atms datum isAssumption isContradictory = do
 assumeNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 assumeNode = error "< TODO unimplemented assumeNode >"
 
--- | Mark the given `Node` a contradiction when believed in its `ATMS`.
+-- | Mark the given `Node` as an additional contradiction node of the
+-- `ATMS`.
 --
 -- Translated from @make-contradiction@ in @atms.lisp@.
 --
@@ -1391,7 +1398,9 @@ isSupportingAntecedent ::
   (Monad m, NodeDatum d) => [Node d i r s m] -> Env d i r s m -> ATMST s m Bool
 isSupportingAntecedent = error "< TODO unimplemented isSupportingAntecedent >"
 
--- Translated from @remove-node@ in @atms.lisp@.
+-- | Remove a `Node` from the `ATMS`.
+--
+-- TO BE TRANSLATED from @remove-node@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun remove-node (node &aux atms)
@@ -1764,7 +1773,13 @@ removeEnvFromLabels env atms = do
 
 -- * Interpretation construction
 
--- Translated from @interpretations@ in @atms.lisp@.
+-- | Return the minimum environments which give the `ATMS` belief in
+-- the given choice sets.  The choice sets are essentially
+-- conjunctive-normal form expressions; in the list of sublists of
+-- nodes, under each environment in the result at least one node of
+-- each sublist will be believed.
+--
+-- TO BE TRANSLATED from @interpretations@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (proclaim '(special *solutions*))
