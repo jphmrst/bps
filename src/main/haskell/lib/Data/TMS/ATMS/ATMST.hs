@@ -1449,16 +1449,6 @@ removeNode = error "< TODO unimplemented removeNode >"
 -- environement is defined in terms of another.
 --
 -- Translated from @create-env@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun create-env (atms assumptions &aux e)
--- >   (setq e (make-env :INDEX (incf (atms-env-counter atms))
--- >                :ASSUMPTIONS assumptions
--- >                :COUNT (length assumptions)))
--- >   (setf (atms-env-table atms)
--- >    (insert-in-table (atms-env-table atms) e))
--- >   (set-env-contradictory atms e)
--- >   e)
 createEnv ::
   (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [Node d i r s m] -> ATMST s m (Env d i r s m)
@@ -1618,16 +1608,6 @@ findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 -- * Env tables.
 
 -- Translated from @insert-in-table@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun insert-in-table (table env &aux count entry)
--- >   (setq count (env-count env)
--- >    entry (assoc count table :TEST #'=))
--- >   (cond (entry (setf (cdr entry) (cons env (cdr entry))) table)
--- >    (t (ordered-insert
--- >         (list count env) table
--- >         #'(lambda (entry1 entry2)
--- >             (< (car entry1) (car entry2)))))))
 insertInTable ::
   (Monad m, NodeDatum d) =>
     ATMS d i r s m -> STRef s (EnvTable d i r s m) -> Env d i r s m ->
@@ -1656,15 +1636,6 @@ insertInTable atms tableRef env = do
     writeSTArray array count $ env : oldEnvs
 
 -- Translated from @lookup-env@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun lookup-env (assumes)
--- >   (dolist (env (cdr (assoc (length assumes)
--- >                       (atms-env-table (tms-node-atms (car assumes)))
--- >                       :TEST #'=))
--- >                nil)
--- >     (if (equal (env-assumptions env) assumes)
--- >       (return env))))
 lookupEnv :: (Monad m, NodeDatum d) => [Node d i r s m] -> ATMST s m (Maybe (Env d i r s m))
 lookupEnv [] = return Nothing
 lookupEnv assumptions@(a : _) = do
@@ -1677,14 +1648,6 @@ lookupEnv assumptions@(a : _) = do
     (x : _) -> return $ Just x
 
 -- Translated from @subset-env?@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun subset-env? (e1 e2)
--- >   (cond ((eq e1 e2) t)
--- >    ((> (env-count e1)
--- >        (env-count e2)) nil)
--- >    ((subsetp (env-assumptions e1)
--- >              (env-assumptions e2)))))
 isSubsetEnv :: (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> Bool
 isSubsetEnv e1 e2 =
   if e1 == e2 then True
@@ -1699,16 +1662,6 @@ data EnvCompare =
   | DisjEnv -- ^ Two `Env`s are disjoint.
 
 -- Translated from @compare-env@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun compare-env (e1 e2)
--- >   (cond ((eq e1 e2) :EQ)
--- >    ((< (env-count e1) (env-count e2))
--- >     (if (subsetp (env-assumptions e1)
--- >                  (env-assumptions e2))
--- >         :S12))
--- >    ((subsetp (env-assumptions e2) (env-assumptions e1))
--- >     :S21)))
 compareEnv ::
   (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> EnvCompare
 compareEnv e1 e2 =
@@ -1735,41 +1688,6 @@ nodeListIsSubsetEq l1@(x : xs) (y : ys) =
 -- * Processing nogoods
 
 -- Translated from @new-nogood@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun new-nogood (atms cenv just &aux count)
--- >   (debugging atms (format nil "~%  ~A new minimal nogood." cenv))
--- >
--- >   ;; Record the reason for deciding that cenv is nogood.
--- >   (setf (env-nogood? cenv) just)
--- >
--- >   ;; Remove the cenv from the labels of any nodes which
--- >   ;; reference it.
--- >   (remove-env-from-labels cenv atms)
--- >
--- >   ;; Add `cenv` to the table of nogoods.
--- >   (setf (atms-nogood-table atms)
--- >         (insert-in-table (atms-nogood-table atms) cenv))
--- >   (setq count (env-count cenv))
--- >
--- >   ;; Remove any nogood table entries made redundant by `cenv`.
--- >   (dolist (entry (atms-nogood-table atms))
--- >     (when (> (car entry) count)
--- >       (dolist (old (cdr entry))
--- >         (if (subset-env? cenv old)
--- >             (setf (cdr entry)
--- >                   (delete old (cdr entry) :COUNT 1))))))
--- >
--- >   ;; Find currently-non-nogood environments which are supersets
--- >   ;; of the nogood.  Mark each as a nogood, and remove it from
--- >   ;; node labels.
--- >   (dolist (entry (atms-env-table atms))
--- >     (when (> (car entry) count)
--- >       (dolist (old (cdr entry))
--- >         (when (and (not (env-nogood? old))
--- >                    (subset-env? cenv old))
--- >           (setf (env-nogood? old) cenv)
--- >           (remove-env-from-labels old atms))))))
 newNogood ::
   (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> Justification d i r s m -> ATMST s m ()
@@ -1817,18 +1735,6 @@ debugNewNogoodStart cenv why = do
 
 
 -- Translated from @set-env-contradictory@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun set-env-contradictory (atms env &aux count)
--- >   (cond ((env-nogood? env) t)
--- >         (t (setq count (env-count env))
--- >            (dolist (entry (atms-nogood-table atms))
--- >              (cond ((> (car entry) count)
--- >                     (return nil))
--- >                    (t (dolist (cenv (cdr entry))
--- >                         (when (subset-env? cenv env)
--- >                           (setf (env-nogood? env) cenv)
--- >                           (return t)))))))))
 setEnvContradictory ::
   (Debuggable m, NodeDatum d) => ATMS d i r s m -> Env d i r s m -> ATMST s m ()
 setEnvContradictory atms env = do
@@ -1881,16 +1787,6 @@ setEnvContradictoryStartInnerWhen cenv env = do
   liftIO $ putStrLn ", marking latter nogood"
 
 -- Translated from @remove-env-from-labels@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun remove-env-from-labels (env atms &aux enqueuef)
--- >   (when (setq enqueuef (atms-enqueue-procedure atms))
--- >     (dolist (rule (env-rules env))
--- >       (funcall enqueuef rule))
--- >     (setf (env-rules env) nil))
--- >   (dolist (node (env-nodes env))
--- >     (setf (tms-node-label node)
--- >           (delete env (tms-node-label node) :COUNT 1))))
 removeEnvFromLabels ::
   (Monad m, NodeDatum d) => Env d i r s m -> ATMS d i r s m -> ATMST s m ()
 removeEnvFromLabels env atms = do
@@ -1908,7 +1804,7 @@ removeEnvFromLabels env atms = do
 
 -- * Interpretation construction
 
--- Translated from @'(special@ in @atms.lisp@.
+-- Translated from @interpretations@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (proclaim '(special *solutions*))
@@ -2195,11 +2091,7 @@ formatNodeLabel node = do
 blurbNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 blurbNode node = formatNode node >>= liftIO . putStr
 
--- > (defun print-tms-node (node stream ignore)
--- >   (declare (ignore ignore))
--- >   (if (tms-node-assumption? node)
--- >       (format stream "A-~D" (tms-node-index node))
--- >       (format stream "#<NODE: ~A>" (node-string node))))
+-- Translated from @print-tms-node@ in @atms.lisp@.
 printNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 printNode node = do
   str <- nodeString node
@@ -2254,13 +2146,8 @@ formatJustInformant rule = do
   informantFmt <- getInformantString $ nodeATMS $ justConsequence rule
   return $ informantFmt $ justInformant rule
 
--- Translated from @print-just@ in @atms.lisp@.
 --
--- > ;; In atms.lisp
--- > (defun print-just (just stream ignore)
--- >   (declare (ignore ignore))
--- >   (format stream "<~A ~D>" (just-informant just)
--- >      (just-index just)))
+-- Translated from @print-just@ in @atms.lisp@.
 printJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
 printJust rule = do
   infStr <- formatJustInformant rule

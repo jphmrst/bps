@@ -426,16 +426,29 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 
 (defun new-nogood (atms cenv just &aux count)
   (debugging atms (format nil "~%  ~A new minimal nogood." cenv))
+
+  ;; Record the reason for deciding that cenv is nogood.
   (setf (env-nogood? cenv) just)
+
+  ;; Remove the cenv from the labels of any nodes which
+  ;; reference it.
   (remove-env-from-labels cenv atms)
+
+  ;; Add `cenv` to the table of nogoods.
   (setf (atms-nogood-table atms)
 	(insert-in-table (atms-nogood-table atms) cenv))
   (setq count (env-count cenv))
+
+  ;; Remove any nogood table entries made redundant by `cenv`.
   (dolist (entry (atms-nogood-table atms))
     (when (> (car entry) count)
       (dolist (old (cdr entry))
 	(if (subset-env? cenv old)
-	    (setf (cdr entry) (delete old (cdr entry) :COUNT 1))))))
+	  (setf (cdr entry) (delete old (cdr entry) :COUNT 1))))))
+
+  ;; Find currently-non-nogood environments which are supersets
+  ;; of the nogood.  Mark each as a nogood, and remove it from
+  ;; node labels.
   (dolist (entry (atms-env-table atms))
     (when (> (car entry) count)
       (dolist (old (cdr entry))
