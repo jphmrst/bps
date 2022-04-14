@@ -894,7 +894,7 @@ assumeNode node =
      in do
       sttLayer $ push node (atmsAssumptions atms)
       selfEnv <- findOrMakeEnv [node] atms
-      nodes <- sttLayer $ toMList [selfEnv]
+      nodes <- sttLayer $ toMList [Just selfEnv]
       update nodes node (ByAssumption node)
 
 -- |Mark the given `Node` as an additional contradiction node of the
@@ -913,7 +913,9 @@ assumeNode node =
 -- >      (new-nogood atms nogood 'MAKE-CONTRADICTION)
 -- >      (return nil)))))
 makeContradiction :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-makeContradiction = error "< TODO unimplemented makeContradiction >"
+makeContradiction node =
+  unlessM (getNodeIsContradictory node) $ do
+    error "< TODO unimplemented makeContradiction >"
 
 -- |Direct the `ATMS` to believe a particular `Node` when all of the
 -- given list of `Node`s are also believed.  The first argument is the
