@@ -537,6 +537,7 @@ nextEnvCounter atms = sttLayer $ do
 -- >   (atms nil))
 data (Monad m, NodeDatum d) => Node d i r s m = Node {
   nodeIndex :: Int,
+  -- | Retrieve the datum associated with a `Node`.
   nodeDatum :: d,
   nodeLabel :: STRef s [Env d i r s m],
   nodeJusts :: STRef s [Justification d i r s m],
@@ -544,6 +545,7 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node {
   nodeIsContradictory :: STRef s Bool,
   nodeIsAssumption :: STRef s Bool,
   nodeRules :: STRef s [r],
+  -- | Retrieve the `ATMS` associated with a `Node`.
   nodeATMS :: ATMS d i r s m
 }
 
@@ -636,8 +638,11 @@ isNogood _ = True
 -- | An environment of `Node`s which may be used as the basis of
 -- reasoning in an `ATMS`.
 data (Monad m, NodeDatum d) => Env d i r s m = Env {
+  -- | The unique nomber of this `Env` within its `ATMS`.
   envIndex :: Int,
+  -- | The number of assumptions contained within this `Env`.
   envCount :: Int,
+  -- | The assumptions contained within this `Env`.
   envAssumptions :: [Node d i r s m],
   envNodes :: STRef s [Node d i r s m],
   envWhyNogood :: STRef s (WhyNogood d i r s m),
@@ -683,34 +688,21 @@ envIsNogood env = do
 
 newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 
--- > ;; In atms.lisp
--- > (defun node-string (node)
--- >   (funcall (atms-node-string (tms-node-atms node)) node))
+-- | Shortcut for retrieving the `Node` formatter from an `ATMS`, and
+-- applying it to the given `Node`.
 nodeString :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 nodeString node = do
   nodeFmt <- getNodeString $ nodeATMS node
   return $ nodeFmt node
 
--- > ;; In atms.lisp
--- > (defmacro debugging (atms msg &optional node &rest args)
--- >   `(when (atms-debugging ,atms)
--- >      (format *trace-output*
--- >         ,msg (if ,node (node-string ,node)) ,@args)))
-
--- > ;; In atms.lisp
--- > (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
+-- | Default formatter for the `Node`s of an `ATMS`.
 defaultNodeString ::
   (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 defaultNodeString node = do
   datumFormatter <- getDatumString $ nodeATMS node
   return $ datumFormatter $ nodeDatum node
 
--- > ;; In atms.lisp
--- > (defun ordered-insert (item list test)
--- >   (cond ((null list) (list item))
--- >    ((funcall test item (car list)) (cons item list))
--- >    ((eq item (car list)) list)
--- >    (t (cons (car list) (ordered-insert item (cdr list) test)))))
+-- | Insert an element into a sorted list.
 orderedInsert :: Eq a => a -> [a] -> (a -> a -> Bool) -> [a]
 orderedInsert item [] _ = [item]
 orderedInsert item list@(i : _) test | test item i  = item : list
@@ -726,16 +718,10 @@ orderedPush = error "< unimplemented orderedPush >"
 -}
 
 -- |We order assumptions in `Env` lists by their index.
---
--- > ;; In atms.lisp
--- > (defun assumption-order (a1 a2)
--- >   (< (tms-node-index a1) (tms-node-index a2)))
 assumptionOrder :: (Monad m, NodeDatum d) => Node d i r s m -> Node d i r s m -> Bool
 assumptionOrder n1 n2 = nodeIndex n1 < nodeIndex n2
 
--- > ;; In atms.lisp
--- > (defun env-order (e1 e2)
--- >   (< (env-index e1) (env-index e2)))
+-- Ordering predicate for two `Env`s; uses their internal index.
 envOrder :: (Monad m, NodeDatum d) => Env d i r s m -> Env d i r s m -> Bool
 envOrder e1 e2 = envIndex e1 < envIndex e2
 
@@ -744,20 +730,6 @@ envOrder e1 e2 = envIndex e1 < envIndex e2
 -- * Basic inference engine interface.
 
 -- |Create a new, empty ATMS.
---
--- > ;; In atms.lisp
--- > (defun create-atms (title &key (node-string 'default-node-string)
--- >                           (debugging NIL)
--- >                           (enqueue-procedure NIL))
--- >   (let ((atms (make-atms :TITLE title
--- >                     :NODE-STRING node-string
--- >                     :DEBUGGING debugging
--- >                     :ENQUEUE-PROCEDURE enqueue-procedure)))
--- >     (setf (atms-contra-node atms)
--- >      (tms-create-node atms "The contradiction"
--- >                       :CONTRADICTORYP t))
--- >     (setf (atms-empty-env atms) (create-env atms nil))
--- >     atms))
 createATMS ::
   (Debuggable m, NodeDatum d) => String -> ATMST s m (ATMS d i r s m)
 createATMS title = do
@@ -796,18 +768,8 @@ createATMS title = do
 
 {- ----------------------------------------------------------------- -}
 
--- > ;; In atms.lisp
--- > (defun change-atms (atms &key node-string
--- >                          enqueue-procedure debugging)
--- >   (if node-string (setf (atms-node-string atms) node-string))
--- >   (if debugging (setf (atms-debugging atms) debugging))
--- >   (if enqueue-procedure
--- >       (setf (atms-enqueue-procedure atms) enqueue-procedure)))
-
--- > ;; In atms.lisp
--- > (defun true-node? (node)
--- >   (eq (car (tms-node-label node))
--- >       (atms-empty-env (tms-node-atms node))))
+-- | Returns `True` if the given `Node` is axiomatic, following from
+-- the assumption of zero other nodes.
 isTrueNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m Bool
 isTrueNode node = do
   envs <- getNodeLabel node
@@ -815,37 +777,28 @@ isTrueNode node = do
     [] -> False
     e : _ -> null $ envAssumptions e
 
--- > ;; In atms.lisp
--- > (defun in-node? (n &optional env)
--- >   (if env
--- >       (some #'(lambda (le) (subset-env? le env))
--- >        (tms-node-label n))
--- >       (not (null (tms-node-label n)))))
+-- | Returns `True` if the given `Node` is justified by some labelling
+-- `Env` environment of `Node`s in the `ATMS`.
 isInNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m Bool
 isInNode node = fmap (not . null) (getNodeLabel node)
 
--- > ;; In atms.lisp
--- > (defun in-node? (n &optional env)
--- >   (if env
--- >       (some #'(lambda (le) (subset-env? le env))
--- >        (tms-node-label n))
--- >       (not (null (tms-node-label n)))))
+-- | Returns `True` if the given `Node` is justified by some subset of
+-- the given environment in the `ATMS`.
 isInNodeByEnv ::
   (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isInNodeByEnv node env = do
   labelEnvs <- getNodeLabel node
   return $ any (\ le -> isSubsetEnv le env) labelEnvs
 
--- > ;; In atms.lisp
--- > (defun out-node? (n env) (not (in-node? n env)))
+-- | Returns `True` if the given `Node` is justified by no labelling
+-- `Env` environment of `Node`s in the `ATMS`.
 isOutNode ::
   (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isOutNode node env = fmap not $ isInNodeByEnv node env
 
--- > ;; In atms.lisp
--- > (defun node-consistent-with? (n env)
--- >   (some #'(lambda (le) (not (env-nogood? (union-env le env))))
--- >    (tms-node-label n)))
+-- | Returns `True` if some environment justifying the given `Node` is
+-- consistent with the given environment, where two environments are
+-- consistent when their union is not no-good.
 isNodeConsistentWith ::
   (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isNodeConsistentWith node env = do
@@ -855,22 +808,7 @@ isNodeConsistentWith node env = do
              fmap not $ envIsNogood union)
     labelEnvs
 
--- |Create a new `Node` in an `ATMS`.
---
--- > ;; In atms.lisp
--- > (defun tms-create-node (atms datum &key assumptionp contradictoryp
--- >                               &aux node)
--- >   (setq node (make-tms-node :INDEX (incf (atms-node-counter atms))
--- >                        :DATUM datum
--- >                        :ASSUMPTION? assumptionp
--- >                        :CONTRADICTORY? contradictoryp
--- >                        :ATMS atms))
--- >   (push node (atms-nodes atms))
--- >   (if contradictoryp (push node (atms-contradictions atms)))
--- >   (when assumptionp
--- >     (push node (atms-assumptions atms))
--- >     (push (create-env atms (list node)) (tms-node-label node)))
--- >   node)
+-- | Create a new `Node` in an `ATMS`.
 createNode :: (Debuggable m, NodeDatum d) =>
   ATMS d i r s m -> d -> Bool -> Bool -> ATMST s m (Node d i r s m)
 createNode atms datum isAssumption isContradictory = do
@@ -893,6 +831,9 @@ createNode atms datum isAssumption isContradictory = do
       push selfEnv $ nodeLabel node
   return node
 
+-- | Mark the given `Node` as to be believed as an assumption by its
+-- `ATMS`.
+--
 -- > ;; In atms.lisp
 -- > (defun assume-node (node &aux atms)
 -- >   (unless (tms-node-assumption? node)
@@ -906,6 +847,9 @@ createNode atms datum isAssumption isContradictory = do
 assumeNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 assumeNode = error "< TODO unimplemented assumeNode >"
 
+-- | Mark the given list of `Node`s as a contradiction when taken
+-- together in its `ATMS`.
+--
 -- > ;; In atms.lisp
 -- > (defun make-contradiction
 -- >        (node &aux (atms (tms-node-atms node)) nogood)
