@@ -667,6 +667,8 @@ envIsNogood :: (Monad m, NodeDatum d) => Env d i r s m -> ATMST s m Bool
 envIsNogood env = do
   fmap isNogood $ sttLayer $ readSTRef $ envWhyNogood env
 
+-- | Type alias for the array storage of a table of `Env`s arranged by
+-- length.
 newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 
 -- | Shortcut for retrieving the `Node` formatter from an `ATMS`, and
@@ -1363,7 +1365,6 @@ debugWeaveLoopPairEnd addR envmsR = do
   blurbMaybeEnvMList mlist
   liftIO $ putStrLn ""
 
-
 -- Translated from @in-antecedent?@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
@@ -1874,18 +1875,15 @@ extendViaDefaults = error "< TODO unimplemented extendViaDefaults >"
 
 -- * Generating explanations
 
--- This returns a list of justifications which form a DAG for the
--- derivation. This is quite complicated because this is really a
--- simple consequent JTMS.
-
--- Translated from @explain-node@ in @atms.lisp@.
+-- | This function returns a list of justifications which form a
+-- directed acyclic graph (DAG) for the derivation. This is quite
+-- complicated because this is really a simple consequent JTMS.
 --
--- > ;; In atms.lisp
--- > (defun explain-node (node env) (explain-node-1 env node nil nil))
+-- Translated from @explain-node@ in @atms.lisp@.
 explainNode ::
   (Monad m, NodeDatum d) =>
-    Node d i r s m -> Env d i r s m -> ATMST s m [Justification d i r s m]
-explainNode = error "< TODO unimplemented explainNode >"
+    Node d i r s m -> Env d i r s m -> ATMST s m [Explanation d i r s m]
+explainNode node env = explainNode1 env node [] []
 
 -- Translated from @explain-node-1@ in @atms.lisp@.
 --

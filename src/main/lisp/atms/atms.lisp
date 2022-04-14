@@ -156,6 +156,7 @@
 
 
 (defun assume-node (node &aux atms)
+  "Mark the given NODE as to be believed as an assumption by its ATMS."
   (unless (tms-node-assumption? node)
     (setq atms (tms-node-atms node))
     (debugging atms  "~%Converting ~A into an assumption" node)
@@ -331,7 +332,9 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 	     (setq new-env (union-env e env))
 	     (unless (env-nogood? new-env)
 	       (if (weave? new-env (cdr nodes))
-		   (return T)))))))
+		 ;; Returns from the DOLIST, which then is the result
+		 ;; of WEAVE?.
+		 (return T)))))))
 
 (defun supporting-antecedent? (nodes env)
   (dolist (node nodes t) (unless (in-node? node env) (return nil))))
