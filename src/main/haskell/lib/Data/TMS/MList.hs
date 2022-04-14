@@ -33,6 +33,14 @@ data MList s a = MCons (STRef s a) (STRef s (MList s a))
                | MNil
                  -- ^ Regular old @nil@.
 
+toMList :: Monad m => [a] -> STT s m (MList s a)
+toMList [] = return MNil
+toMList (x : xs) = do
+  car <- newSTRef x
+  cdrBody <- toMList xs
+  cdr <- newSTRef cdrBody
+  return $ MCons car cdr
+
 -- |Convert an `MList` to a `String`.
 showM :: (Show a, Monad m) => MList s a -> STT s m String
 showM MNil = return "[]"
@@ -42,7 +50,6 @@ showM (MCons xr xsr) = do
   let sx = show x
   sxs <- showM xs
   return $ sx ++ " m: " ++ sxs
-
 
 -- |Returns `True` for an empty list.
 mnull MNil = True

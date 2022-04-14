@@ -89,7 +89,7 @@ module Data.TMS.ATMS.ATMST (
 
   -- ** Related to a node
   isTrueNode, isInNode, isInNodeByEnv, isOutNode, isNodeConsistentWith,
-  getNodeIsContradictory, explainNode,
+  getNodeIsAssumption, getNodeIsContradictory, explainNode,
 
   -- ** Related to environments
   envIsNogood,
@@ -590,6 +590,10 @@ setNodeConsequences = setNodeMutable nodeConsequences
 getNodeIsContradictory :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 
+-- |Return whether the `Node`'s is currently markable as an assumption.
+getNodeIsAssumption :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
+getNodeIsAssumption node = sttLayer $ readSTRef (nodeIsAssumption node)
+
 -- |The justification of one `ATMS` `Node` by zero or more others.
 data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
   justIndex :: Int,
@@ -871,7 +875,7 @@ createNode atms datum isAssumption isContradictory = do
 -- |Mark the given `Node` as to be believed as an assumption by its
 -- `ATMS`.
 --
--- TO BE TRANSLATED from @assume-node@ in @atms.lisp@.
+-- Translated from @assume-node@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun assume-node (node &aux atms)
@@ -883,8 +887,15 @@ createNode atms datum isAssumption isContradictory = do
 -- >     (update (list (create-env atms (list node)))
 -- >        node
 -- >        'ASSUME-NODE)))
-assumeNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-assumeNode = error "< TODO unimplemented assumeNode >"
+assumeNode :: (Debuggable m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+assumeNode node =
+  unlessM (getNodeIsAssumption node) $ do
+    let atms = nodeATMS node
+     in do
+      sttLayer $ push node (atmsAssumptions atms)
+      selfEnv <- findOrMakeEnv [node] atms
+      nodes <- sttLayer $ toMList [selfEnv]
+      update nodes node (ByAssumption node)
 
 -- |Mark the given `Node` as an additional contradiction node of the
 -- `ATMS`.
@@ -958,7 +969,7 @@ propagate just antecedent envs = do
   $(dbg [| debugPropagateArgs just antecedent envs |])
   newEnvs <- weave antecedent envs (justAntecedents just)
   when (not (mnull newEnvs)) $ do
-    update newEnvs (justConsequence just) just
+    update newEnvs (justConsequence just) (ByRule just)
 
 debugPropagateArgs ::
   (MonadIO m, NodeDatum d) =>
@@ -997,8 +1008,10 @@ debugPropagateArgs justRule antecedent envs = do
 -- Translated from @update@ in @atms.lisp@.
 update ::
   (Debuggable m, NodeDatum d) =>
-    MList s  (Maybe (Env d i r s m)) -> Node d i r s m -> JustRule d i r s m ->
-      ATMST s m ()
+    MList s (Maybe (Env d i r s m)) ->
+      Node d i r s m ->
+        Justification d i r s m ->
+          ATMST s m ()
 update newEnvs consequence just = do
   $(dbg [| debugUpdateArgs newEnvs consequence just |])
   let atms = nodeATMS consequence
@@ -1010,7 +1023,7 @@ update newEnvs consequence just = do
     (mlistFor_ sttLayer newEnvs $ \ envmaybe ->
         case envmaybe of
           Nothing -> return ()
-          Just env -> newNogood atms env $ ByRule just) $
+          Just env -> newNogood atms env just) $
 
     -- Otherwise we propagate further.  If this step prunes out all
     -- `Env`s from the `newEnvs`, then we have nothing further to do.
@@ -1602,7 +1615,8 @@ debugConsEnvLookup (Just env) = do
 -- >   (or (lookup-env assumptions)
 -- >       (create-env atms assumptions)))
 findOrMakeEnv ::
-  (Monad m, NodeDatum d) => [Node d i r s m] -> ATMS d i r s m -> ATMST s m (Env d i r s m)
+  (Monad m, NodeDatum d) =>
+    [Node d i r s m] -> ATMS d i r s m -> ATMST s m (Env d i r s m)
 findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
 
 -- * Env tables.
