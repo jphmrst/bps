@@ -430,8 +430,7 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
   ;; Record the reason for deciding that cenv is nogood.
   (setf (env-nogood? cenv) just)
 
-  ;; Remove the cenv from the labels of any nodes which
-  ;; reference it.
+  ;; Remove the cenv from the labels of any nodes which reference it.
   (remove-env-from-labels cenv atms)
 
   ;; Add `cenv` to the table of nogoods.
@@ -446,9 +445,8 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 	(if (subset-env? cenv old)
 	  (setf (cdr entry) (delete old (cdr entry) :COUNT 1))))))
 
-  ;; Find currently-non-nogood environments which are supersets
-  ;; of the nogood.  Mark each as a nogood, and remove it from
-  ;; node labels.
+  ;; Find currently-non-nogood environments which are supersets of the
+  ;; nogood.  Mark each as a nogood, and remove it from node labels.
   (dolist (entry (atms-env-table atms))
     (when (> (car entry) count)
       (dolist (old (cdr entry))
