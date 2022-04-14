@@ -96,7 +96,7 @@ module Data.TMS.ATMS.ATMST (
 
   -- * Printing and debugging
 
-  -- | Functions prefixed @format@ build a computation returning a
+  -- |Functions prefixed @format@ build a computation returning a
   -- `String`.  Functions prefixed @debug@ or @print@ build a unit
   -- computation printing the artifact in question to standard output;
   -- those with prefix @debug@ are generally more verbose.
@@ -268,7 +268,7 @@ runATMST atmst = do
 -- |Class of type which can be used as the datum underlying `Node`s in
 -- an `ATMS`.
 class NodeDatum d where
-  -- | The datum associated with the contradiction node in a
+  -- |The datum associated with the contradiction node in a
   -- newly-initialized `ATMS` with `Node` data of this type.
   contradictionNodeDatum :: d
 
@@ -277,7 +277,7 @@ instance NodeDatum String where
 instance NodeDatum Symbol where
   contradictionNodeDatum = intern "The contradiction"
 
--- | Top-level representation of an assumption-based truth maintenance
+-- |Top-level representation of an assumption-based truth maintenance
 -- system.
 data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   -- |Name of this ATMS.
@@ -311,17 +311,17 @@ data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   -- ATMS is allocated, so we use a reference to be able to set it up
   -- later.
   atmsContraNode :: STRef s (Maybe (Node d i r s m)),
-  -- | Function for formatting a `Node` of this ATMS.
+  -- |Function for formatting a `Node` of this ATMS.
   atmsNodeString :: STRef s (Node d i r s m -> String),
-  -- | Function for representing a justification rule.
+  -- |Function for representing a justification rule.
   atmsJustString :: STRef s (JustRule d i r s m -> String),
-  -- | Function for representing the data associated with `Node`s.
+  -- |Function for representing the data associated with `Node`s.
   atmsDatumString :: STRef s (d -> String),
-  -- | Function for representing the informants of justifications.
+  -- |Function for representing the informants of justifications.
   atmsInformantString :: STRef s (i -> String),
-  -- | List of external procedures to be executed for this ATMS.
+  -- |List of external procedures to be executed for this ATMS.
   atmsEnqueueProcedure :: STRef s (r -> ATMST s m ()),
-  -- | Set to `True` when we wish to debug this ATMS.
+  -- |Set to `True` when we wish to debug this ATMS.
   atmsDebugging :: STRef s Bool
 }
 
@@ -426,12 +426,12 @@ setDatumString ::
 {-# INLINE setDatumString #-}
 setDatumString = setATMSMutable atmsDatumString
 
--- | When the data associated with `Node`s are all `String`s, we can
+-- |When the data associated with `Node`s are all `String`s, we can
 -- direct the `ATMS` to display each datum as itself.
 setDatumStringViaString :: Monad m => ATMS String i r s m -> ATMST s m ()
 setDatumStringViaString atms = setDatumString atms id
 
--- | When the data associated with `Node`s are of a type of class
+-- |When the data associated with `Node`s are of a type of class
 -- `Show`, we can direct the `ATMS` to display each datum using the
 -- `show` instance.
 setDatumStringViaShow ::
@@ -449,14 +449,14 @@ setInformantString ::
 {-# INLINE setInformantString #-}
 setInformantString = setATMSMutable atmsInformantString
 
--- | When the informants associated with `JustRule`s are all
+-- |When the informants associated with `JustRule`s are all
 -- `String`s, we can direct the `ATMS` to display each informant as
 -- itself.
 setInformantStringViaString ::
   (Monad m, NodeDatum d) => ATMS d String r s m -> ATMST s m ()
 setInformantStringViaString atms = setInformantString atms id
 
--- | When the informants associated with `JustRule`s are of a type of
+-- |When the informants associated with `JustRule`s are of a type of
 -- class `Show`, we can direct the `ATMS` to display each datum using
 -- the `show` instance.
 setInformantStringViaShow ::
@@ -476,7 +476,7 @@ setEnqueueProcedure ::
 {-# INLINE setEnqueueProcedure #-}
 setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
 
--- | Print the internal title signifying an ATMS.
+-- |Print the internal title signifying an ATMS.
 --
 -- Translated from @print-atms@ in @atms.lisp@.
 printAtms :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
@@ -510,12 +510,12 @@ nextEnvCounter atms = sttLayer $ do
 
 {- ----------------------------------------------------------------- -}
 
--- | Wrapper for the datum associated with a node of the `ATMS`.
+-- |Wrapper for the datum associated with a node of the `ATMS`.
 --
 -- Translated from @(tms-node@ in @atms.lisp@.
 data (Monad m, NodeDatum d) => Node d i r s m = Node {
   nodeIndex :: Int,
-  -- | Retrieve the datum associated with a `Node`.
+  -- |Retrieve the datum associated with a `Node`.
   nodeDatum :: d,
   nodeLabel :: STRef s [Env d i r s m],
   nodeJusts :: STRef s [Justification d i r s m],
@@ -523,7 +523,7 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node {
   nodeIsContradictory :: STRef s Bool,
   nodeIsAssumption :: STRef s Bool,
   nodeRules :: STRef s [r],
-  -- | Retrieve the `ATMS` associated with a `Node`.
+  -- |Retrieve the `ATMS` associated with a `Node`.
   nodeATMS :: ATMS d i r s m
 }
 
@@ -583,32 +583,32 @@ setNodeConsequences = setNodeMutable nodeConsequences
 getNodeIsContradictory :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 
--- | The justification of one `ATMS` `Node` by zero or more others.
+-- |The justification of one `ATMS` `Node` by zero or more others.
 data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
   justIndex :: Int,
-  -- | The informant associated with applying this inference rule.
+  -- |The informant associated with applying this inference rule.
   justInformant :: i,
-  -- | The conclusion of this inference rule.
+  -- |The conclusion of this inference rule.
   justConsequence :: Node d i r s m,
-  -- | The antecedents of this inference rule.
+  -- |The antecedents of this inference rule.
   justAntecedents :: [Node d i r s m]
 }
 
--- | Description of why a `Node` may be believed by the `ATMS`.
+-- |Description of why a `Node` may be believed by the `ATMS`.
 data Justification d i r s m =
   ByRule (JustRule d i r s m) | ByAssumption (Node d i r s m) | ByContradiction
 
--- | Explanation of why a `Node` may be believed by the `ATMS` for
+-- |Explanation of why a `Node` may be believed by the `ATMS` for
 -- output to a query.
 data Explanation d i r s m =
   IsRule (JustRule d i r s m) | IsAssumption (Node d i r s m)
 
--- | Explanation of why a `Node` may be classified as no-good by the
+-- |Explanation of why a `Node` may be classified as no-good by the
 -- `ATMS`.
 data WhyNogood d i r s m =
   Good | ByJustification (Justification d i r s m) | ByEnv (Env d i r s m)
 
--- | Translation of the explanation of why a `Node` may be classified
+-- |Translation of the explanation of why a `Node` may be classified
 -- (or not) as no-good to a boolean value.
 isNogood :: WhyNogood d i r s m -> Bool
 isNogood Good = False
@@ -616,14 +616,14 @@ isNogood _ = True
 
 {- ----------------------------------------------------------------- -}
 
--- | An environment of `Node`s which may be used as the basis of
+-- |An environment of `Node`s which may be used as the basis of
 -- reasoning in an `ATMS`.
 data (Monad m, NodeDatum d) => Env d i r s m = Env {
-  -- | The unique nomber of this `Env` within its `ATMS`.
+  -- |The unique nomber of this `Env` within its `ATMS`.
   envIndex :: Int,
-  -- | The number of assumptions contained within this `Env`.
+  -- |The number of assumptions contained within this `Env`.
   envCount :: Int,
-  -- | The assumptions contained within this `Env`.
+  -- |The assumptions contained within this `Env`.
   envAssumptions :: [Node d i r s m],
   envNodes :: STRef s [Node d i r s m],
   envWhyNogood :: STRef s (WhyNogood d i r s m),
@@ -667,11 +667,11 @@ envIsNogood :: (Monad m, NodeDatum d) => Env d i r s m -> ATMST s m Bool
 envIsNogood env = do
   fmap isNogood $ sttLayer $ readSTRef $ envWhyNogood env
 
--- | Type alias for the array storage of a table of `Env`s arranged by
+-- |Type alias for the array storage of a table of `Env`s arranged by
 -- length.
 newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 
--- | Shortcut for retrieving the `Node` formatter from an `ATMS`, and
+-- |Shortcut for retrieving the `Node` formatter from an `ATMS`, and
 -- applying it to the given `Node`.
 --
 -- Translated from @node-string@ in @atms.lisp@.
@@ -680,7 +680,7 @@ nodeString node = do
   nodeFmt <- getNodeString $ nodeATMS node
   return $ nodeFmt node
 
--- | Default formatter for the `Node`s of an `ATMS`.
+-- |Default formatter for the `Node`s of an `ATMS`.
 --
 -- Translated from @default-node-string@ in @atms.lisp@.
 defaultNodeString ::
@@ -689,7 +689,7 @@ defaultNodeString node = do
   datumFormatter <- getDatumString $ nodeATMS node
   return $ datumFormatter $ nodeDatum node
 
--- | Insert an element into a sorted list.
+-- |Insert an element into a sorted list.
 --
 -- Translated from @ordered-insert@ in @atms.lisp@.
 orderedInsert :: Eq a => a -> [a] -> (a -> a -> Bool) -> [a]
@@ -763,7 +763,7 @@ createATMS title = do
 
 {- ----------------------------------------------------------------- -}
 
--- | Returns `True` if the given `Node` is axiomatic, following from
+-- |Returns `True` if the given `Node` is axiomatic, following from
 -- the assumption of zero other nodes.
 --
 -- Translated from @true-node?@ in @atms.lisp@.
@@ -774,14 +774,14 @@ isTrueNode node = do
     [] -> False
     e : _ -> null $ envAssumptions e
 
--- | Returns `True` if the given `Node` is justified by some labelling
--- `Env` environment of `Node`s in the `ATMS`.
+-- |Returns `True` if the given `Node` is justified by some labelling
+-- `Env`ironment of `Node`s in the `ATMS`.
 --
 -- Translated from @in-node?@ in @atms.lisp@.
 isInNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m Bool
 isInNode node = fmap (not . null) (getNodeLabel node)
 
--- | Returns `True` if the given `Node` is justified by some subset of
+-- |Returns `True` if the given `Node` is justified by some subset of
 -- the given environment in the `ATMS`.
 --
 -- Translated from @in-node?@ in @atms.lisp@.
@@ -791,15 +791,15 @@ isInNodeByEnv node env = do
   labelEnvs <- getNodeLabel node
   return $ any (\ le -> isSubsetEnv le env) labelEnvs
 
--- | Returns `True` if the given `Node` is justified by no labelling
--- `Env` environment of `Node`s in the `ATMS`.
+-- |Returns `True` if the given `Node` is justified by no labelling
+-- `Env`ironment of `Node`s in the `ATMS`.
 --
 -- Translated from @out-node?@ in @atms.lisp@.
 isOutNode ::
   (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isOutNode node env = fmap not $ isInNodeByEnv node env
 
--- | Returns `True` if some environment justifying the given `Node` is
+-- |Returns `True` if some environment justifying the given `Node` is
 -- consistent with the given environment, where two environments are
 -- consistent when their union is not no-good.
 --
@@ -813,7 +813,7 @@ isNodeConsistentWith node env = do
              fmap not $ envIsNogood union)
     labelEnvs
 
--- | Create a new `Node` in an `ATMS`.
+-- |Create a new `Node` in an `ATMS`.
 --
 -- Translated from @create-node@ in @atms.lisp@.
 createNode :: (Debuggable m, NodeDatum d) =>
@@ -838,7 +838,7 @@ createNode atms datum isAssumption isContradictory = do
       push selfEnv $ nodeLabel node
   return node
 
--- | Mark the given `Node` as to be believed as an assumption by its
+-- |Mark the given `Node` as to be believed as an assumption by its
 -- `ATMS`.
 --
 -- Translated from @assume-node@ in @atms.lisp@.
@@ -856,7 +856,7 @@ createNode atms datum isAssumption isContradictory = do
 assumeNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 assumeNode = error "< TODO unimplemented assumeNode >"
 
--- | Mark the given `Node` as an additional contradiction node of the
+-- |Mark the given `Node` as an additional contradiction node of the
 -- `ATMS`.
 --
 -- Translated from @make-contradiction@ in @atms.lisp@.
@@ -874,7 +874,7 @@ assumeNode = error "< TODO unimplemented assumeNode >"
 makeContradiction :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 makeContradiction = error "< TODO unimplemented makeContradiction >"
 
--- | Direct the `ATMS` to believe a particular `Node` when all of the
+-- |Direct the `ATMS` to believe a particular `Node` when all of the
 -- given list of `Node`s are also believed.  The first argument is the
 -- informant associated with this inference.
 --
@@ -905,7 +905,7 @@ justifyNode informant consequence antecedents = do
   envListRef <- sttLayer $ fromListMap Just [emptyEnv]
   propagate just Nothing envListRef
 
--- | Direct the `ATMS` to find the combination of all of the given
+-- |Direct the `ATMS` to find the combination of all of the given
 -- `Node`s to be a contradiction associated with the given informant.
 --
 -- Translated from @nogood-nodes@ in @atms.lisp@.
@@ -1399,7 +1399,7 @@ isSupportingAntecedent ::
   (Monad m, NodeDatum d) => [Node d i r s m] -> Env d i r s m -> ATMST s m Bool
 isSupportingAntecedent = error "< TODO unimplemented isSupportingAntecedent >"
 
--- | Remove a `Node` from the `ATMS`.
+-- |Remove a `Node` from the `ATMS`.
 --
 -- TO BE TRANSLATED from @remove-node@ in @atms.lisp@.
 --
@@ -1624,7 +1624,7 @@ isSubsetEnv e1 e2 =
   else if envCount e1 > envCount e2 then False
   else ordSubsetp (envAssumptions e1) (envAssumptions e2)
 
--- | The possible results of comparing two `Env`s.
+-- |The possible results of comparing two `Env`s.
 data EnvCompare =
   EQenv     -- ^ Two `Env`s are the same
   | S12env  -- ^ The first `Env` is a subset of the second.
@@ -1774,7 +1774,7 @@ removeEnvFromLabels env atms = do
 
 -- * Interpretation construction
 
--- | Return the minimum environments which give the `ATMS` belief in
+-- |Return the minimum environments which give the `ATMS` belief in
 -- the given choice sets.  The choice sets are essentially
 -- conjunctive-normal form expressions; in the list of sublists of
 -- nodes, under each environment in the result at least one node of
@@ -1875,7 +1875,7 @@ extendViaDefaults = error "< TODO unimplemented extendViaDefaults >"
 
 -- * Generating explanations
 
--- | This function returns a list of justifications which form a
+-- |This function returns a list of justifications which form a
 -- directed acyclic graph (DAG) for the derivation. This is quite
 -- complicated because this is really a simple consequent JTMS.
 --
@@ -1915,7 +1915,9 @@ explainNode1 ::
         ATMST s m [Explanation d i r s m]
 explainNode1 = error "< TODO unimplemented explainNode1 >"
 
--- Translated from @why-node@ in @atms.lisp@.
+-- |Print the justifying `Env`ironments which label a `Node`.
+--
+-- TO BE TRANSLATED from @why-node@ in @atms.lisp@.
 --
 -- > ;;; Printing
 -- > (defun why-node (node &optional (stream t) (prefix ""))
@@ -1926,7 +1928,10 @@ explainNode1 = error "< TODO unimplemented explainNode1 >"
 whyNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m (Node d i r s m)
 whyNode = error "< TODO unimplemented whyNode >"
 
--- Translated from @why-nodes@ in @atms.lisp@.
+-- |Print the justifying `Env`ironments which label each `Node` of an
+-- `ATMS`.
+--
+-- TO BE TRANSLATED from @why-nodes@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun why-nodes (atms &optional (stream t))
@@ -1934,7 +1939,9 @@ whyNode = error "< TODO unimplemented whyNode >"
 whyNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 whyNodes = error "< TODO unimplemented whyNodes >"
 
--- Translated from @node-justifications@ in @atms.lisp@.
+-- |Print a `Node`'s justifications.
+--
+-- TO BE TRANSLATED from @node-justifications@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun node-justifications (node &optional (stream t))
@@ -1944,7 +1951,9 @@ whyNodes = error "< TODO unimplemented whyNodes >"
 nodeJustifications :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 nodeJustifications = error "< TODO unimplemented nodeJustifications >"
 
--- Translated from @e@ in @atms.lisp@.
+-- |Retrieve an `ATMS`'s `Env`ironment with the given index number.
+--
+-- TO BE TRANSLATED from @e@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun e (atms n)
@@ -1954,7 +1963,9 @@ nodeJustifications = error "< TODO unimplemented nodeJustifications >"
 e :: (Monad m, NodeDatum d) => ATMS d i r s m -> Int -> ATMST s m ()
 e = error "< TODO unimplemented e >"
 
--- Translated from @print-env@ in @atms.lisp@.
+-- |Print an environment.
+--
+-- TO BE TRANSLATED from @print-env@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun print-env (e &optional (stream t))
@@ -1965,7 +1976,10 @@ e = error "< TODO unimplemented e >"
 printEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 printEnv = error "< TODO unimplemented printEnv >"
 
--- Translated from @env-string@ in @atms.lisp@.
+-- |Convert an `Env`ironment into a string listing the nodes of the
+-- environment.
+--
+-- TO BE TRANSLATED from @env-string@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun env-string (e &optional stream
@@ -1980,7 +1994,9 @@ envString = error "< TODO unimplemented envString >"
 
 -- * Printing global data
 
--- Translated from @print-nogoods@ in @atms.lisp@.
+-- |List the nogood `Env`ironments of an `ATMS`.
+--
+-- TO BE TRANSLATED from @print-nogoods@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun print-nogoods (atms &optional (stream t))
@@ -1988,7 +2004,9 @@ envString = error "< TODO unimplemented envString >"
 printNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printNogoods = error "< TODO unimplemented printNogoods >"
 
--- Translated from @print-envs@ in @atms.lisp@.
+-- |Print the `Env`ironments of an `ATMS`.
+--
+-- TO BE TRANSLATED from @print-envs@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun print-envs (atms &optional (stream t))
@@ -1996,7 +2014,9 @@ printNogoods = error "< TODO unimplemented printNogoods >"
 printEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printEnvs = error "< TODO unimplemented printEnvs >"
 
--- Translated from @print-env-table@ in @atms.lisp@.
+-- |Print the `Env`ironments contained in the given `EnvTable`.
+--
+-- TO BE TRANSLATED from @print-env-table@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun print-env-table (table stream)
@@ -2006,7 +2026,9 @@ printEnvs = error "< TODO unimplemented printEnvs >"
 printEnvTable :: (MonadIO m, NodeDatum d) => EnvTable d i r s m -> ATMST s m ()
 printEnvTable = error "< TODO unimplemented printEnvTable >"
 
--- Translated from @print-atms-statistics@ in @atms.lisp@.
+-- |Print statistics about an `ATMS`.
+--
+-- TO BE TRANSLATED from @print-atms-statistics@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun print-atms-statistics (atms)
@@ -2015,7 +2037,9 @@ printEnvTable = error "< TODO unimplemented printEnvTable >"
 printAtmsStatistics :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
 
--- Translated from @print-table@ in @atms.lisp@.
+-- |Print the entries of an `EnvTable`.
+--
+-- TO BE TRANSLATED from @print-table@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun print-table (msg table)
@@ -2026,6 +2050,8 @@ printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
 printTable :: (MonadIO m, NodeDatum d) => String -> EnvTable d i r s m -> ATMST s m ()
 printTable = error "< TODO unimplemented printTable >"
 
+-- |Give a verbose printout of an `ATMS`.
+--
 debugAtms :: (MonadIO m, NodeDatum d) => String -> ATMS d i r s m -> ATMST s m ()
 debugAtms blurb atms = do
   liftIO $ putStrLn $ "=============== " ++ atmsTitle atms ++ ": " ++ blurb
@@ -2035,25 +2061,38 @@ debugAtms blurb atms = do
   debugNogoods atms
   liftIO $ putStrLn "=============== "
 
+-- |Give a verbose printout of the `Node`s of an `ATMS`.
+--
 debugNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNodes atms = do
   nodes <- getNodes atms
   liftIO $ putStrLn $ show (length nodes) ++ " nodes:"
   forM_ (reverse nodes) debugNode
 
+-- |Computation returning a one-line summary of one `Node` of an `ATMS`.
+--
 formatNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 formatNode node = do
   datumFmt <- getDatumString $ nodeATMS node
   return $ datumFmt (nodeDatum node)
 
+-- |Computation returning a one-line summary of the `Node`s of an
+-- `ATMS`.
+--
 formatNodes ::
   (Monad m, NodeDatum d) => String -> [Node d i r s m] -> ATMST s m String
 formatNodes sep = formatList sep formatNode
 
+-- |Computation returning a one-line summary of a list of lists of
+-- `Node`s of an `ATMS`.
+--
 formatNodeLists ::
   (Monad m, NodeDatum d) => String -> [[Node d i r s m]] -> ATMST s m String
 formatNodeLists sep = formatList sep $ formatNodes ","
 
+-- |Computation returning a one-line summary of the label of a `Node`
+-- of an `ATMS`.
+--
 formatNodeLabel :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 formatNodeLabel node = do
   label <- getNodeLabel node
@@ -2061,15 +2100,21 @@ formatNodeLabel node = do
     [] -> return "empty"
     _ -> formatNodeLists ", " $ map envAssumptions label
 
+-- |Print a short summary of a `Node` of an `ATMS`.
+--
 blurbNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 blurbNode node = formatNode node >>= liftIO . putStr
 
+-- |Print a verbose summary of a `Node` of an `ATMS`.
+--
 -- Translated from @print-tms-node@ in @atms.lisp@.
 printNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 printNode node = do
   str <- nodeString node
   liftIO $ putStr $ "<NODE: " ++ str ++ ">"
 
+-- |Give a verbose printout of a `Node` of an `ATMS`.
+--
 debugNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 debugNode node = do
   let atms = nodeATMS node
@@ -2096,6 +2141,9 @@ debugNode node = do
         liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
       liftIO $ putStrLn ""
 
+-- |Computation returning a one-line summary of the reason an `ATMS`
+-- may believe a `Node`.
+--
 formatJustification ::
   (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m String
 formatJustification (ByRule j) = return $ "By rule " ++ show (justIndex j)
@@ -2105,6 +2153,9 @@ formatJustification (ByAssumption n) = do
 formatJustification ByContradiction = return "By contradiction"
 
 
+-- |Give a verbose printout of the `Just`ification rules of an
+-- `ATMS`.
+--
 debugJusts :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugJusts atms = do
   justs <- getJusts atms
@@ -2113,12 +2164,17 @@ debugJusts atms = do
     ++ (if len == 1 then "" else "s") ++ ":"
   forM_ (sortOn justIndex justs) $ debugJust
 
+-- |Computation returning a one-line summary of the informant of a
+-- `Just`ification rule of an `ATMS`.
+--
 formatJustInformant ::
   (Monad m, NodeDatum d) => JustRule d i r s m -> ATMST s m String
 formatJustInformant rule = do
   informantFmt <- getInformantString $ nodeATMS $ justConsequence rule
   return $ informantFmt $ justInformant rule
 
+-- |Print a more verbose description of a `Just`ification rule of an
+-- `ATMS`.
 --
 -- Translated from @print-just@ in @atms.lisp@.
 printJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
@@ -2126,6 +2182,8 @@ printJust rule = do
   infStr <- formatJustInformant rule
   liftIO $ putStr $ "<" ++ infStr ++ " " ++ show (justIndex rule) ++ ">"
 
+-- |Give a verbose printout of one `Just`ification rule of an `ATMS`.
+--
 debugJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
 debugJust (JustRule idx inf conseq ants) = do
   let atms = nodeATMS conseq
@@ -2136,12 +2194,16 @@ debugJust (JustRule idx inf conseq ants) = do
     ++ datumFmt (nodeDatum conseq) ++ " <= "
     ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
 
+-- |Give a verbose printout of the `Env`ironments of an `ATMS`.
+--
 debugAtmsEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugAtmsEnvs atms = do
   liftIO $ putStrLn "Environments:"
   envTable <- getEnvTable atms
   debugEnvTable atms envTable
 
+-- |Give a verbose printout of one `Env`ironment of an `ATMS`.
+--
 debugEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 debugEnv env = do
   isNogood <- envIsNogood env
@@ -2155,6 +2217,9 @@ debugEnv env = do
         (intercalate ", " $ map (datumFmt . nodeDatum) nodes)
         ++ " (count " ++ show (length nodes) ++ ")"
 
+-- |Print a short summary of a mutable list of nullable (via `Maybe`)
+-- `Env`ironments from an `ATMS`.
+--
 blurbMaybeEnvMList ::
   (MonadIO m, NodeDatum d) => MList s (Maybe (Env d i r s m)) -> ATMST s m ()
 blurbMaybeEnvMList mlist = do
@@ -2169,6 +2234,9 @@ blurbMaybeEnvMList mlist = do
     sttLayer $ writeSTRef sep ", "
   liftIO $ putStr "]"
 
+-- |Print a short summary of a reference to a mutable list of
+-- nullable (via `Maybe`) `Env`ironments from an `ATMS`.
+--
 blurbMaybeEnvMListRef ::
   (MonadIO m, NodeDatum d) =>
     STRef s (MList s (Maybe (Env d i r s m))) -> ATMST s m ()
@@ -2176,12 +2244,17 @@ blurbMaybeEnvMListRef mlistRef = do
   mlist <- sttLayer $ readSTRef mlistRef
   blurbMaybeEnvMList mlist
 
+-- |Print a short summary of a nullable (via `Maybe`) reference to an
+-- `Env`ironment of an `ATMS`.
+--
 blurbMaybeEnv ::
   (MonadIO m, NodeDatum d) => Maybe (Env d i r s m) -> ATMST s m ()
 blurbMaybeEnv envm = case envm of
                        Just env -> blurbEnv env
                        Nothing -> liftIO $ putStr "<nothing>"
 
+-- |Print a short summary of one `Env`ironment of an `ATMS`.
+--
 blurbEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 blurbEnv env = do
   wng <- sttLayer $ readSTRef $ envWhyNogood env
@@ -2195,12 +2268,18 @@ blurbEnv env = do
       liftIO $ putStr $
         "{" ++ (intercalate ", " $ map (datumFmt . nodeDatum) nodes) ++ "}"
 
+-- |Give a verbose printout of the no-good `Env`ironments of an
+-- `ATMS`.
+--
 debugNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNogoods atms = do
   liftIO $ putStrLn "No-good environments:"
   nogoodTable <- getNogoodTable atms
   debugEnvTable atms nogoodTable
 
+-- |Give a verbose printout of the `Env`ironments of an `EnvTable` of
+-- an `ATMS`.
+--
 debugEnvTable ::
   (MonadIO m, NodeDatum d) =>
     ATMS d i r s m -> EnvTable d i r s m -> ATMST s m ()
@@ -2213,6 +2292,8 @@ debugEnvTable atms (EnvTable array) = do
       debugEnv env
 
 {-
+-- |Print a short summary of the label of a `Node` of an `ATMS`.
+--
 blurbNodeLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m String
 blurbNodeLabel node = do
@@ -2224,6 +2305,8 @@ blurbNodeLabel node = do
   liftIO $ putStrLn ""
 -}
 
+-- |Give a verbose printout of the label of a `Node` of an `ATMS`.
+--
 debugNodeLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 debugNodeLabel node = do
@@ -2234,6 +2317,8 @@ debugNodeLabel node = do
   blurbEnvList 10000 "\n" lbl
   liftIO $ putStrLn ""
 
+-- |Print a short summary of a list of `Env`ironments of an `ATMS`.
+--
 blurbEnvList ::
   (MonadIO m, NodeDatum d) => Int -> String -> [Env d i r s m] -> ATMST s m ()
 blurbEnvList multiLineIf lineLead envs =
