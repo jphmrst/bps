@@ -402,7 +402,7 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
   (dolist (env (cdr (assoc (length assumes)
 			   (atms-env-table (tms-node-atms (car assumes)))
 			   :TEST #'=))
-	       nil)
+	       nil) ;; Result of the loop if exited
     (if (equal (env-assumptions env) assumes)
 	(return env))))
 
@@ -492,6 +492,7 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 		      (format *trace-output*
 			  "~%  - ~a --> ???" alt-set)
 		      (let ((result
+			     ;; Like MAPCAR, but passing the result to NCONC.
 			     (mapcan #'(lambda (alt)
 					 (format *trace-output*
 					     "~%    - ~a --> ~a" alt (tms-node-label alt))
@@ -539,14 +540,23 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 
 
 (defun extend-via-defaults (solution remaining original)
-  (do ((new-solution)
+  "Refine one solution to add as many given defaults as possible."
+  (do ((new-solution)                   ; Set at the start of the body
+					; of the loop.  So the value
+					; does not communicate from
+					; one iteration to another,
+					; and note that it is not used
+					; in the result expression.
        (defaults remaining (cdr defaults)))
       ((null defaults)
+       ;; This big expression is the result value from the loop, given
+       ;; the final values for the above loop variables.
        (or (member solution *solutions* :TEST #'eq)
 	   (dolist (default original)
 	     (or (member default (env-assumptions solution)
 			 :TEST #'eq)
 		 (env-nogood? (cons-env default solution))
+                 ;; RETURN here exits the DOLIST.
 		 (return t)))
 	   (push solution *solutions*)))
     (setq new-solution (cons-env (car defaults) solution))

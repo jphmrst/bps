@@ -1452,20 +1452,9 @@ debugCreateEnvEnv env = do
   liftIO $ putStrLn ""
 
 -- Translated from @union-env@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun union-env (e1 e2)
--- >   (when (> (env-count e1) (env-count e2))
--- >     (psetq e1 e2 e2 e1))
--- >   (dolist (assume (env-assumptions e1))
--- >     (setq e2 (cons-env assume e2))
--- >     (if (env-nogood? e2) (return nil)))
--- >   e2)
 unionEnv ::
   (Debuggable m, NodeDatum d) =>
     Env d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
-{- TODO Bug in in here, or in consEnv.
--}
 unionEnv e1 e2 =
   if envCount e1 > envCount e2 then unionEnv' e2 e1 else unionEnv' e1 e2
   where unionEnv' e1 e2 = do
