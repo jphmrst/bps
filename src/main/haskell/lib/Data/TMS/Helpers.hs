@@ -144,6 +144,15 @@ foldlRefs f z (xr : xrs) = do
   x <- readSTRef xr
   foldlRefs f (f z x) xrs
 
+-- | Like `forM_`, but with the list under an `STRef`.  The first
+-- argument lifts an `STT` operation into @m@.
+forRM_ ::
+  (Monad m, Monad m0, Foldable t) =>
+    (STT s m0 (t a) -> m (t a)) -> STRef s (t a) -> (a -> m ()) -> m ()
+forRM_ liftSTT srcR f = do
+  src <- liftSTT $ readSTRef srcR
+  forM_ src f
+
 -- ** Stack-like operations
 
 -- |Push a value onto the front of the list at the given `STT`

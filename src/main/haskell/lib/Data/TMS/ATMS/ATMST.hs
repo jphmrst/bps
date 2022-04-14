@@ -568,6 +568,13 @@ setNodeRules :: (Monad m, NodeDatum d) => Node d i r s m -> [r] -> ATMST s m ()
 {-# INLINE setNodeRules #-}
 setNodeRules = setNodeMutable nodeRules
 
+-- |Return the `JustRule`s concluding a `Node`.
+getNodeJusts ::
+  (Monad m, NodeDatum d) =>
+    Node d i r s m -> ATMST s m [Justification d i r s m]
+{-# INLINE getNodeJusts #-}
+getNodeJusts = getNodeMutable nodeJusts
+
 -- |Return the `Node`'s consequences.
 getNodeConsequences ::
   (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [JustRule d i r s m]
@@ -1931,13 +1938,15 @@ whyNode = error "< TODO unimplemented whyNode >"
 -- |Print the justifying `Env`ironments which label each `Node` of an
 -- `ATMS`.
 --
--- TO BE TRANSLATED from @why-nodes@ in @atms.lisp@.
+-- Translated from @why-nodes@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun why-nodes (atms &optional (stream t))
 -- >   (dolist (n (reverse (atms-nodes atms))) (why-node n stream)))
 whyNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-whyNodes = error "< TODO unimplemented whyNodes >"
+whyNodes atms = do
+  nodes <- getNodes atms
+  forM_ nodes whyNode
 
 -- |Print a `Node`'s justifications.
 --
@@ -1948,8 +1957,13 @@ whyNodes = error "< TODO unimplemented whyNodes >"
 -- >   (format t "~% For ~A:" (node-string node))
 -- >   (dolist (j (tms-node-justs node))
 -- >     (print-justification j stream)))
-nodeJustifications :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-nodeJustifications = error "< TODO unimplemented nodeJustifications >"
+nodeJustifications :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+nodeJustifications node = do
+  nodeStr <- nodeString node
+  liftIO $ putStr $ " For " ++ nodeStr ++ ":"
+  justs <- getNodeJusts node
+  forM_ justs printJustification
+  error "< TODO unimplemented nodeJustifications >"
 
 -- |Retrieve an `ATMS`'s `Env`ironment with the given index number.
 --
@@ -2181,6 +2195,16 @@ printJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
 printJust rule = do
   infStr <- formatJustInformant rule
   liftIO $ putStr $ "<" ++ infStr ++ " " ++ show (justIndex rule) ++ ">"
+
+-- |Print a more verbose description of the `Justification`.
+printJustification ::
+  (MonadIO m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
+printJustification j = case j of
+  ByRule rule -> printJust rule
+  ByAssumption node -> do
+    liftIO $ putStr $ "Assumed node "
+    printNode node
+  ByContradiction -> liftIO $ putStrLn $ "By contradiction"
 
 -- |Give a verbose printout of one `Just`ification rule of an `ATMS`.
 --
