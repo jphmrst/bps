@@ -871,7 +871,7 @@ createNode atms datum isAssumption isContradictory = do
 -- |Mark the given `Node` as to be believed as an assumption by its
 -- `ATMS`.
 --
--- Translated from @assume-node@ in @atms.lisp@.
+-- TO BE TRANSLATED from @assume-node@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun assume-node (node &aux atms)
@@ -889,7 +889,7 @@ assumeNode = error "< TODO unimplemented assumeNode >"
 -- |Mark the given `Node` as an additional contradiction node of the
 -- `ATMS`.
 --
--- Translated from @make-contradiction@ in @atms.lisp@.
+-- TO BE TRANSLATED from @make-contradiction@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun make-contradiction
@@ -1407,7 +1407,7 @@ isInAntecedent nodes = do
   empty <- getEmptyEnvironment (nodeATMS (head nodes))
   isWeave empty nodes
 
--- Translated from @weave?@ in @atms.lisp@.
+-- |TO BE TRANSLATED from @weave?@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun weave? (env nodes &aux new-env)
@@ -1420,7 +1420,7 @@ isInAntecedent nodes = do
 isWeave :: (Monad m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
 isWeave = error "< TODO unimplemented isInAntecedent >"
 
--- Translated from @supporting-antecedent?@ in @atms.lisp@.
+-- |TO BE TRANSLATED from @supporting-antecedent?@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun supporting-antecedent? (nodes env)
@@ -1592,7 +1592,7 @@ debugConsEnvLookup (Just env) = do
   blurbEnv env
   liftIO $ putStrLn ""
 
--- Translated from @find-or-make-env@ in @atms.lisp@.
+-- |TO BE TRANSLATED from @find-or-make-env@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun find-or-make-env (assumptions atms)
@@ -1858,7 +1858,7 @@ interpretations ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m ()
 interpretations = error "< TODO unimplemented interpretations >"
 
--- Translated from @get-depth-solutions1@ in @atms.lisp@.
+-- |TO BE TRANSLATED from @get-depth-solutions1@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun get-depth-solutions1 (solution choice-sets
@@ -1881,7 +1881,7 @@ getDepthSolutions1 ::
   (Monad m, NodeDatum d) => Env d i r s m -> [[Env d i r s m]] -> ATMST s m ()
 getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
 
--- Translated from @extend-via-defaults@ in @atms.lisp@.
+-- |TO BE TRANSLATED from @extend-via-defaults@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
 -- > (defun extend-via-defaults (solution remaining original)
