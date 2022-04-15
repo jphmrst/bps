@@ -84,11 +84,11 @@ module Data.TMS.ATMS.ATMST (
   Env, EnvTable, envIndex, envAssumptions, getEnvNodes,
 
   -- * Deduction and search utilities
-  interpretations,
+  {- interpretations, -}
 
   -- ** Related to a node
   isTrueNode, isInNode, isInNodeByEnv, isOutNode, isNodeConsistentWith,
-  getNodeIsAssumption, getNodeIsContradictory, explainNode,
+  getNodeIsAssumption, getNodeIsContradictory, {- explainNode, -}
 
   -- ** Related to environments
   envIsNogood,
