@@ -33,6 +33,7 @@ data MList s a = MCons (STRef s a) (STRef s (MList s a))
                | MNil
                  -- ^ Regular old @nil@.
 
+-- |Convert a pure list into a mutable list.
 toMList :: Monad m => [a] -> STT s m (MList s a)
 toMList [] = return MNil
 toMList (x : xs) = do
