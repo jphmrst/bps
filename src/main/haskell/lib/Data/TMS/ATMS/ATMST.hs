@@ -590,6 +590,11 @@ setNodeConsequences = setNodeMutable nodeConsequences
 getNodeIsContradictory :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 
+-- |Set whether a `Node`'s is currently contradictory.
+setNodeIsContradictory :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+setNodeIsContradictory node =
+  sttLayer $ writeSTRef (nodeIsContradictory node) True
+
 -- |Return whether the `Node`'s is currently markable as an assumption.
 getNodeIsAssumption :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsAssumption node = sttLayer $ readSTRef (nodeIsAssumption node)
@@ -876,17 +881,6 @@ createNode atms datum isAssumption isContradictory = do
 -- `ATMS`.
 --
 -- Translated from @assume-node@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun assume-node (node &aux atms)
--- >   (unless (tms-node-assumption? node)
--- >     (setq atms (tms-node-atms node))
--- >     (debugging atms  "~%Converting ~A into an assumption" node)
--- >     (setf (tms-node-assumption? node) t)
--- >     (push node (atms-assumptions atms))
--- >     (update (list (create-env atms (list node)))
--- >        node
--- >        'ASSUME-NODE)))
 assumeNode :: (Debuggable m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 assumeNode node =
   unlessM (getNodeIsAssumption node) $ do
@@ -900,22 +894,15 @@ assumeNode node =
 -- |Mark the given `Node` as an additional contradiction node of the
 -- `ATMS`.
 --
--- TO BE TRANSLATED from @make-contradiction@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun make-contradiction
--- >        (node &aux (atms (tms-node-atms node)) nogood)
--- >   (unless (tms-node-contradictory? node)
--- >     (setf (tms-node-contradictory? node) t)
--- >     (push node (atms-contradictions atms))
--- >     (do nil (nil)
--- >       (if (setq nogood (car (tms-node-label node)))
--- >      (new-nogood atms nogood 'MAKE-CONTRADICTION)
--- >      (return nil)))))
+-- Translated from @make-contradiction@ in @atms.lisp@.
 makeContradiction :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-makeContradiction node =
+makeContradiction node = do
+  let atms = nodeATMS node
   unlessM (getNodeIsContradictory node) $ do
-    error "< TODO unimplemented makeContradiction >"
+    setNodeIsContradictory node
+    sttLayer $ push node $ atmsContradictions (nodeATMS node)
+    whileDoWith (getNodeLabel node) (not . null) $ \ (env : _) ->
+      newNogood atms env ByContradiction
 
 -- |Direct the `ATMS` to believe a particular `Node` when all of the
 -- given list of `Node`s are also believed.  The first argument is the

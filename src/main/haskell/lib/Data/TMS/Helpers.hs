@@ -62,6 +62,19 @@ forMM_ srcM f = do
   src <- srcM
   forM_ src f
 
+-- | A @while@ loop, guard at the top.
+whileDo :: Monad m => m Bool -> m () -> m ()
+whileDo cond body =
+  cond >>= \b -> if b then body >> whileDo cond body else return ()
+
+-- | A @while@ loop based on stuff, guard at the top.
+whileDoWith :: Monad m => m a -> (a -> Bool) -> (a -> m ()) -> m ()
+whileDoWith src predicate body = do
+  val <- src
+  if predicate val then (do body val
+                            whileDoWith src predicate body)
+  else return ()
+
 -- | Like `forM_`, but with an extra check run after the body of the
 -- loop.  If the check fails, the loop exits early.
 forMwhile_ :: Monad m => [a] -> m Bool -> (a -> m ()) -> m ()
