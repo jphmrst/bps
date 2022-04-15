@@ -327,7 +327,8 @@ data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
 
 -- |Shortcut maker for reading from an `ATMS` reference.
 getATMSMutable ::
-  (Monad m, NodeDatum d) => (ATMS d i r s m -> STRef s a) -> ATMS d i r s m  -> ATMST s m a
+  (Monad m, NodeDatum d) =>
+    (ATMS d i r s m -> STRef s a) -> ATMS d i r s m  -> ATMST s m a
 {-# INLINE getATMSMutable #-}
 getATMSMutable refGetter atms = sttLayer $ readSTRef (refGetter atms)
 -- |Shortcut to write to an ATMS reference.
@@ -335,7 +336,8 @@ setATMSMutable ::
   (Monad m, NodeDatum d) =>
     (ATMS d i r s m -> STRef s a) -> ATMS d i r s m -> a -> ATMST s m ()
 {-# INLINE setATMSMutable #-}
-setATMSMutable refGetter atms envs = sttLayer $ writeSTRef (refGetter atms) envs
+setATMSMutable refGetter atms envs =
+  sttLayer $ writeSTRef (refGetter atms) envs
 
 -- |Return the `ATMS`'s current `Node` list.
 getNodes ::
@@ -395,23 +397,27 @@ getContradictionNode atms = do
 
 -- |Return the `ATMS`'s current `Node` formatter.
 getNodeString ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (Node d i r s m -> String)
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> ATMST s m (Node d i r s m -> String)
 {-# INLINE getNodeString #-}
 getNodeString = getATMSMutable atmsNodeString
 -- |Shortcut to write to the reference to a ATMS's `Node` formatter.
 setNodeString ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> (Node d i r s m -> String) -> ATMST s m ()
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> (Node d i r s m -> String) -> ATMST s m ()
 {-# INLINE setNodeString #-}
 setNodeString = setATMSMutable atmsNodeString
 
 -- |Return the `ATMS`'s current `JustRule` formatter.
 getJustString ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (JustRule d i r s m -> String)
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> ATMST s m (JustRule d i r s m -> String)
 {-# INLINE getJustString #-}
 getJustString = getATMSMutable atmsJustString
 -- |Shortcut to write to the reference to a ATMS's `JustRule` formatter.
 setJustString ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> (JustRule d i r s m -> String) -> ATMST s m ()
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> (JustRule d i r s m -> String) -> ATMST s m ()
 {-# INLINE setJustString #-}
 setJustString = setATMSMutable atmsJustString
 
@@ -539,7 +545,8 @@ instance (Monad m, NodeDatum d) => Show (Node d i r s m) where
 
 -- |Shortcut maker for reading from a `Node` reference.
 getNodeMutable ::
-  (Monad m, NodeDatum d) => (Node d i r s m -> STRef s a) -> Node d i r s m  -> ATMST s m a
+  (Monad m, NodeDatum d) =>
+    (Node d i r s m -> STRef s a) -> Node d i r s m  -> ATMST s m a
 {-# INLINE getNodeMutable #-}
 getNodeMutable refGetter node = sttLayer $ readSTRef (refGetter node)
 -- |Shortcut to write to the reference to a node's label.
@@ -555,7 +562,8 @@ getNodeLabel ::
 {-# INLINE getNodeLabel #-}
 getNodeLabel = getNodeMutable nodeLabel
 -- |Shortcut to write to the reference to a node's label.
-setNodeLabel :: (Monad m, NodeDatum d) => Node d i r s m -> [Env d i r s m] -> ATMST s m ()
+setNodeLabel ::
+  (Monad m, NodeDatum d) => Node d i r s m -> [Env d i r s m] -> ATMST s m ()
 {-# INLINE setNodeLabel #-}
 setNodeLabel = setNodeMutable nodeLabel
 
@@ -582,21 +590,25 @@ getNodeConsequences ::
 getNodeConsequences = getNodeMutable nodeConsequences
 -- |Shortcut to write to the reference to a node's consequences.
 setNodeConsequences ::
-  (Monad m, NodeDatum d) => Node d i r s m -> [JustRule d i r s m] -> ATMST s m ()
+  (Monad m, NodeDatum d) =>
+    Node d i r s m -> [JustRule d i r s m] -> ATMST s m ()
 {-# INLINE setNodeConsequences #-}
 setNodeConsequences = setNodeMutable nodeConsequences
 
 -- |Return whether the `Node`'s is currently contradictory.
-getNodeIsContradictory :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
+getNodeIsContradictory ::
+  (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
 
 -- |Set whether a `Node`'s is currently contradictory.
-setNodeIsContradictory :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+setNodeIsContradictory ::
+  (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 setNodeIsContradictory node =
   sttLayer $ writeSTRef (nodeIsContradictory node) True
 
 -- |Return whether the `Node`'s is currently markable as an assumption.
-getNodeIsAssumption :: (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
+getNodeIsAssumption ::
+  (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsAssumption node = sttLayer $ readSTRef (nodeIsAssumption node)
 
 -- |The justification of one `ATMS` `Node` by zero or more others.
@@ -654,7 +666,8 @@ instance (Monad m, NodeDatum d) => Show (Env d i r s m) where
 
 -- |Shortcut maker for reading from a `Env` reference.
 getEnvMutable ::
-  (Monad m, NodeDatum d) => (Env d i r s m -> STRef s a) -> Env d i r s m  -> ATMST s m a
+  (Monad m, NodeDatum d) =>
+    (Env d i r s m -> STRef s a) -> Env d i r s m  -> ATMST s m a
 {-# INLINE getEnvMutable #-}
 getEnvMutable refGetter env = sttLayer $ readSTRef (refGetter env)
 -- |Shortcut to write to the reference to a env's label.
@@ -665,10 +678,12 @@ setEnvMutable ::
 setEnvMutable refGetter env envs = sttLayer $ writeSTRef (refGetter env) envs
 
 -- |Shortcut for reading the `Node`s of an `Env`.
-getEnvNodes :: (Monad m, NodeDatum d) => Env d i r s m  -> ATMST s m [Node d i r s m]
+getEnvNodes ::
+  (Monad m, NodeDatum d) => Env d i r s m  -> ATMST s m [Node d i r s m]
 getEnvNodes = getEnvMutable envNodes
 -- |Shortcut for writing the `Node`s of an `Env`.
-setEnvNodes :: (Monad m, NodeDatum d) => Env d i r s m  -> [Node d i r s m] -> ATMST s m ()
+setEnvNodes ::
+  (Monad m, NodeDatum d) => Env d i r s m  -> [Node d i r s m] -> ATMST s m ()
 setEnvNodes = setEnvMutable envNodes
 
 -- |Shortcut for reading the rules of an `Env`.
@@ -750,7 +765,8 @@ orderedPush = error "< unimplemented orderedPush >"
 -- |We order assumptions in `Env` lists by their index.
 --
 -- Translated from @assumptio-order@ in @atms.lisp@.
-assumptionOrder :: (Monad m, NodeDatum d) => Node d i r s m -> Node d i r s m -> Bool
+assumptionOrder ::
+  (Monad m, NodeDatum d) => Node d i r s m -> Node d i r s m -> Bool
 assumptionOrder n1 n2 = nodeIndex n1 < nodeIndex n2
 
 -- Ordering predicate for two `Env`s; uses their internal index.
@@ -1406,7 +1422,8 @@ isInAntecedent nodes = do
 -- |Check whether any union of antecedent environments is consistent.
 --
 -- Translated from @weave?@ in @atms.lisp@.
-isWeave :: (Monad m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
+isWeave ::
+  (Monad m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
 isWeave _ [] = return True
 isWeave env (n : ns) =
   anyMM (\e -> do
@@ -1631,7 +1648,9 @@ insertInTable atms tableRef env = do
     writeSTArray array count $ env : oldEnvs
 
 -- Translated from @lookup-env@ in @atms.lisp@.
-lookupEnv :: (Monad m, NodeDatum d) => [Node d i r s m] -> ATMST s m (Maybe (Env d i r s m))
+lookupEnv ::
+  (Monad m, NodeDatum d) =>
+    [Node d i r s m] -> ATMST s m (Maybe (Env d i r s m))
 lookupEnv [] = return Nothing
 lookupEnv assumptions@(a : _) = do
   let atms = nodeATMS a
@@ -1672,7 +1691,8 @@ compareEnv e1 e2 =
 
 -- |Return true if the first sorted (by `Env` index) node list is a
 -- subset of the second.
-nodeListIsSubsetEq :: (Monad m, NodeDatum d) => [Node d i r s m] -> [Node d i r s m] -> Bool
+nodeListIsSubsetEq ::
+  (Monad m, NodeDatum d) => [Node d i r s m] -> [Node d i r s m] -> Bool
 nodeListIsSubsetEq [] _ = True
 nodeListIsSubsetEq _ [] = False
 nodeListIsSubsetEq l1@(x : xs) (y : ys) =
@@ -2058,7 +2078,8 @@ printEnvTable = error "< TODO unimplemented printEnvTable >"
 -- > (defun print-atms-statistics (atms)
 -- >   (print-table "~% For env table:" (atms-env-table atms))
 -- >   (print-table "~% For nogood table:" (atms-nogood-table atms)))
-printAtmsStatistics :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
+printAtmsStatistics ::
+  (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
 
 -- |Print the entries of an `EnvTable`.
@@ -2071,12 +2092,14 @@ printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
 -- >   (dolist (entry table)
 -- >     (format t "~%   Length ~D, ~D" (car entry)
 -- >        (length (cdr entry)))))
-printTable :: (MonadIO m, NodeDatum d) => String -> EnvTable d i r s m -> ATMST s m ()
+printTable ::
+  (MonadIO m, NodeDatum d) => String -> EnvTable d i r s m -> ATMST s m ()
 printTable = error "< TODO unimplemented printTable >"
 
 -- |Give a verbose printout of an `ATMS`.
 --
-debugAtms :: (MonadIO m, NodeDatum d) => String -> ATMS d i r s m -> ATMST s m ()
+debugAtms ::
+  (MonadIO m, NodeDatum d) => String -> ATMS d i r s m -> ATMST s m ()
 debugAtms blurb atms = do
   liftIO $ putStrLn $ "=============== " ++ atmsTitle atms ++ ": " ++ blurb
   debugNodes atms
