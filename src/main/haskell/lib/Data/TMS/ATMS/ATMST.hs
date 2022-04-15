@@ -43,7 +43,6 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
-{- LANGUAGE ScopedTypeVariables #-}
 
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
@@ -153,6 +152,10 @@ data AtmsErr = CannotRemoveNodeWIthConsequences String Int
                -- created with `createATMS`, since this latter
                -- function does set up the default contradiction node
                -- before returning the new `ATMS`.
+             | UnexpectedNonruleJustification
+               -- ^ Indicates that a `Justification` other than
+               -- `ByRule` `JustRule` was found, specifically in a
+               -- `removeNode` call.
              | FromMonadFail String
                -- ^ Indicates a pattern-matching failure within an
                -- `ATMST` operation.
@@ -621,6 +624,9 @@ data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
   -- |The antecedents of this inference rule.
   justAntecedents :: [Node d i r s m]
 }
+
+instance (Monad m, NodeDatum d) => Eq (JustRule d i r s m) where
+  e1 == e2 = (justIndex e1) == (justIndex e2)
 
 -- |Description of why a `Node` may be believed by the `ATMS`.
 data Justification d i r s m =
@@ -1444,25 +1450,29 @@ isSupportingAntecedent nodes env = allByM (\n -> isInNodeByEnv n env) nodes
 
 -- |Remove a `Node` from the `ATMS`.
 --
--- TO BE TRANSLATED from @remove-node@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun remove-node (node &aux atms)
--- >   (if (tms-node-consequences node)
--- >       (error "Can't remove node with consequences"))
--- >   (setq atms (tms-node-atms node))
--- >   (setf (atms-nodes atms)
--- >    (delete node (atms-nodes atms) :test #'eq :count 1))
--- >   (dolist (just (tms-node-justs node))
--- >     (dolist (ant (just-antecedents just))
--- >       (setf (tms-node-consequences ant)
--- >        (delete just (tms-node-consequences ant)
--- >                :test #'eq :count 1))))
--- >   (dolist (env (tms-node-label node))
--- >     (setf (env-nodes env)
--- >      (delete node (env-nodes env) :test #'eq :count 1))))
+-- Translated from @remove-node@ in @atms.lisp@.
 removeNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-removeNode = error "< TODO unimplemented removeNode >"
+removeNode node = do
+  let atms = nodeATMS node
+  whenM (fmap (not . null) $ getNodeConsequences node) $ do
+    nodeStr <- getNodeString atms
+    exceptLayer $ throwE $
+      CannotRemoveNodeWIthConsequences (nodeStr node) (nodeIndex node)
+
+  let nodeRef = atmsNodes atms
+   in sttLayer $ readSTRef nodeRef >>= writeSTRef nodeRef . delete node
+
+  forRM_ sttLayer (nodeJusts node) $ \ justification ->
+    case justification of
+      ByRule justRule -> forM_ (justAntecedents justRule) $ \ ant -> do
+        let conseqRef = nodeConsequences ant
+          in sttLayer $
+               readSTRef conseqRef >>= writeSTRef conseqRef . delete justRule
+      _ -> exceptLayer $ throwE $ UnexpectedNonruleJustification
+
+  forRM_ sttLayer (nodeLabel node) $ \ env -> do
+    let nodesRef = envNodes env
+      in sttLayer $ readSTRef nodesRef >>= writeSTRef nodesRef . delete node
 
 -- * Creating and extending environments.
 

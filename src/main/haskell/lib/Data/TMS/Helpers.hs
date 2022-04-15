@@ -176,7 +176,8 @@ foldlRefs f z (xr : xrs) = do
 -- argument lifts an `STT` operation into @m@.
 forRM_ ::
   (Monad m, Monad m0, Foldable t) =>
-    (STT s m0 (t a) -> m (t a)) -> STRef s (t a) -> (a -> m ()) -> m ()
+    (STT s m0 (t a) -> m (t a)) ->
+      STRef s (t a) -> (a -> m ()) -> m ()
 forRM_ liftSTT srcR f = do
   src <- liftSTT $ readSTRef srcR
   forM_ src f
