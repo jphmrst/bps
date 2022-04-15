@@ -764,7 +764,7 @@ orderedPush = error "< unimplemented orderedPush >"
 
 -- |We order assumptions in `Env` lists by their index.
 --
--- Translated from @assumptio-order@ in @atms.lisp@.
+-- Translated from @assumption-order@ in @atms.lisp@.
 assumptionOrder ::
   (Monad m, NodeDatum d) => Node d i r s m -> Node d i r s m -> Bool
 assumptionOrder n1 n2 = nodeIndex n1 < nodeIndex n2
@@ -780,6 +780,8 @@ envOrder e1 e2 = envIndex e1 < envIndex e2
 -- * Basic inference engine interface.
 
 -- |Create a new, empty ATMS.
+--
+-- Translated from @create-atms@ in @atms.lisp@.
 createATMS ::
   (Debuggable m, NodeDatum d) => String -> ATMST s m (ATMS d i r s m)
 createATMS title = do
@@ -1559,6 +1561,8 @@ debugUnionEnvResult result = do
 
 -- |Derive an environment from the addition of one additional
 -- assumption to a previous `Env`'s assumption list.
+--
+-- Translated from @cons-env@ in @atms.lisp@.
 consEnv ::
   (Debuggable m, NodeDatum d) =>
     Node d i r s m -> Env d i r s m -> ATMST s m (Env d i r s m)
