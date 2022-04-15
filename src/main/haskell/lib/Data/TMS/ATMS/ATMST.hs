@@ -1999,7 +1999,6 @@ nodeJustifications node = do
   liftIO $ putStr $ " For " ++ nodeStr ++ ":"
   justs <- getNodeJusts node
   forM_ justs printJustification
-  error "< TODO unimplemented nodeJustifications >"
 
 -- |Retrieve an `ATMS`'s `Env`ironment with the given index number.
 --
@@ -2018,16 +2017,12 @@ e atms i = do
 
 -- |Print an environment.
 --
--- TO BE TRANSLATED from @print-env@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun print-env (e &optional (stream t))
--- >   (format stream "~%~A:~A"
--- >      e (if (env-nogood? e)
--- >            "* " " "))
--- >   (env-string e stream))
+-- Translated from @print-env@ in @atms.lisp@.
 printEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
-printEnv = error "< TODO unimplemented printEnv >"
+printEnv env = do
+  whenM (envIsNogood env) $ liftIO $ putStr "* "
+  envString env
+  liftIO $ putStrLn ""
 
 -- |Convert an `Env`ironment into a string listing the nodes of the
 -- environment.
@@ -2044,61 +2039,49 @@ envString env = do
 
 -- |List the nogood `Env`ironments of an `ATMS`.
 --
--- TO BE TRANSLATED from @print-nogoods@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun print-nogoods (atms &optional (stream t))
--- >   (print-env-table (atms-nogood-table atms) stream))
+-- Translated from @print-nogoods@ in @atms.lisp@.
 printNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-printNogoods = error "< TODO unimplemented printNogoods >"
+printNogoods atms = getNogoodTable atms >>= \table -> printEnvTable table
 
 -- |Print the `Env`ironments of an `ATMS`.
 --
--- TO BE TRANSLATED from @print-envs@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun print-envs (atms &optional (stream t))
--- >   (print-env-table (atms-env-table atms) stream))
+-- Translated from @print-envs@ in @atms.lisp@.
 printEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-printEnvs = error "< TODO unimplemented printEnvs >"
+printEnvs atms = getEnvTable atms >>= \table -> printEnvTable table
 
 -- |Print the `Env`ironments contained in the given `EnvTable`.
 --
--- TO BE TRANSLATED from @print-env-table@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun print-env-table (table stream)
--- >   (dolist (bucket table)
--- >     (dolist (env (cdr bucket))
--- >       (print-env env stream))))
+-- Translated from @print-env-table@ in @atms.lisp@.
 printEnvTable :: (MonadIO m, NodeDatum d) => EnvTable d i r s m -> ATMST s m ()
-printEnvTable = error "< TODO unimplemented printEnvTable >"
+printEnvTable (EnvTable arr) = do
+  let (lo, hi) = boundsSTArray arr
+  forM_ [lo..hi] $ \i ->
+    forMM_ (sttLayer $ readSTArray arr i) printEnv
 
 -- |Print statistics about an `ATMS`.
 --
--- TO BE TRANSLATED from @print-atms-statistics@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun print-atms-statistics (atms)
--- >   (print-table "~% For env table:" (atms-env-table atms))
--- >   (print-table "~% For nogood table:" (atms-nogood-table atms)))
+-- Translated from @print-atms-statistics@ in @atms.lisp@.
 printAtmsStatistics ::
   (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-printAtmsStatistics = error "< TODO unimplemented printAtmsStatistics >"
+printAtmsStatistics atms = do
+  liftIO $ putStrLn $ "Env table: "
+  printEnvs atms
+  liftIO $ putStrLn $ "Nogood table: "
+  printNogoods atms
 
 -- |Print the entries of an `EnvTable`.
 --
--- TO BE TRANSLATED from @print-table@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun print-table (msg table)
--- >   (format t msg)
--- >   (dolist (entry table)
--- >     (format t "~%   Length ~D, ~D" (car entry)
--- >        (length (cdr entry)))))
+-- Translated from @print-table@ in @atms.lisp@.
 printTable ::
   (MonadIO m, NodeDatum d) => String -> EnvTable d i r s m -> ATMST s m ()
-printTable = error "< TODO unimplemented printTable >"
+printTable msg (EnvTable arr) = do
+  liftIO $ putStr msg
+  let (lo, hi) = boundsSTArray arr
+  forM_ [lo..hi] $ \i -> do
+    row <- sttLayer $ readSTArray arr i
+    let count = length row
+    when (count > 0) $
+      liftIO $ putStrLn $ "  " ++ show count ++ " of length " ++ show i
 
 -- |Give a verbose printout of an `ATMS`.
 --
