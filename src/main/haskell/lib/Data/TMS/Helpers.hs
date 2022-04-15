@@ -35,6 +35,21 @@ anyByM k (x : xs) = do
   b <- k x
   if b then return True else anyByM k xs
 
+-- | Check whether a returned list contains a value which satisfies
+-- some monadic predicate.
+anyMM :: (Monad m) => (a -> m Bool) -> m [a] -> m Bool
+anyMM predM srcM = do
+  src <- srcM
+  anyByM predM src
+
+-- | Check whether all of the values of a list, when applied to a
+-- computation, return @True@.
+allByM :: (Monad m) => (a -> m Bool) -> [a] -> m Bool
+allByM _ [] = return True
+allByM k (x : xs) = do
+  b <- k x
+  if b then allByM k xs else return False
+
 -- * Ordered lists
 
 -- | Determine whether one list is a subset of the other, under the

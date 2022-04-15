@@ -1398,38 +1398,31 @@ debugWeaveLoopPairEnd addR envmsR = do
   liftIO $ putStrLn ""
 
 -- Translated from @in-antecedent?@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun in-antecedent? (nodes)
--- >   (or (null nodes)
--- >       (weave? (atms-empty-env (tms-node-atms (car nodes))) nodes)))
 isInAntecedent :: (Monad m, NodeDatum d) => [Node d i r s m] -> ATMST s m Bool
 isInAntecedent [] = return True
 isInAntecedent nodes = do
   empty <- getEmptyEnvironment (nodeATMS (head nodes))
   isWeave empty nodes
 
--- |TO BE TRANSLATED from @weave?@ in @atms.lisp@.
+-- |Check whether any union of antecedent environments is consistent.
 --
--- > ;; In atms.lisp
--- > (defun weave? (env nodes &aux new-env)
--- >   (cond ((null nodes) t)
--- >    (t (dolist (e (tms-node-label (car nodes)))
--- >         (setq new-env (union-env e env))
--- >         (unless (env-nogood? new-env)
--- >           (if (weave? new-env (cdr nodes))
--- >               (return T)))))))
+-- Translated from @weave?@ in @atms.lisp@.
 isWeave :: (Monad m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
-isWeave = error "< TODO unimplemented isInAntecedent >"
+isWeave _ [] = return True
+isWeave env (n : ns) =
+  anyMM (\e -> do
+            newEnv <- unionEnv e env
+            ifM (envIsNogood e) (return False) (isWeave newEnv ns))
+        (getNodeLabel n)
 
--- |TO BE TRANSLATED from @supporting-antecedent?@ in @atms.lisp@.
+-- |Returns `True` if the `Env`ironment argument supports all of the
+-- given `Node`s.
 --
--- > ;; In atms.lisp
--- > (defun supporting-antecedent? (nodes env)
--- >   (dolist (node nodes t) (unless (in-node? node env) (return nil))))
+-- Translated from @supporting-antecedent?@ in @atms.lisp@.
 isSupportingAntecedent ::
-  (Monad m, NodeDatum d) => [Node d i r s m] -> Env d i r s m -> ATMST s m Bool
-isSupportingAntecedent = error "< TODO unimplemented isSupportingAntecedent >"
+  (Monad m, NodeDatum d) =>
+    [Node d i r s m] -> Env d i r s m -> ATMST s m Bool
+isSupportingAntecedent nodes env = allByM (\n -> isInNodeByEnv n env) nodes
 
 -- |Remove a `Node` from the `ATMS`.
 --
@@ -1594,19 +1587,19 @@ debugConsEnvLookup (Just env) = do
   blurbEnv env
   liftIO $ putStrLn ""
 
--- |TO BE TRANSLATED from @find-or-make-env@ in @atms.lisp@.
+-- |Return the `Env`ironment containing the given list of `Node`s,
+-- creating one if necessary.
 --
--- > ;; In atms.lisp
--- > (defun find-or-make-env (assumptions atms)
--- >   (unless assumptions
--- >     (return-from find-or-make-env (atms-empty-env atms)))
--- >   ;; Presumes the list of assumptions is ordered properly
--- >   (or (lookup-env assumptions)
--- >       (create-env atms assumptions)))
+-- Translated from @find-or-make-env@ in @atms.lisp@.
 findOrMakeEnv ::
   (Monad m, NodeDatum d) =>
     [Node d i r s m] -> ATMS d i r s m -> ATMST s m (Env d i r s m)
-findOrMakeEnv = error "< TODO unimplemented findOrMakeEnv >"
+findOrMakeEnv [] atms = getEmptyEnvironment atms
+findOrMakeEnv assumptions atms = do
+  check <- lookupEnv assumptions
+  case check of
+    Nothing -> createEnv atms assumptions
+    Just env -> return env
 
 -- * Env tables.
 

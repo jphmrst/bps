@@ -327,6 +327,7 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
       (weave? (atms-empty-env (tms-node-atms (car nodes))) nodes)))
   
 (defun weave? (env nodes &aux new-env)
+  "Check whether any union of antecedent environments is consistent."
   (cond ((null nodes) t)			
 	(t (dolist (e (tms-node-label (car nodes)))
 	     (setq new-env (union-env e env))
