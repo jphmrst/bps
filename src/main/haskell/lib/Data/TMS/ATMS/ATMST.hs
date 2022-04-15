@@ -885,11 +885,10 @@ assumeNode :: (Debuggable m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 assumeNode node =
   unlessM (getNodeIsAssumption node) $ do
     let atms = nodeATMS node
-     in do
-      sttLayer $ push node (atmsAssumptions atms)
-      selfEnv <- findOrMakeEnv [node] atms
-      nodes <- sttLayer $ toMList [Just selfEnv]
-      update nodes node (ByAssumption node)
+    sttLayer $ push node (atmsAssumptions atms)
+    selfEnv <- findOrMakeEnv [node] atms
+    nodes <- sttLayer $ toMList [Just selfEnv]
+    update nodes node (ByAssumption node)
 
 -- |Mark the given `Node` as an additional contradiction node of the
 -- `ATMS`.
@@ -900,7 +899,7 @@ makeContradiction node = do
   let atms = nodeATMS node
   unlessM (getNodeIsContradictory node) $ do
     setNodeIsContradictory node
-    sttLayer $ push node $ atmsContradictions (nodeATMS node)
+    sttLayer $ push node $ atmsContradictions atms
     whileDoWith (getNodeLabel node) (not . null) $ \ (env : _) ->
       newNogood atms env ByContradiction
 
@@ -1943,25 +1942,19 @@ explainNode1 = error "< TODO unimplemented explainNode1 >"
 
 -- |Print the justifying `Env`ironments which label a `Node`.
 --
--- TO BE TRANSLATED from @why-node@ in @atms.lisp@.
---
--- > ;;; Printing
--- > (defun why-node (node &optional (stream t) (prefix ""))
--- >   (format stream "~%<~A~A,{" prefix (tms-node-datum node))
--- >   (dolist (e (tms-node-label node))
--- >     (env-string e stream))
--- >   (format stream "}>"))
-whyNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m (Node d i r s m)
-whyNode = error "< TODO unimplemented whyNode >"
+-- Translated from @why-node@ in @atms.lisp@.
+whyNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+whyNode node = do
+  let atms = nodeATMS node
+  datumStr <- getDatumString atms
+  liftIO $ putStr $ "<" ++ datumStr (nodeDatum node)
+  forMM_ (getNodeLabel node) envString
+  liftIO $ putStrLn ">"
 
 -- |Print the justifying `Env`ironments which label each `Node` of an
 -- `ATMS`.
 --
 -- Translated from @why-nodes@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun why-nodes (atms &optional (stream t))
--- >   (dolist (n (reverse (atms-nodes atms))) (why-node n stream)))
 whyNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 whyNodes atms = do
   nodes <- getNodes atms
@@ -2015,18 +2008,13 @@ printEnv = error "< TODO unimplemented printEnv >"
 -- |Convert an `Env`ironment into a string listing the nodes of the
 -- environment.
 --
--- TO BE TRANSLATED from @env-string@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun env-string (e &optional stream
--- >                      &aux assumptions strings printer)
--- >   (setq assumptions (env-assumptions e))
--- >   (when assumptions
--- >     (setq printer (atms-node-string (tms-node-atms (car assumptions)))))
--- >   (dolist (a assumptions) (push (funcall printer a) strings))
--- >   (format stream "{~{~A~^,~}}" (sort strings #'string-lessp)))
-envString :: (Monad m, NodeDatum d) => Env d i r s m -> ATMST s m String
-envString = error "< TODO unimplemented envString >"
+-- Translated from @env-string@ in @atms.lisp@.
+envString :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
+envString env = do
+  let assumptions = envAssumptions env
+  unless (null assumptions) $ do
+    printer <- getNodeString (nodeATMS (head assumptions))
+    liftIO $ putStr $ intercalate ", " (map printer assumptions)
 
 -- * Printing global data
 
