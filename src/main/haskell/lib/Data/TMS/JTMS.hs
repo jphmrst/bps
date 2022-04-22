@@ -118,6 +118,7 @@ import Control.Monad.ST.Trans
 import Control.Monad.Except
 import Control.Monad.Extra
 import Data.TMS.Helpers
+import Data.TMS.Dbg
 
 -- * The @JTMST@ monad transformer
 --
@@ -826,7 +827,7 @@ justifyNode informant consequence antecedents =
   let jtms = nodeJTMS consequence
   in do
     justIdx <- JtmsT $ nextJustCounter jtms
-    just <- return $ JustRule justIdx informant consequence antecedents
+    let just = JustRule justIdx informant consequence antecedents
 
     -- Add this new JustRule as a possible justification of the
     -- consequent.
@@ -1567,8 +1568,3 @@ debugJust jtms just = do
 -- >                  olen))))))
 
 -- * Other helpers
-
--- |This instance declaration is not part of `STT`, but it is
--- convenient.
-instance MonadIO m => MonadIO (STT s m) where
-  liftIO = lift . liftIO
