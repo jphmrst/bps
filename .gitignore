@@ -6,3 +6,8 @@ target
 .stack-work
 BPS.cabal
 stack.yaml.lock
+.bloop/
+.metals/
+project/.bloop/
+project/metals.sbt
+project/project/
