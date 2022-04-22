@@ -9,7 +9,7 @@ copyright:           "2022 John Maraist; 1986-1993 Kenneth D. Forbus, Johan de K
 category:	     "Truth maintenance"
 
 synopsis:	     "Translations of classic Truth Maintenance Systems"
-description:	     "Haskell monad transformer translations of the classic Truth Maintenance Systems of Forbus and de Kleer's _Building Problem Solvers_.  See the GitHub repository <https://github.com/jphmrst/bps/>, or the Haddock documentation."
+description:	     "Haskell monad transformer-based translations of the classic Truth Maintenance Systems of Forbus and de Kleer's _Building Problem Solvers_.  See the GitHub repository <https://github.com/jphmrst/bps/>, or the Haddock documentation."
 
 extra-source-files:
 - README.md
