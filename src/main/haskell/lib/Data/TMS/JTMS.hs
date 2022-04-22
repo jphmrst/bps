@@ -118,6 +118,7 @@ import Control.Monad.ST.Trans
 import Control.Monad.Except
 import Control.Monad.Extra
 import Data.TMS.Helpers
+import Data.TMS.Dbg
 
 -- * The @JTMST@ monad transformer
 --
@@ -826,7 +827,7 @@ justifyNode informant consequence antecedents =
   let jtms = nodeJTMS consequence
   in do
     justIdx <- JtmsT $ nextJustCounter jtms
-    just <- return $ JustRule justIdx informant consequence antecedents
+    let just = JustRule justIdx informant consequence antecedents
 
     -- Add this new JustRule as a possible justification of the
     -- consequent.

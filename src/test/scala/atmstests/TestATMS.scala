@@ -33,16 +33,22 @@ class TestATMS extends AnyFlatSpec with Matchers {
 
     val a = atms.createNode("A", isAssumption = true)
     a.label.length `should` be (1)
+    a.label(0).assumptions.length `should` be (1)
+    a.label(0).assumptions(0) `should` be (a)
     atms.lookupEnv(List(a)).map(a.label.contains(_)).getOrElse(false)
       `should` be (true)
 
     val c = atms.createNode("C", isAssumption = true)
     c.label.length `should` be (1)
+    c.label(0).assumptions.length `should` be (1)
+    c.label(0).assumptions(0) `should` be (c)
     atms.lookupEnv(List(c)).map(c.label.contains(_)).getOrElse(false)
       `should` be (true)
 
     val e = atms.createNode("E", isAssumption = true)
     e.label.length `should` be (1)
+    e.label(0).assumptions.length `should` be (1)
+    e.label(0).assumptions(0) `should` be (e)
     atms.lookupEnv(List(e)).map(e.label.contains(_)).getOrElse(false)
       `should` be (true)
 

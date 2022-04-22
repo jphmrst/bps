@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+stack build --file-watch \
+      --copy-bins \
+      --haddock BPS \
+      --exec 'echo All targets completed' \
+      --exec '/home/jm/.local/bin/hbps' \
