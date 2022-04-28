@@ -1,23 +1,31 @@
+{-# LANGUAGE RankNTypes #-}
+
 module Main where
 
 import ATMSTrun
 import JTMSrun
 import Control.Monad.Random
+import Control.Monad.Random.Class
+import Data.TMS.ATMS.ATMST
 
 main :: IO ()
 main = do
-  runATMS1
-  -- runJTMS1
+  gen <- getStdGen
+  evalRandT (runATMST $
+              makeATMS (IntRange 500 510) (IntRange 1000 1010)
+                       0.1
+                       (IntRange 50 60) (IntRange 15 20)
+                       False) gen
   return ()
 
-intSet :: (RandomGen g) => Int -> Int -> Rand g [Int]
+intSet :: (RandomGen g, Monad m) => Int -> Int -> RandT g m [Int]
 intSet 0 _ = return []
 intSet n m = do
   x <- getRandomR (0, m)
   xs <- intSet (n - 1) m
   return $ x : xs
 
-intSetExcept :: (RandomGen g) => Int -> Int -> Int -> Rand g [Int]
+intSetExcept :: (RandomGen g, Monad m) => Int -> Int -> Int -> RandT g m [Int]
 intSetExcept 0 _ _ = return []
 intSetExcept n m d = do
   x <- getRandomR (0, m)
@@ -27,12 +35,46 @@ intSetExcept n m d = do
 
 data IntRange = IntRange { lo :: Int, hi :: Int }
 
-sample :: (RandomGen g) => IntRange -> Rand g Int
+sample :: (RandomGen g, Monad m) => IntRange -> RandT g m Int
 sample (IntRange lo hi) = getRandomR (lo, hi)
 
+coinFlip :: (RandomGen g, Monad m) => Double -> RandT g m Bool
+coinFlip p = do
+  q <- getRandomR (0.0, 1.0)
+  return $ q <= p
+
 makeATMS ::
-  (RandomGen g) =>
-    IntRange -> IntRange -> Double -> IntRange -> IntRange -> Bool -> Rand g Int
+  (RandomGen g, MonadIO m) =>
+    IntRange -> IntRange -> Double -> IntRange -> IntRange -> Bool ->
+      ATMST s (RandT g m) ()
 makeATMS assumptionsRange nonassumptionsRange contradictionChance
          justificationsPerConclusion antecedentsPerJustifications cyclic = do
-  error "TODO"
+
+  atms <- createATMS "Random ATMS"
+  assumptions <- lift $ sample assumptionsRange
+  nonassumptions <- lift $ sample nonassumptionsRange
+  let totalNodes = assumptions + nonassumptions
+
+  assumptionNodes <- forM [0 .. assumptions - 1] $ \i ->
+    createNode atms ("Node-" ++ show i) True False
+
+  nonassumptionNodes <- forM [0 .. nonassumptions - 1] $ \i -> do
+    isContradiction <- lift $ coinFlip contradictionChance
+    let idx = assumptions + i
+    createNode atms ("Node-" ++ show idx) False isContradiction
+
+  let nodes = assumptionNodes ++ nonassumptionNodes
+
+  {-# SCC "mainLoop" #-} forM_ [0 .. nonassumptions - 1] $ \i -> do
+    let idx = assumptions + i
+    let node = nodes !! idx
+    justifications <- lift $ sample justificationsPerConclusion
+    -- lift $ lift $ liftIO $ putStrLn $
+    --   show justifications ++ " justifications for node " ++ show idx
+    forM_ [0 .. justifications - 1] $ \j -> do
+      thisSize <- lift $ sample antecedentsPerJustifications
+      antsIdx <- lift $ if cyclic
+        then intSet thisSize $ idx - 1
+        else intSetExcept thisSize (totalNodes - 1) j
+      let ants = map (nodes !!) antsIdx
+      {-# SCC "justCalls" #-} justifyNode (show i ++ "." ++ show j) node ants
