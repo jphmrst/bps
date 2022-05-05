@@ -10,12 +10,14 @@ import Data.TMS.ATMS.ATMST
 
 main :: IO ()
 main = do
-  gen <- getStdGen
+  -- gen <- getStdGen
+  let gen = mkStdGen 8675309 --- Fix for comparing like to like
   evalRandT (runATMST $
-              makeATMS (IntRange 500 510) (IntRange 1000 1010)
-                       0.1
-                       (IntRange 50 60) (IntRange 15 20)
-                       False) gen
+              makeForceATMS
+                (IntRange 800 810) (IntRange 4000 4010)
+                0.1
+                (IntRange 50 60) (IntRange 25 30)
+                False) gen
   return ()
 
 intSet :: (RandomGen g, Monad m) => Int -> Int -> RandT g m [Int]
@@ -43,14 +45,17 @@ coinFlip p = do
   q <- getRandomR (0.0, 1.0)
   return $ q <= p
 
-makeATMS ::
+makeForceATMS ::
   (RandomGen g, MonadIO m) =>
     IntRange -> IntRange -> Double -> IntRange -> IntRange -> Bool ->
       ATMST s (RandT g m) ()
-makeATMS assumptionsRange nonassumptionsRange contradictionChance
-         justificationsPerConclusion antecedentsPerJustifications cyclic = do
+makeForceATMS assumptionsRange nonassumptionsRange contradictionChance
+              justificationsPerConclusion antecedentsPerJustifications
+              cyclic = do
 
   atms <- createATMS "Random ATMS"
+  setDatumStringViaString atms
+  setInformantStringViaString atms
   assumptions <- lift $ sample assumptionsRange
   nonassumptions <- lift $ sample nonassumptionsRange
   let totalNodes = assumptions + nonassumptions
@@ -78,3 +83,5 @@ makeATMS assumptionsRange nonassumptionsRange contradictionChance
         else intSetExcept thisSize (totalNodes - 1) j
       let ants = map (nodes !!) antsIdx
       {-# SCC "justCalls" #-} justifyNode (show i ++ "." ++ show j) node ants
+    {-# SCC "forceLabel" #-} debugNodeLabel node
+
