@@ -107,7 +107,7 @@ module Data.TMS.ATMS.ATMST (
   whyNodes, whyNode,
 
   -- ** Environments, labels, and tables
-  debugEnv, debugEnvTable, formatNodeLabel,
+  debugEnv, debugEnvTable, formatNodeLabel, debugNodeLabel,
   debugNogoods,
   printEnv, printNogoods, printEnvs, printEnvTable, printTable,
 
@@ -948,7 +948,8 @@ justifyNode informant consequence antecedents = do
 
   -- Register the new justification with the nodes that can trigger
   -- it.
-  sttLayer $ forM_ antecedents $ \node -> push just $ nodeConsequences node
+  sttLayer $ forM_ antecedents $ \node ->
+    {-# SCC "justifyNode.push" #-} push just $ nodeConsequences node
 
   -- Register the new justification with the ATMS itself.
   sttLayer $ push just $ atmsJusts atms
@@ -1255,12 +1256,13 @@ weave :: (Debuggable m, NodeDatum d) =>
     (MList s (Maybe (Env d i r s m))) ->
       [Node d i r s m] ->
         ATMST s m (MList s (Maybe (Env d i r s m)))
-weave antecedent givenEnvs antecedents = do
+weave antecedent givenEnvs antecedents = {-# SCC "weave.top" #-} do
   $(dbg [| debugWeaveArgs antecedent givenEnvs antecedents |])
 
   envsRef <- sttLayer $ newSTRef givenEnvs
 
   forM_ antecedents $ \node ->
+    {-# SCC "weave.outer-ants" #-}
     unless (maybe False (node ==) antecedent) $ do
       $(dbg [| debugWeaveNodeAntecedent node |])
 
@@ -1277,11 +1279,11 @@ weave antecedent givenEnvs antecedents = do
       --  - An Env from the NODE's label.
       -- The union of these two is NEW-ENV, and the body of the loop
       -- considers how we should incorporate NEW-ENV into NEW-ENVS.
-      mlistFor_ sttLayer envs $ \envmaybe ->
+      {-# SCC "weave.forEnvLoop" #-} mlistFor_ sttLayer envs $ \envmaybe ->
         case envmaybe of
           Nothing -> return ()
           Just env -> do
-            forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
+            {-# SCC "weave.forEnv" #-} forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
               $(dbg [| debugWeavePairIntro env nodeEnv |])
 
               newEnv <- unionEnv env nodeEnv
@@ -1671,7 +1673,7 @@ lookupEnv assumptions@(a : _) = do
       ns = sortOn nodeIndex assumptions
   EnvTable envTable <- sttLayer $ readSTRef $ atmsEnvTable atms
   entries <- sttLayer $ readSTArray envTable $ length ns
-  case filter (\x -> envAssumptions x == ns) entries of
+  case filter (\x -> {-# SCC "lookupEnv.pred" #-} envAssumptions x == ns) entries of
     [] -> return Nothing
     (x : _) -> return $ Just x
 
