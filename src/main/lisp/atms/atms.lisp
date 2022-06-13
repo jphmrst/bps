@@ -486,44 +486,56 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 
 (defun interpretations (atms choice-sets &optional defaults
 			&aux solutions)
-  (if (atms-debugging atms)
+  (when (atms-debugging atms)
    (format *trace-output*
-	   "~%Constructing interpretations depth-first for ~a:" choice-sets))
-  (format *trace-output* "~%- Refining choice sets")
+	   "~%Constructing interpretations depth-first for ~a:" choice-sets)
+   (format *trace-output* "~%- Refining choice sets"))
   (let ((*solutions* nil)
 	(choice-sets
 	  (mapcar #'(lambda (alt-set)
-		      (format *trace-output*
-			  "~%  - ~a --> ???" alt-set)
+		      (if (atms-debugging atms)
+			(format *trace-output*
+			    "~%  - ~a --> ???" alt-set))
 		      (let ((result
 			     ;; Like MAPCAR, but passing the result to NCONC.
 			     (mapcan #'(lambda (alt)
-					 (format *trace-output*
-					     "~%    - ~a --> ~a" alt (tms-node-label alt))
+					 (if (atms-debugging atms)
+					   (format *trace-output*
+					     "~%    - ~a --> ~a" alt (tms-node-label alt)))
 					 (copy-list (tms-node-label alt)))
 				     alt-set)))
-			(format *trace-output*
-			    "~%    ~a --> ~a" alt-set result)
+			(if (atms-debugging atms)
+			  (format *trace-output*
+			      "~%    ~a --> ~a" alt-set result))
 			result))
 		  choice-sets)))
-    (format *trace-output* "~%  Refined choice sets to ~a" choice-sets)
+    (if (atms-debugging atms)
+      (format *trace-output* "~%  Refined choice sets to ~a" choice-sets))
     (dolist (choice (car choice-sets))
-      (format *trace-output*
-	  "~%- Calling depth-solutions with choice ~a" choice)
-      (format *trace-output*
-	  "~%                               choice sets ~a" (car choice-sets))
+      (if (atms-debugging atms)
+	(format *trace-output*
+	    "~%- Calling depth-solutions with choice ~a" choice))
+      (if (atms-debugging atms)
+	(format *trace-output*
+	    "~%                               choice sets ~a" (car choice-sets)))
       (get-depth-solutions1 choice (cdr choice-sets))
-      (format *trace-output*
-	  "~%      => solutions ~a" *solutions*))
+      (if (atms-debugging atms)
+	(format *trace-output*
+	    "~%      => solutions ~a" *solutions*)))
     (setq *solutions* (delete nil *solutions* :TEST #'eq))
     (unless *solutions*
-      (if choice-sets (return-from interpretations nil)
-	              (setq *solutions* (list (atms-empty-env atms)))))
+      (if choice-sets
+	(return-from interpretations nil)
+	(setq *solutions* (list (atms-empty-env atms)))))
     (when defaults
       (setq solutions *solutions* *solutions* nil)
       (dolist (solution solutions)
 	(extend-via-defaults solution defaults defaults)))
-    (delete nil *solutions* :TEST #'eq)))
+    (let ((result (delete nil *solutions* :TEST #'eq)))
+      (if (atms-debugging atms)
+	(format *trace-output*
+	    "~%  interpretations result => ~a" *solutions*))
+      result)))
 
 (defun get-depth-solutions1 (solution choice-sets
 				      &aux new-solution)

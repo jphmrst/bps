@@ -190,4 +190,16 @@ E-6: {B, C}
   
   (why-nodes *atms*)
   (print-envs *atms*)
-  ) ; end defun book-1
+
+  (format t "~%(interpretations *atms* (list (list h g))) =>~%  ~a~%"
+    (interpretations *atms* (list (list h g))))
+  (format t "~%(interpretations *atms* (list (list g))) =>~%  ~a~%"
+    (interpretations *atms* (list (list g))))
+  (format t "~%(interpretations *atms* (list (list h))) =>~%  ~a~%"
+    (interpretations *atms* (list (list h))))
+  (format t "~%(interpretations *atms* (list (list h g))) =>~%  ~a~%"
+    (interpretations *atms* (list (list h g))))
+  (format t "~%(interpretations *atms* (list (list h) (list b))) =>~%  ~a~%"
+    (interpretations *atms* (list (list h) (list b))))
+
+  nil) ; end defun book-1

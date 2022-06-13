@@ -102,6 +102,12 @@ class TestATMS extends AnyFlatSpec with Matchers {
     atms.lookupEnv(List(c, b)).map(i1_hORg.contains(_)).getOrElse(false)
       `should` be (true)
 
+    val i1_hANDb = atms.interpretations(List(List(b), List(h)))
+    atms.dbg(envL(i1_hANDb))
+    i1_hANDb.length `should` be (1)
+    atms.lookupEnv(List(c, b)).map(i1_hANDb.contains(_)).getOrElse(false)
+      `should` be (true)
+
     val i1_hANDg = atms.interpretations(List(List(h), List(g)))
     atms.dbg(envL(i1_hANDg)) // Lisp gives NIL
     i1_hANDg.isEmpty `should` be (true)
@@ -123,8 +129,6 @@ class TestATMS extends AnyFlatSpec with Matchers {
     c.isTrueNode `should` be (true)
     h.isTrueNode `should` be (true)
     atms.debugAtms
-
-    // println(atms.interpretations)
   }
 
   "FdK Test 1" `should` "all pass" in {
