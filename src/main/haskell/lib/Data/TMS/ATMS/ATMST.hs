@@ -1978,7 +1978,8 @@ afterDepthSolutions ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] ->
     ChoiceSetCntn d i r s m
 afterDepthSolutions atms defaults k solutions =
-  error "< TODO unimplemented nodeToEnvList >"
+  error "< TODO unimplemented the (unless *solutions* part of (interpretations) >"
+  error "< TODO unimplemented calls to extend-via-defaults >"
 
 -- |TO BE TRANSLATED from @get-depth-solutions1@ in @atms.lisp@.
 --
