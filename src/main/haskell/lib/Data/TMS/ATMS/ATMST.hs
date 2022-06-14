@@ -1897,7 +1897,7 @@ interpretationsWithDefaults ::
 interpretationsWithDefaults atms choiceSets defaults = do
   choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
   interpsStart atms choiceSetEnvLists
-               (afterDepthSolutions atms defaults return)
+               (afterDepthSolutions atms choiceSetEnvLists defaults return)
                []
 
 altSetToEnvList ::
@@ -1975,11 +1975,88 @@ considerNewSoln' e solns@(s:ss) =
                   else (r, c, solns)
 
 afterDepthSolutions ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] ->
-    ChoiceSetCntn d i r s m
-afterDepthSolutions atms defaults k solutions =
-  error "< TODO unimplemented the (unless *solutions* part of (interpretations) >"
-  error "< TODO unimplemented calls to extend-via-defaults >"
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [[Env d i r s m]] -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+afterDepthSolutions atms choiceSets defaults k solutions =
+  if (null solutions)
+  then if (null choiceSets)
+       then do
+         empty <- getEmptyEnvironment atms
+         extendSolutionsIfDefaults atms defaults k [empty]
+       else return []
+  else extendSolutionsIfDefaults atms defaults k solutions
+
+extendSolutionsIfDefaults ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [Node d i r s m] -> ChoiceSetCntn d i r s m
+extendSolutionsIfDefaults atms [] k solns = k solns
+extendSolutionsIfDefaults atms defaults k solns =
+  extendSolutionsViaDefaults atms solns defaults k []
+
+extendSolutionsViaDefaults ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [Env d i r s m] -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+extendSolutionsViaDefaults atms [] defaults k = k
+extendSolutionsViaDefaults atms (s:ss) defaults k =
+  extendViaDefaults atms s defaults defaults
+                    (extendSolutionsViaDefaults atms ss defaults k)
+
+-- |TO BE TRANSLATED from @extend-via-defaults@ in @atms.lisp@.
+--
+-- > ;; In atms.lisp
+-- > (defun extend-via-defaults (solution remaining original)
+-- >   (do ((new-solution)
+-- >        (defaults remaining (cdr defaults)))
+-- >       ((null defaults)
+-- >        (or (member solution *solutions* :TEST #'eq)
+-- >       (dolist (default original)
+-- >         (or (member default (env-assumptions solution)
+-- >                     :TEST #'eq)
+-- >             (env-nogood? (cons-env default solution))
+-- >             (return t)))
+-- >       (push solution *solutions*)))
+-- >     (setq new-solution (cons-env (car defaults) solution))
+-- >     (unless (env-nogood? new-solution)
+-- >       (extend-via-defaults new-solution (cdr defaults) original))))
+extendViaDefaults ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [Node d i r s m] -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+extendViaDefaults atms baseSoln remaining original k solutions =
+  extendViaDefaultsLoop atms baseSoln remaining original k solutions
+
+extendViaDefaultsLoop ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [Node d i r s m] -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+extendViaDefaultsLoop atms candSoln [] original k solutions = do
+
+  --  Check (member solution *solutions* :TEST #'eq)
+  --
+
+  checkExtendedSoln atms candSoln original k solutions
+extendViaDefaultsLoop atms baseSoln (d:ds) original k solutions = do
+  newSoln <- consEnv d baseSoln
+  let nextLoop = extendViaDefaultsLoop atms baseSoln ds original k
+  ifM (envIsNogood newSoln)
+    (nextLoop solutions)
+    (extendViaDefaultsLoop atms newSoln ds original nextLoop solutions)
+
+checkExtendedSoln ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+checkExtendedSoln atms candSoln [] k solutions = k $ candSoln : solutions
+checkExtendedSoln atms candSoln (orig:origs) k solutions =
+  if (elem orig (envAssumptions candSoln))
+  then k solutions
+  else do
+    allEnv <- consEnv orig candSoln
+    ifM (envIsNogood allEnv)
+        (k solutions)
+        (checkExtendedSoln atms candSoln origs k solutions)
 
 -- |TO BE TRANSLATED from @get-depth-solutions1@ in @atms.lisp@.
 --
@@ -2004,27 +2081,6 @@ getDepthSolutions1 ::
   (Monad m, NodeDatum d) => Env d i r s m -> [[Env d i r s m]] -> ATMST s m ()
 getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
 
--- |TO BE TRANSLATED from @extend-via-defaults@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun extend-via-defaults (solution remaining original)
--- >   (do ((new-solution)
--- >        (defaults remaining (cdr defaults)))
--- >       ((null defaults)
--- >        (or (member solution *solutions* :TEST #'eq)
--- >       (dolist (default original)
--- >         (or (member default (env-assumptions solution)
--- >                     :TEST #'eq)
--- >             (env-nogood? (cons-env default solution))
--- >             (return t)))
--- >       (push solution *solutions*)))
--- >     (setq new-solution (cons-env (car defaults) solution))
--- >     (unless (env-nogood? new-solution)
--- >       (extend-via-defaults new-solution (cdr defaults) original))))
-extendViaDefaults ::
-  (Monad m, NodeDatum d) =>
-    Env d i r s m -> [Node d i r s m] -> [Node d i r s m] -> ATMST s m ()
-extendViaDefaults = error "< TODO unimplemented extendViaDefaults >"
 
 -- * Generating explanations
 
