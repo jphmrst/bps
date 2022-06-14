@@ -501,7 +501,8 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 			     (mapcan #'(lambda (alt)
 					 (if (atms-debugging atms)
 					   (format *trace-output*
-					     "~%    - ~a --> ~a" alt (tms-node-label alt)))
+					       "~%    - ~a --> ~a"
+					     alt (tms-node-label alt)))
 					 (copy-list (tms-node-label alt)))
 				     alt-set)))
 			(if (atms-debugging atms)
@@ -512,16 +513,15 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
     (if (atms-debugging atms)
       (format *trace-output* "~%  Refined choice sets to ~a" choice-sets))
     (dolist (choice (car choice-sets))
-      (if (atms-debugging atms)
+      (when (atms-debugging atms)
 	(format *trace-output*
-	    "~%- Calling depth-solutions with choice ~a" choice))
-      (if (atms-debugging atms)
+	    "~%- Calling depth-solutions with choice ~a" choice)
 	(format *trace-output*
-	    "~%                               choice sets ~a" (car choice-sets)))
+	    "~%                               choice sets ~a"
+	  (car choice-sets)))
       (get-depth-solutions1 choice (cdr choice-sets))
       (if (atms-debugging atms)
-	(format *trace-output*
-	    "~%      => solutions ~a" *solutions*)))
+	(format *trace-output* "~%      => solutions ~a" *solutions*)))
     (setq *solutions* (delete nil *solutions* :TEST #'eq))
     (unless *solutions*
       (if choice-sets
