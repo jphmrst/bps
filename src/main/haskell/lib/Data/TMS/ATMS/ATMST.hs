@@ -17,10 +17,9 @@ deviations from the original are due to either Haskell's strong
 typing, which necessitates some additional tagging, and to the
 abomination which is Lisp's @do@ macro.  The translation relies on
 mutable data structures using `STT` state thread references.  A more
-pure translation, possibly not relying on the [@ST@
-monad]("Control.Monad.ST")/[@STT@
-transformer]("Control.Monad.ST.Trans"), is a significant piece of
-future work.
+pure translation, possibly not relying on the
+[@ST@ monad]("Control.Monad.ST")/[@STT@ transformer]("Control.Monad.ST.Trans"),
+is a significant piece of future work.
 
 Note also there are restrictions on the embedded monad @m@ which can
 be wrapped in the `STT` transformer; see [the @Control.Monad.ST.Trans@
@@ -84,7 +83,7 @@ module Data.TMS.ATMS.ATMST (
   Env, EnvTable, envIndex, envAssumptions, getEnvNodes,
 
   -- * Deduction and search utilities
-  {- interpretations, -}
+  interpretations,
 
   -- ** Related to a node
   isTrueNode, isInNode, isInNodeByEnv, isOutNode, isNodeConsistentWith,
@@ -1886,8 +1885,100 @@ removeEnvFromLabels env atms = do
 -- >    (extend-via-defaults solution defaults defaults)))
 -- >     (delete nil *solutions* :TEST #'eq)))
 interpretations ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m ()
-interpretations = error "< TODO unimplemented interpretations >"
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m [Env d i r s m]
+interpretations atms choiceSets =
+  interpretationsWithDefaults atms choiceSets []
+
+interpretationsWithDefaults ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [[Node d i r s m]] -> [Node d i r s m] ->
+      ATMST s m [Env d i r s m]
+interpretationsWithDefaults atms choiceSets defaults = do
+  choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
+  interpsStart atms choiceSetEnvLists
+               (afterDepthSolutions atms defaults return)
+               []
+
+altSetToEnvList ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [Node d i r s m] -> ATMST s m [Env d i r s m]
+altSetToEnvList atms nodes = do
+  mapped <- mapM getNodeLabel nodes
+  return $ foldl (++) [] mapped
+
+type ChoiceSetCntn d i r s m =
+  ([Env d i r s m] -> ATMST s m [Env d i r s m]) ->
+    [Env d i r s m] ->
+      ATMST s m [Env d i r s m]
+
+interpsStart ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [[Env d i r s m]] -> ChoiceSetCntn d i r s m
+interpsStart atms [] k solutions = k solutions
+interpsStart atms (cse:choiceSetEnvLists) k solutions =
+  interpsStartAlt atms cse choiceSetEnvLists k solutions
+
+interpsStartAlt ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
+      ChoiceSetCntn d i r s m
+interpsStartAlt atms [] choiceSetEnvLists k solutions = k solutions
+interpsStartAlt atms (env:envs) choiceSetEnvLists k solutions =
+  getDepthSolutions atms env choiceSetEnvLists
+                    (interpsStartAlt atms envs choiceSetEnvLists k)
+                    solutions
+
+getDepthSolutions ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [[Env d i r s m]] ->
+      ChoiceSetCntn d i r s m
+getDepthSolutions atms soln [] k solns = k (soln:solns)
+getDepthSolutions atms soln (cs:css) k solns =
+  getDepthSolutionsFor atms soln cs css
+    (getDepthSolutions atms soln css k)
+    solns
+
+getDepthSolutionsFor ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
+      ChoiceSetCntn d i r s m
+getDepthSolutionsFor atms soln [] css k solns =
+  k $ considerNewSoln soln solns
+getDepthSolutionsFor atms soln (c:cs) css k solns = do
+  let k' = getDepthSolutionsFor atms soln cs css k
+           -- To try the next alternative of the choice set
+  newSolution <- unionEnv soln c
+  ifM (envIsNogood newSolution)
+      (k' solns)
+      (getDepthSolutions atms newSolution css k' solns)
+
+considerNewSoln ::
+  (Monad m, NodeDatum d) => Env d i r s m -> [Env d i r s m] -> [Env d i r s m]
+considerNewSoln env envs =
+  let (redundant, _, envs') = considerNewSoln' env envs
+  in if redundant then envs' else env : envs'
+
+considerNewSoln' ::
+  (Monad m, NodeDatum d) => Env d i r s m -> [Env d i r s m] ->
+    (Bool, Bool, [Env d i r s m])
+considerNewSoln' _ [] = (False, False, [])
+considerNewSoln' e solns@(s:ss) =
+  case compareEnv s e of
+    EQenv -> (True, False, solns)
+    S12env -> (True, False, solns)
+    S21env -> let (r, c, ss') = considerNewSoln' e ss
+              in (r, True, ss')
+    DisjEnv -> let (r, c, ss') = considerNewSoln' e ss
+               in if c
+                  then (r, c, s:ss')
+                  else (r, c, solns)
+
+afterDepthSolutions ::
+  (Monad m, NodeDatum d) => ATMS d i r s m -> [Node d i r s m] ->
+    ChoiceSetCntn d i r s m
+afterDepthSolutions atms defaults k solutions =
+  error "< TODO unimplemented nodeToEnvList >"
 
 -- |TO BE TRANSLATED from @get-depth-solutions1@ in @atms.lisp@.
 --
