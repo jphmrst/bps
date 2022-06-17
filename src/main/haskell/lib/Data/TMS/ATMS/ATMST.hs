@@ -1840,6 +1840,80 @@ removeEnvFromLabels env atms = do
 -- nodes, under each environment in the result at least one node of
 -- each sublist will be believed.
 --
+-- This function is for the case where no nodes are taken as defaults;
+-- here we simply call `interpretationsWithDefaults` with an empty
+-- list of defaults.
+interpretations ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m [Env d i r s m]
+interpretations atms choiceSets =
+  interpretationsWithDefaults atms choiceSets []
+
+-- |The body of @interpretations@ is translated from the Lisp in a
+-- continuation-passing style; this type is a shorthand for the common
+-- last two argument and result types of the continuation-processing
+-- functions.
+type ChoiceSetCntn d i r s m =
+  ([Env d i r s m] -> ATMST s m [Env d i r s m]) ->
+    [Env d i r s m] ->
+      ATMST s m [Env d i r s m]
+
+-- |Initial setup for @interpretations@: convert the @choiceSets@ over
+-- `Node`s into structures over the nodes' labelling `Env`ironments,
+-- and set up the outermost loop.
+--
+-- Translated from these @interpretations@ in @atms.lisp@.
+--
+-- > (defun interpretations (atms choice-sets &optional defaults
+-- >                    &aux solutions)
+-- >   (let ( ;; ...
+-- >         (choice-sets (mapcar ;; Call to altSetToEnvList
+-- >                              choice-sets)))
+-- >     ;; First call interpsStart for this loop
+-- >     (dolist (choice (car choice-sets))
+-- >       ;; ...
+-- >       )
+-- >     ;; Then continuation is afterDepthSolutions for
+-- >     ;; cleanup and extend-via-defaults.
+interpretationsWithDefaults ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [[Node d i r s m]] -> [Node d i r s m] ->
+      ATMST s m [Env d i r s m]
+interpretationsWithDefaults atms choiceSets defaults = do
+  choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
+  interpsStart atms choiceSetEnvLists
+               (afterDepthSolutions atms choiceSetEnvLists defaults return)
+               []
+
+-- |Convert a `Node` passed in a choice-set of `interpretations` into
+-- the list of `Env`ironments in the label of that node.
+--
+-- Translated from the lambda expression of the @MAPCAR@ in this
+-- portion of @interpretations@ in @atms.lisp@:
+--
+-- >   (let ( ;; ...
+-- >         (choice-sets
+-- >           (mapcar #'(lambda (alt-set)
+-- >                       (format *trace-output*
+-- >                           "~%  - ~a --> ???" alt-set)
+-- >                       (let ((result
+-- >                              (mapcan #'(lambda (alt)
+-- >                                          (format *trace-output*
+-- >                                              "~%    - ~a --> ~a"
+-- >                                              alt (tms-node-label alt))
+-- >                                          (copy-list (tms-node-label alt)))
+-- >                                      alt-set)))
+-- >                         (format *trace-output*
+-- >                             "~%    ~a --> ~a" alt-set result)
+-- >                         result))
+-- >                   choice-sets)))
+altSetToEnvList ::
+  (Monad m, NodeDatum d) =>
+    ATMS d i r s m -> [Node d i r s m] -> ATMST s m [Env d i r s m]
+altSetToEnvList atms nodes = do
+  mapped <- mapM getNodeLabel nodes
+  return $ foldl (++) [] mapped
+
 -- TO BE TRANSLATED from @interpretations@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
@@ -1884,34 +1958,6 @@ removeEnvFromLabels env atms = do
 -- >       (dolist (solution solutions)
 -- >    (extend-via-defaults solution defaults defaults)))
 -- >     (delete nil *solutions* :TEST #'eq)))
-interpretations ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m [Env d i r s m]
-interpretations atms choiceSets =
-  interpretationsWithDefaults atms choiceSets []
-
-interpretationsWithDefaults ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> [[Node d i r s m]] -> [Node d i r s m] ->
-      ATMST s m [Env d i r s m]
-interpretationsWithDefaults atms choiceSets defaults = do
-  choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
-  interpsStart atms choiceSetEnvLists
-               (afterDepthSolutions atms choiceSetEnvLists defaults return)
-               []
-
-altSetToEnvList ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> [Node d i r s m] -> ATMST s m [Env d i r s m]
-altSetToEnvList atms nodes = do
-  mapped <- mapM getNodeLabel nodes
-  return $ foldl (++) [] mapped
-
-type ChoiceSetCntn d i r s m =
-  ([Env d i r s m] -> ATMST s m [Env d i r s m]) ->
-    [Env d i r s m] ->
-      ATMST s m [Env d i r s m]
-
 interpsStart ::
   (Monad m, NodeDatum d) =>
     ATMS d i r s m -> [[Env d i r s m]] -> ChoiceSetCntn d i r s m
@@ -1919,6 +1965,50 @@ interpsStart atms [] k solutions = k solutions
 interpsStart atms (cse:choiceSetEnvLists) k solutions =
   interpsStartAlt atms cse choiceSetEnvLists k solutions
 
+-- TO BE TRANSLATED from @interpretations@ in @atms.lisp@.
+--
+-- > ;; In atms.lisp
+-- > (proclaim '(special *solutions*))
+-- > (defun interpretations (atms choice-sets &optional defaults
+-- >                    &aux solutions)
+-- >   (if (atms-debugging atms)
+-- >    (format *trace-output*
+-- >       "~%Constructing interpretations depth-first for ~a:" choice-sets))
+-- >   (format *trace-output* "~%- Refining choice sets")
+-- >   (let ((*solutions* nil)
+-- >    (choice-sets
+-- >      (mapcar #'(lambda (alt-set)
+-- >                  (format *trace-output*
+-- >                      "~%  - ~a --> ???" alt-set)
+-- >                  (let ((result
+-- >                         (mapcan #'(lambda (alt)
+-- >                                     (format *trace-output*
+-- >                                         "~%    - ~a --> ~a"
+-- >                                         alt (tms-node-label alt))
+-- >                                     (copy-list (tms-node-label alt)))
+-- >                                 alt-set)))
+-- >                    (format *trace-output*
+-- >                        "~%    ~a --> ~a" alt-set result)
+-- >                    result))
+-- >              choice-sets)))
+-- >     (format *trace-output* "~%  Refined choice sets to ~a" choice-sets)
+-- >     (dolist (choice (car choice-sets))
+-- >       (format *trace-output*
+-- >      "~%- Calling depth-solutions with choice ~a" choice)
+-- >       (format *trace-output*
+-- >      "~%                               choice sets ~a" (car choice-sets))
+-- >       (get-depth-solutions1 choice (cdr choice-sets))
+-- >       (format *trace-output*
+-- >      "~%      => solutions ~a" *solutions*))
+-- >     (setq *solutions* (delete nil *solutions* :TEST #'eq))
+-- >     (unless *solutions*
+-- >       (if choice-sets (return-from interpretations nil)
+-- >                  (setq *solutions* (list (atms-empty-env atms)))))
+-- >     (when defaults
+-- >       (setq solutions *solutions* *solutions* nil)
+-- >       (dolist (solution solutions)
+-- >    (extend-via-defaults solution defaults defaults)))
+-- >     (delete nil *solutions* :TEST #'eq)))
 interpsStartAlt ::
   (Monad m, NodeDatum d) =>
     ATMS d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
@@ -1929,6 +2019,25 @@ interpsStartAlt atms (env:envs) choiceSetEnvLists k solutions =
                     (interpsStartAlt atms envs choiceSetEnvLists k)
                     solutions
 
+-- |TO BE TRANSLATED from @get-depth-solutions1@ in @atms.lisp@.
+--
+-- > ;; In atms.lisp
+-- > (defun get-depth-solutions1 (solution choice-sets
+-- >                                  &aux new-solution)
+-- >   (cond ((null choice-sets)
+-- >     (unless (do ((old-solutions *solutions* (cdr old-solutions)))
+-- >                 ((null old-solutions))
+-- >               (when (car old-solutions)
+-- >                 (case (compare-env (car old-solutions) solution)
+-- >                   ((:EQ :S12) (return t))
+-- >                   (:S21 (rplaca old-solutions nil)))))
+-- >       (push solution *solutions*)))
+-- >    ((env-nogood? solution)) ;something died.
+-- >    (t (dolist (choice (car choice-sets))
+-- >         (setq new-solution (union-env solution choice))
+-- >         (unless (env-nogood? new-solution)
+-- >           (get-depth-solutions1 new-solution
+-- >                                 (cdr choice-sets)))))))
 getDepthSolutions ::
   (Monad m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [[Env d i r s m]] ->
@@ -2033,7 +2142,7 @@ extendViaDefaultsLoop ::
       ChoiceSetCntn d i r s m
 extendViaDefaultsLoop atms candSoln [] original k solutions = do
 
-  --  Check (member solution *solutions* :TEST #'eq)
+  --  TODO Check (member solution *solutions* :TEST #'eq)
   --
 
   checkExtendedSoln atms candSoln original k solutions
@@ -2057,29 +2166,6 @@ checkExtendedSoln atms candSoln (orig:origs) k solutions =
     ifM (envIsNogood allEnv)
         (k solutions)
         (checkExtendedSoln atms candSoln origs k solutions)
-
--- |TO BE TRANSLATED from @get-depth-solutions1@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun get-depth-solutions1 (solution choice-sets
--- >                                  &aux new-solution)
--- >   (cond ((null choice-sets)
--- >     (unless (do ((old-solutions *solutions* (cdr old-solutions)))
--- >                 ((null old-solutions))
--- >               (when (car old-solutions)
--- >                 (case (compare-env (car old-solutions) solution)
--- >                   ((:EQ :S12) (return t))
--- >                   (:S21 (rplaca old-solutions nil)))))
--- >       (push solution *solutions*)))
--- >    ((env-nogood? solution)) ;something died.
--- >    (t (dolist (choice (car choice-sets))
--- >         (setq new-solution (union-env solution choice))
--- >         (unless (env-nogood? new-solution)
--- >           (get-depth-solutions1 new-solution
--- >                                 (cdr choice-sets)))))))
-getDepthSolutions1 ::
-  (Monad m, NodeDatum d) => Env d i r s m -> [[Env d i r s m]] -> ATMST s m ()
-getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
 
 
 -- * Generating explanations
