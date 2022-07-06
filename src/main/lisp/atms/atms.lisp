@@ -568,10 +568,10 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
        ;; This big expression is the result value from the loop, given
        ;; the final values for the above loop variables.
        (or (member solution *solutions* :TEST #'eq)
-	   (dolist (default original)
-	     (or (member default (env-assumptions solution)
+	   (dolist (orig original)
+	     (or (member orig (env-assumptions solution)
 			 :TEST #'eq)
-		 (env-nogood? (cons-env default solution))
+		 (env-nogood? (cons-env orig solution))
                  ;; RETURN here exits the DOLIST.
 		 (return t)))
 	   (push solution *solutions*)))
