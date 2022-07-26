@@ -482,7 +482,8 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 
 ;;; Interpretation construction
 
-(proclaim '(special *solutions*))
+(defvar *solutions*)
+;; (proclaim '(special *solutions*))
 
 (defun interpretations (atms choice-sets &optional defaults
 			&aux solutions)

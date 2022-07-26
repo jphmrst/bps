@@ -166,7 +166,7 @@ E-6: {B, C}
 
 ;;; Added JPHM
 (proclaim '(special e h g x))
-(defun book-1 ()
+(defun book-1 (&aux i1)
   (setq *atms* (create-atms "Step-1")
         a (tms-create-node *atms* "A")
         c (tms-create-node *atms* "C")
@@ -190,4 +190,7 @@ E-6: {B, C}
   
   (why-nodes *atms*)
   (print-envs *atms*)
+
+  (setf i1 (interpretations *atms* (list (list a c) (list h g))))
+  (format t "~%Interpretaions with (a, c); (h, g): ~s~%" i1)
   ) ; end defun book-1
