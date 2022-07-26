@@ -83,7 +83,7 @@ module Data.TMS.ATMS.ATMST (
   Env, EnvTable, envIndex, envAssumptions, getEnvNodes,
 
   -- * Deduction and search utilities
-  interpretations,
+  interpretations, interpretationsWithDefaults,
 
   -- ** Related to a node
   isTrueNode, isInNode, isInNodeByEnv, isOutNode, isNodeConsistentWith,
@@ -1849,15 +1849,6 @@ interpretations ::
 interpretations atms choiceSets =
   interpretationsWithDefaults atms choiceSets []
 
--- |The body of @interpretations@ is translated from the Lisp in a
--- continuation-passing style; this type is a shorthand for the common
--- last two argument and result types of the continuation-processing
--- functions.
-type ChoiceSetCntn d i r s m =
-  ([Env d i r s m] -> ATMST s m [Env d i r s m]) ->
-    [Env d i r s m] ->
-      ATMST s m [Env d i r s m]
-
 -- |Initial setup for @interpretations@: convert the @choiceSets@ over
 -- `Node`s into structures over the nodes' labelling `Env`ironments,
 -- and set up the outermost loop.
@@ -1869,7 +1860,7 @@ type ChoiceSetCntn d i r s m =
 -- >   (let ( ;; ...
 -- >         (choice-sets (mapcar ;; Call to altSetToEnvList
 -- >                              choice-sets)))
--- >     ;; First call interpsStart for this loop
+-- >     ;; First call interpsStartPrep for this loop
 -- >     (dolist (choice (car choice-sets))
 -- >       ;; ...
 -- >       )
@@ -1881,9 +1872,11 @@ interpretationsWithDefaults ::
       ATMST s m [Env d i r s m]
 interpretationsWithDefaults atms choiceSets defaults = do
   choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
-  interpsStart atms choiceSetEnvLists
-               (afterDepthSolutions atms choiceSetEnvLists defaults return)
-               []
+  let cntn = afterDepthSolutions atms choiceSetEnvLists defaults return
+  case choiceSetEnvLists of
+    [] -> cntn []
+    (cse:choiceSetEnvLists) ->
+      interpsForOneAlternative atms cse choiceSetEnvLists cntn []
 
 -- |Convert a `Node` passed in a choice-set of `interpretations` into
 -- the list of `Env`ironments in the label of that node.
@@ -1914,174 +1907,183 @@ altSetToEnvList atms nodes = do
   mapped <- mapM getNodeLabel nodes
   return $ foldl (++) [] mapped
 
--- TO BE TRANSLATED from @interpretations@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (proclaim '(special *solutions*))
--- > (defun interpretations (atms choice-sets &optional defaults
--- >                    &aux solutions)
--- >   (if (atms-debugging atms)
--- >    (format *trace-output*
--- >       "~%Constructing interpretations depth-first for ~a:" choice-sets))
--- >   (format *trace-output* "~%- Refining choice sets")
--- >   (let ((*solutions* nil)
--- >    (choice-sets
--- >      (mapcar #'(lambda (alt-set)
--- >                  (format *trace-output*
--- >                      "~%  - ~a --> ???" alt-set)
--- >                  (let ((result
--- >                         (mapcan #'(lambda (alt)
--- >                                     (format *trace-output*
--- >                                         "~%    - ~a --> ~a"
--- >                                         alt (tms-node-label alt))
--- >                                     (copy-list (tms-node-label alt)))
--- >                                 alt-set)))
--- >                    (format *trace-output*
--- >                        "~%    ~a --> ~a" alt-set result)
--- >                    result))
--- >              choice-sets)))
--- >     (format *trace-output* "~%  Refined choice sets to ~a" choice-sets)
--- >     (dolist (choice (car choice-sets))
--- >       (format *trace-output*
--- >      "~%- Calling depth-solutions with choice ~a" choice)
--- >       (format *trace-output*
--- >      "~%                               choice sets ~a" (car choice-sets))
--- >       (get-depth-solutions1 choice (cdr choice-sets))
--- >       (format *trace-output*
--- >      "~%      => solutions ~a" *solutions*))
--- >     (setq *solutions* (delete nil *solutions* :TEST #'eq))
--- >     (unless *solutions*
--- >       (if choice-sets (return-from interpretations nil)
--- >                  (setq *solutions* (list (atms-empty-env atms)))))
--- >     (when defaults
--- >       (setq solutions *solutions* *solutions* nil)
--- >       (dolist (solution solutions)
--- >    (extend-via-defaults solution defaults defaults)))
--- >     (delete nil *solutions* :TEST #'eq)))
-interpsStart ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> [[Env d i r s m]] -> ChoiceSetCntn d i r s m
-interpsStart atms [] k solutions = k solutions
-interpsStart atms (cse:choiceSetEnvLists) k solutions =
-  interpsStartAlt atms cse choiceSetEnvLists k solutions
+-- |The body of @interpretations@ is translated from the Lisp in a
+-- continuation-passing style; this type is a shorthand for the common
+-- last two argument and result types of the continuation-processing
+-- functions.
+type ChoiceSetCntn d i r s m =
+  ([Env d i r s m] -> ATMST s m [Env d i r s m]) ->
+    [Env d i r s m] ->
+      ATMST s m [Env d i r s m]
 
--- TO BE TRANSLATED from @interpretations@ in @atms.lisp@.
+-- Control, and one pass through the body, of the loop in
+-- @interpretations@ (in file @atms.lisp@) in the context:
 --
--- > ;; In atms.lisp
--- > (proclaim '(special *solutions*))
 -- > (defun interpretations (atms choice-sets &optional defaults
--- >                    &aux solutions)
--- >   (if (atms-debugging atms)
--- >    (format *trace-output*
--- >       "~%Constructing interpretations depth-first for ~a:" choice-sets))
--- >   (format *trace-output* "~%- Refining choice sets")
+-- >                              &aux solutions)
+-- >   ...
 -- >   (let ((*solutions* nil)
--- >    (choice-sets
--- >      (mapcar #'(lambda (alt-set)
--- >                  (format *trace-output*
--- >                      "~%  - ~a --> ???" alt-set)
--- >                  (let ((result
--- >                         (mapcan #'(lambda (alt)
--- >                                     (format *trace-output*
--- >                                         "~%    - ~a --> ~a"
--- >                                         alt (tms-node-label alt))
--- >                                     (copy-list (tms-node-label alt)))
--- >                                 alt-set)))
--- >                    (format *trace-output*
--- >                        "~%    ~a --> ~a" alt-set result)
--- >                    result))
--- >              choice-sets)))
--- >     (format *trace-output* "~%  Refined choice sets to ~a" choice-sets)
--- >     (dolist (choice (car choice-sets))
--- >       (format *trace-output*
--- >      "~%- Calling depth-solutions with choice ~a" choice)
--- >       (format *trace-output*
--- >      "~%                               choice sets ~a" (car choice-sets))
--- >       (get-depth-solutions1 choice (cdr choice-sets))
--- >       (format *trace-output*
--- >      "~%      => solutions ~a" *solutions*))
--- >     (setq *solutions* (delete nil *solutions* :TEST #'eq))
--- >     (unless *solutions*
--- >       (if choice-sets (return-from interpretations nil)
--- >                  (setq *solutions* (list (atms-empty-env atms)))))
--- >     (when defaults
--- >       (setq solutions *solutions* *solutions* nil)
--- >       (dolist (solution solutions)
--- >    (extend-via-defaults solution defaults defaults)))
--- >     (delete nil *solutions* :TEST #'eq)))
-interpsStartAlt ::
+-- >         (choice-sets ...))
+-- >     (dolist (choice (car choice-sets)) ;; This loop
+--
+-- Aside from debugging tracing, the body of the loop just calls
+-- @getDepthSolutions@ for the first element of the list of choice
+-- sets.  The continuation of the @getDepthSolutions@ call is a
+-- recursive call to this function on the remainder of the choice sets
+-- list.
+interpsForOneAlternative ::
   (Monad m, NodeDatum d) =>
     ATMS d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
-interpsStartAlt atms [] choiceSetEnvLists k solutions = k solutions
-interpsStartAlt atms (env:envs) choiceSetEnvLists k solutions =
+interpsForOneAlternative atms [] choiceSetEnvLists k solutions = k solutions
+interpsForOneAlternative atms (env : envs) choiceSetEnvLists k solutions =
   getDepthSolutions atms env choiceSetEnvLists
-                    (interpsStartAlt atms envs choiceSetEnvLists k)
+                    (interpsForOneAlternative atms envs choiceSetEnvLists k)
                     solutions
 
--- |TO BE TRANSLATED from @get-depth-solutions1@ in @atms.lisp@.
+-- |Translation of @get-depth-solutions1@.  This function operates a
+-- depth-first traversal over possible solutions.  Each choice set in
+-- the @choice-sets@ argument could contribute @N@ different possible
+-- next-steps to building a solution; the original Lisp function
+-- contains multiple self-recursive calls, one for each of these
+-- possible steps.  At the end of a sequence of recursive calls, one
+-- construction step per choice set, the base case received a
+-- constructed candidate solution.  The base case considers adding a
+-- to a global list of found solutions, possibly removing previous
+-- solution elements made redundant by the new solution.
+--
+-- The translation, like the rest of the translation of
+-- @interpretations@, is in continuation-passing style.  Rather than a
+-- global variable of solutions, the continuation receives the
+-- solutions-to-date-list as its final argument.  Rather than multiple
+-- recursive calls which might mutate a global list, there are
+-- extensions of the continuation which might manipulate the solutions
+-- list they are eventually passed.  The test of a constructed
+-- candidate still occurs when the search reaches a leaf at a fully
+-- constructed candidate, and calls its continuation with its
+-- transformation of the solutions list.
 --
 -- > ;; In atms.lisp
--- > (defun get-depth-solutions1 (solution choice-sets
--- >                                  &aux new-solution)
--- >   (cond ((null choice-sets)
--- >     (unless (do ((old-solutions *solutions* (cdr old-solutions)))
--- >                 ((null old-solutions))
--- >               (when (car old-solutions)
--- >                 (case (compare-env (car old-solutions) solution)
--- >                   ((:EQ :S12) (return t))
--- >                   (:S21 (rplaca old-solutions nil)))))
--- >       (push solution *solutions*)))
--- >    ((env-nogood? solution)) ;something died.
--- >    (t (dolist (choice (car choice-sets))
--- >         (setq new-solution (union-env solution choice))
--- >         (unless (env-nogood? new-solution)
--- >           (get-depth-solutions1 new-solution
--- >                                 (cdr choice-sets)))))))
+-- > (defun get-depth-solutions1 (solution choice-sets &aux new-solution)
+-- >   (cond
+-- >     ((null choice-sets)
+-- >      (unless (do ((old-solutions *solutions* (cdr old-solutions)))
+-- >                  ((null old-solutions))
+-- >                (when (car old-solutions)
+-- >                  (case (compare-env (car old-solutions) solution)
+-- >                    ((:EQ :S12) (return t))
+-- >                    (:S21 (rplaca old-solutions nil)))))
+-- >        (push solution *solutions*)))
+-- >     ((env-nogood? solution)) ;something died.
+-- >     (t (dolist (choice (car choice-sets))
+-- >          (setq new-solution (union-env solution choice))
+-- >          (unless (env-nogood? new-solution)
+-- >            (get-depth-solutions1 new-solution (cdr choice-sets)))))))
 getDepthSolutions ::
   (Monad m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
-getDepthSolutions atms soln [] k solns = k (soln:solns)
-getDepthSolutions atms soln (cs:css) k solns =
-  getDepthSolutionsFor atms soln cs css
-    (getDepthSolutions atms soln css k)
+getDepthSolutions atms cand [] k solns = k $ filterWithNewSoln cand solns
+getDepthSolutions atms partial (cs : css) k solns =
+  getDepthSolutionsFor atms partial cs css
+    (getDepthSolutions atms partial css k)
     solns
 
+-- |One pass through the body of the @getDepthSolutions$ loop.
 getDepthSolutionsFor ::
   (Monad m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
-getDepthSolutionsFor atms soln [] css k solns =
-  k $ considerNewSoln soln solns
-getDepthSolutionsFor atms soln (c:cs) css k solns = do
-  let k' = getDepthSolutionsFor atms soln cs css k
-           -- To try the next alternative of the choice set
-  newSolution <- unionEnv soln c
-  ifM (envIsNogood newSolution)
+getDepthSolutionsFor atms    _    []      _  k solns = k solns
+getDepthSolutionsFor atms partial (c:cs) css k solns = do
+  let k' = getDepthSolutionsFor atms partial cs css k
+           -- To try the next alternative of this choice set
+  newPartial <- unionEnv partial c
+  ifM (envIsNogood newPartial)
       (k' solns)
-      (getDepthSolutions atms newSolution css k' solns)
+      (getDepthSolutions atms newPartial css k' solns)
 
-considerNewSoln ::
+-- |Implementation of the list manipulation achieved in the DO-loop at:
+--
+-- > ;; In atms.lisp
+-- > (defun get-depth-solutions1 (solution choice-sets &aux new-solution)
+-- >   (cond
+-- >     ((null choice-sets)
+-- >      (unless (do ((old-solutions *solutions* (cdr old-solutions)))
+-- >                  ((null old-solutions))
+--
+-- The purpose is to add a new solution to a list of solutions.  But
+-- first the solution must be tested against existing solution to find
+-- cases where the new one is nondisjoint from some old one(s).  If
+-- the new solution is smaller than an old, then the old is redundant
+-- and should be pruned.  If the old solution is a subset of the new
+-- solution, then the new one is redundant and need not be added to
+-- the solutions list at all.
+filterWithNewSoln ::
   (Monad m, NodeDatum d) => Env d i r s m -> [Env d i r s m] -> [Env d i r s m]
-considerNewSoln env envs =
-  let (redundant, _, envs') = considerNewSoln' env envs
+filterWithNewSoln env envs =
+  let (redundant, _, envs') = filterWithNewSoln' env envs
   in if redundant then envs' else env : envs'
 
-considerNewSoln' ::
+filterWithNewSoln' ::
   (Monad m, NodeDatum d) => Env d i r s m -> [Env d i r s m] ->
     (Bool, Bool, [Env d i r s m])
-considerNewSoln' _ [] = (False, False, [])
-considerNewSoln' e solns@(s:ss) =
+filterWithNewSoln' _ [] = (False, False, [])
+filterWithNewSoln' e solns@(s:ss) =
   case compareEnv s e of
     EQenv -> (True, False, solns)
     S12env -> (True, False, solns)
-    S21env -> let (r, c, ss') = considerNewSoln' e ss
+    S21env -> let (r, c, ss') = filterWithNewSoln' e ss
               in (r, True, ss')
-    DisjEnv -> let (r, c, ss') = considerNewSoln' e ss
+    DisjEnv -> let (r, c, ss') = filterWithNewSoln' e ss
                in if c
                   then (r, c, s:ss')
                   else (r, c, solns)
+
+-- TO BE TRANSLATED from @interpretations@ in @atms.lisp@.
+--
+-- > ;; In atms.lisp
+-- > (proclaim '(special *solutions*))
+-- > (defun interpretations (atms choice-sets &optional defaults
+-- >                    &aux solutions)
+-- >   (if (atms-debugging atms)
+-- >    (format *trace-output*
+-- >       "~%Constructing interpretations depth-first for ~a:" choice-sets))
+-- >   (format *trace-output* "~%- Refining choice sets")
+-- >   (let ((*solutions* nil)
+-- >    (choice-sets
+-- >      (mapcar #'(lambda (alt-set)
+-- >                  (format *trace-output*
+-- >                      "~%  - ~a --> ???" alt-set)
+-- >                  (let ((result
+-- >                         (mapcan #'(lambda (alt)
+-- >                                     (format *trace-output*
+-- >                                         "~%    - ~a --> ~a"
+-- >                                         alt (tms-node-label alt))
+-- >                                     (copy-list (tms-node-label alt)))
+-- >                                 alt-set)))
+-- >                    (format *trace-output*
+-- >                        "~%    ~a --> ~a" alt-set result)
+-- >                    result))
+-- >              choice-sets)))
+-- >     (format *trace-output* "~%  Refined choice sets to ~a" choice-sets)
+-- >     (dolist (choice (car choice-sets))
+-- >       (format *trace-output*
+-- >      "~%- Calling depth-solutions with choice ~a" choice)
+-- >       (format *trace-output*
+-- >      "~%                               choice sets ~a" (car choice-sets))
+-- >       (get-depth-solutions1 choice (cdr choice-sets))
+-- >       (format *trace-output*
+-- >      "~%      => solutions ~a" *solutions*))
+-- >     (setq *solutions* (delete nil *solutions* :TEST #'eq))
+-- >     (unless *solutions*
+-- >       (if choice-sets (return-from interpretations nil)
+-- >                  (setq *solutions* (list (atms-empty-env atms)))))
+-- >     (when defaults
+-- >       (setq solutions *solutions* *solutions* nil)
+-- >       (dolist (solution solutions)
+-- >    (extend-via-defaults solution defaults defaults)))
+-- >     (delete nil *solutions* :TEST #'eq)))
 
 afterDepthSolutions ::
   (Monad m, NodeDatum d) =>
