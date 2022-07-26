@@ -42,6 +42,7 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
@@ -102,7 +103,7 @@ module Data.TMS.ATMS.ATMST (
   printAtmsStatistics,
 
   -- ** Nodes and node lists
-  formatNode, formatNodes, debugNode, printNode,
+  debugNode, printNode,
   whyNodes, whyNode,
 
   -- ** Environments, labels, and tables
@@ -111,7 +112,7 @@ module Data.TMS.ATMS.ATMST (
   printEnv, printNogoods, printEnvs, printEnvTable, printTable,
 
   -- ** Justifications
-  debugJust, printJust, formatJustification
+  debugJust, printJust
 
   ) where
 
@@ -122,6 +123,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Extra
 import Data.List
 import Data.Symbol
+import Data.TMS.Formatters
 import Data.TMS.Helpers
 import Data.TMS.MList
 import Data.TMS.Dbg
@@ -1093,7 +1095,7 @@ debugUpdateArgs envs consequence justRule = do
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
   liftIO $ putStr ". Consequence: "
-  blurbNode consequence
+  tmsBlurb consequence
   liftIO $ putStrLn ""
 
   liftIO $ putStr ". Just: "
@@ -1187,7 +1189,7 @@ debugUpdateLabelArgs node newEnvs = do
   let atms = nodeATMS node
 
   liftIO $ putStr "Calling updateLabel with node "
-  blurbNode node
+  tmsBlurb node
   liftIO $ putStrLn ""
 
   envLen <- sttLayer $ mlength newEnvs
@@ -1505,7 +1507,7 @@ debugCreateEnvStart ::
   (MonadIO m, NodeDatum d) => [Node d i r s m] -> ATMST s m ()
 debugCreateEnvStart nodes = do
   liftIO $ putStrLn $ "             - Running createEnv"
-  astr <- formatNodes "," nodes
+  astr <- tmsFormats "," nodes
   liftIO $ putStrLn $ "               assumptions " ++ astr
 
 debugCreateEnvEnv ::
@@ -1761,7 +1763,7 @@ debugNewNogoodStart ::
 debugNewNogoodStart cenv why = do
   liftIO $ putStr "Starting newNogood with "
   debugEnv cenv
-  formatJustification why >>= (liftIO . putStrLn)
+  tmsFormat why >>= (liftIO . putStrLn)
 
 
 -- Translated from @set-env-contradictory@ in @atms.lisp@.
@@ -2351,26 +2353,12 @@ debugNodes atms = do
   liftIO $ putStrLn $ show (length nodes) ++ " nodes:"
   forM_ (reverse nodes) debugNode
 
--- |Computation returning a one-line summary of one `Node` of an `ATMS`.
---
-formatNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
-formatNode node = do
-  datumFmt <- getDatumString $ nodeATMS node
-  return $ datumFmt (nodeDatum node)
-
--- |Computation returning a one-line summary of the `Node`s of an
--- `ATMS`.
---
-formatNodes ::
-  (Monad m, NodeDatum d) => String -> [Node d i r s m] -> ATMST s m String
-formatNodes sep = formatList sep formatNode
-
--- |Computation returning a one-line summary of a list of lists of
--- `Node`s of an `ATMS`.
---
-formatNodeLists ::
-  (Monad m, NodeDatum d) => String -> [[Node d i r s m]] -> ATMST s m String
-formatNodeLists sep = formatList sep $ formatNodes ","
+-- |`tmsFormat`, `tmsBlurb`, etc. may be applied to `Node`s in an
+-- `ATMST`.
+instance NodeDatum d => TmsFormatted (Node d i r) ATMST where
+  tmsFormat node = do
+    datumFmt <- getDatumString $ nodeATMS node
+    return $ datumFmt (nodeDatum node)
 
 -- |Computation returning a one-line summary of the label of a `Node`
 -- of an `ATMS`.
@@ -2380,12 +2368,7 @@ formatNodeLabel node = do
   label <- getNodeLabel node
   case label of
     [] -> return "empty"
-    _ -> formatNodeLists ", " $ map envAssumptions label
-
--- |Print a short summary of a `Node` of an `ATMS`.
---
-blurbNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-blurbNode node = formatNode node >>= liftIO . putStr
+    _ -> tmsFormatss ", " $ map envAssumptions label
 
 -- |Print a verbose summary of a `Node` of an `ATMS`.
 --
@@ -2423,17 +2406,14 @@ debugNode node = do
         liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
       liftIO $ putStrLn ""
 
--- |Computation returning a one-line summary of the reason an `ATMS`
--- may believe a `Node`.
---
-formatJustification ::
-  (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m String
-formatJustification (ByRule j) = return $ "By rule " ++ show (justIndex j)
-formatJustification (ByAssumption n) = do
-  nodeFmt <- getNodeString (nodeATMS n)
-  return $ "By assumption " ++ nodeFmt n
-formatJustification ByContradiction = return "By contradiction"
-
+-- |`tmsFormat`, `tmsBlurb`, etc. may be applied to `Node`s in an
+-- `ATMST`.
+instance NodeDatum d => TmsFormatted (Justification d i r) ATMST where
+  tmsFormat (ByRule j) = return $ "By rule " ++ show (justIndex j)
+  tmsFormat (ByAssumption n) = do
+    nodeFmt <- getNodeString (nodeATMS n)
+    return $ "By assumption " ++ nodeFmt n
+  tmsFormat ByContradiction = return "By contradiction"
 
 -- |Give a verbose printout of the `Just`ification rules of an
 -- `ATMS`.
@@ -2591,7 +2571,7 @@ blurbNodeLabel ::
 blurbNodeLabel node = do
   -- lbl <- getNodeLabel node
   lbl <- sttLayer $ readSTRef (nodeLabel node)
-  blurbNode node
+  tmsBlurb node
   liftIO $ putStr " label: "
   blurbEnvList 10000 "\n" lbl
   liftIO $ putStrLn ""
@@ -2604,7 +2584,7 @@ debugNodeLabel ::
 debugNodeLabel node = do
   -- lbl <- getNodeLabel node
   lbl <- sttLayer $ readSTRef (nodeLabel node)
-  blurbNode node
+  tmsBlurb node
   liftIO $ putStr " label: "
   blurbEnvList 10000 "\n" lbl
   liftIO $ putStrLn ""
