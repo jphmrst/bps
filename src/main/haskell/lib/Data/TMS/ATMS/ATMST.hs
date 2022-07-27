@@ -108,7 +108,7 @@ module Data.TMS.ATMS.ATMST (
   -- ** Environments, labels, and tables
   debugEnvTable, formatNodeLabel, debugNodeLabel,
   debugNogoods,
-  printNogoods, printEnvs, printEnvTable, printTable,
+  printNogoods, printEnvs, printTable,
 
   -- ** Justifications
   printJust
@@ -2291,22 +2291,22 @@ envString env = do
 --
 -- Translated from @print-nogoods@ in @atms.lisp@.
 printNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-printNogoods atms = getNogoodTable atms >>= \table -> printEnvTable table
+printNogoods atms = getNogoodTable atms >>= \table -> tmsPrint table
 
 -- |Print the `Env`ironments of an `ATMS`.
 --
 -- Translated from @print-envs@ in @atms.lisp@.
 printEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-printEnvs atms = getEnvTable atms >>= \table -> printEnvTable table
+printEnvs atms = getEnvTable atms >>= \table -> tmsPrint table
 
 -- |Print the `Env`ironments contained in the given `EnvTable`.
 --
 -- Translated from @print-env-table@ in @atms.lisp@.
-printEnvTable :: (MonadIO m, NodeDatum d) => EnvTable d i r s m -> ATMST s m ()
-printEnvTable (EnvTable arr) = do
-  let (lo, hi) = boundsSTArray arr
-  forM_ [lo..hi] $ \i ->
-    forMM_ (sttLayer $ readSTArray arr i) tmsPrint
+instance NodeDatum d => TmsPrinted (EnvTable d i r) ATMST where
+  tmsPrint (EnvTable arr) = do
+    let (lo, hi) = boundsSTArray arr
+    forM_ [lo..hi] $ \i ->
+      forMM_ (sttLayer $ readSTArray arr i) tmsPrint
 
 -- |Print statistics about an `ATMS`.
 --
