@@ -108,7 +108,7 @@ module Data.TMS.ATMS.ATMST (
   -- ** Environments, labels, and tables
   debugEnvTable, formatNodeLabel, debugNodeLabel,
   debugNogoods,
-  printEnv, printNogoods, printEnvs, printEnvTable, printTable,
+  printNogoods, printEnvs, printEnvTable, printTable,
 
   -- ** Justifications
   printJust
@@ -2268,11 +2268,11 @@ e atms i = do
 -- |Print an environment.
 --
 -- Translated from @print-env@ in @atms.lisp@.
-printEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
-printEnv env = do
-  whenM (envIsNogood env) $ liftIO $ putStr "* "
-  envString env
-  liftIO $ putStrLn ""
+instance NodeDatum d => TmsPrinted (Env d i r) ATMST where
+  tmsPrint env = do
+    whenM (envIsNogood env) $ liftIO $ putStr "* "
+    envString env
+    liftIO $ putStrLn ""
 
 -- |Convert an `Env`ironment into a string listing the nodes of the
 -- environment.
@@ -2306,7 +2306,7 @@ printEnvTable :: (MonadIO m, NodeDatum d) => EnvTable d i r s m -> ATMST s m ()
 printEnvTable (EnvTable arr) = do
   let (lo, hi) = boundsSTArray arr
   forM_ [lo..hi] $ \i ->
-    forMM_ (sttLayer $ readSTArray arr i) printEnv
+    forMM_ (sttLayer $ readSTArray arr i) tmsPrint
 
 -- |Print statistics about an `ATMS`.
 --
