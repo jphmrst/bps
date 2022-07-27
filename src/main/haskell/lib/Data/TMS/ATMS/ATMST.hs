@@ -97,7 +97,7 @@ module Data.TMS.ATMS.ATMST (
 
   -- | In addition to the functions documented below, many of the
   -- types defined in this module are instances of the classes defined
-  -- in `Formatters`.  Specifically:
+  -- in `Data.TMS.Formatters`.  Specifically:
   --
   --  - __Defined for `format`, `blurb`, etc:__ `Node`, `Justification`
   --
