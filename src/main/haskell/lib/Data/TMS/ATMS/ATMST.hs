@@ -107,7 +107,7 @@ module Data.TMS.ATMS.ATMST (
   whyNodes, whyNode,
 
   -- ** Environments, labels, and tables
-  debugEnv, debugEnvTable, formatNodeLabel, debugNodeLabel,
+  debugEnvTable, formatNodeLabel, debugNodeLabel,
   debugNogoods,
   printEnv, printNogoods, printEnvs, printEnvTable, printTable,
 
@@ -1009,13 +1009,13 @@ debugPropagateArgs justRule antecedent envs = do
       envm <- sttLayer $ mcar envs
       case envm of
         Nothing -> liftIO $ putStrLn "<nulled out>"
-        Just env -> debugEnv env
+        Just env -> tmsDebug env
     _ -> do
       liftIO $ putStrLn ". Envs:"
       mlistFor_ sttLayer envs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> tmsDebug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
 --
@@ -1085,13 +1085,13 @@ debugUpdateArgs envs consequence justRule = do
       envm <- sttLayer $ mcar envs
       case envm of
         Nothing -> liftIO $ putStrLn "<nulled out>"
-        Just env -> debugEnv env
+        Just env -> tmsDebug env
     _ -> do
       liftIO $ putStrLn ". Envs:"
       mlistFor_ sttLayer envs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> tmsDebug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
   liftIO $ putStr ". Consequence: "
@@ -1200,13 +1200,13 @@ debugUpdateLabelArgs node newEnvs = do
       envm <- sttLayer $ mcar newEnvs
       case envm of
         Nothing -> liftIO $ putStrLn "<nulled out>"
-        Just env -> debugEnv env
+        Just env -> tmsDebug env
     _ -> do
       liftIO $ putStrLn ". Envs:"
       mlistFor_ sttLayer newEnvs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> tmsDebug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
 debugUpdateLabelFinal ::
@@ -1219,12 +1219,12 @@ debugUpdateLabelFinal node labelEnvs newEnvs = do
     [] -> liftIO $ putStrLn ". No label envs"
     [env] -> do
       liftIO $ putStr ". Single label env: "
-      debugEnv env
+      tmsDebug env
     _ -> do
       liftIO $ putStrLn ". Final envs:"
       forM_ labelEnvs $ \e -> do
         liftIO $ putStr "  . "
-        debugEnv e
+        tmsDebug e
 
   envLen <- sttLayer $ mlength newEnvs
   case envLen of
@@ -1234,13 +1234,13 @@ debugUpdateLabelFinal node labelEnvs newEnvs = do
       envm <- sttLayer $ mcar newEnvs
       case envm of
         Nothing -> liftIO $ putStrLn "<nulled out>"
-        Just env -> debugEnv env
+        Just env -> tmsDebug env
     _ -> do
       liftIO $ putStrLn ". Final envs:"
       mlistFor_ sttLayer newEnvs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> tmsDebug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
   debugNode node
@@ -1365,7 +1365,7 @@ debugWeaveArgs antecedent givenEnvs antecedents = do
       mlistFor_ sttLayer givenEnvs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> tmsDebug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
         return ()
     _ -> return ()
@@ -1762,7 +1762,7 @@ debugNewNogoodStart ::
     Env d i r s m -> Justification d i r s m -> ATMST s m ()
 debugNewNogoodStart cenv why = do
   liftIO $ putStr "Starting newNogood with "
-  debugEnv cenv
+  tmsDebug cenv
   tmsFormat why >>= (liftIO . putStrLn)
 
 
@@ -2389,10 +2389,10 @@ debugNode node = do
     [] -> liftIO $ putStrLn "  Empty label"
     [env] -> do
       liftIO $ putStr "  Single environment label: "
-      debugEnv env
+      tmsDebug env
     _ -> forM_ label $ \env -> do
       liftIO $ putStrLn "  - "
-      debugEnv env
+      tmsDebug env
 
   conseqs <- getNodeConsequences node
   case conseqs of
@@ -2467,18 +2467,18 @@ debugAtmsEnvs atms = do
   debugEnvTable atms envTable
 
 -- |Give a verbose printout of one `Env`ironment of an `ATMS`.
-debugEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
-debugEnv env = do
-  isNogood <- envIsNogood env
-  case envAssumptions env of
-    [] -> liftIO $ putStrLn "<empty>"
-    nodes @ (n : _) -> do
-      let atms = nodeATMS n
-      datumFmt <- getDatumString atms
-      when isNogood $ liftIO $ putStr "[X] "
-      liftIO $ putStrLn $
-        (intercalate ", " $ map (datumFmt . nodeDatum) nodes)
-        ++ " (count " ++ show (length nodes) ++ ")"
+instance NodeDatum d => TmsDebugged (Env d i r) ATMST where
+  tmsDebug env = do
+    isNogood <- envIsNogood env
+    case envAssumptions env of
+      [] -> liftIO $ putStrLn "<empty>"
+      nodes @ (n : _) -> do
+        let atms = nodeATMS n
+        datumFmt <- getDatumString atms
+        when isNogood $ liftIO $ putStr "[X] "
+        liftIO $ putStrLn $
+          (intercalate ", " $ map (datumFmt . nodeDatum) nodes)
+          ++ " (count " ++ show (length nodes) ++ ")"
 
 -- |Print a short summary of a mutable list of nullable (via `Maybe`)
 -- `Env`ironments from an `ATMS`.
@@ -2546,7 +2546,7 @@ debugEnvTable atms (EnvTable array) = do
     envs <- sttLayer $ readSTArray array i
     forM_ (reverse envs) $ \ env -> do
       liftIO $ putStr "- "
-      debugEnv env
+      tmsDebug env
 
 {-
 -- |Print a short summary of the label of a `Node` of an `ATMS`.
