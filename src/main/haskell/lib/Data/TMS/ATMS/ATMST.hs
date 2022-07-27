@@ -99,11 +99,10 @@ module Data.TMS.ATMS.ATMST (
   -- `String`.  Functions prefixed @debug@ or @print@ build a unit
   -- computation printing the artifact in question to standard output;
   -- those with prefix @debug@ are generally more verbose.
-  debugAtms, printAtms, debugAtmsEnvs,
+  debugAtmsEnvs,
   printAtmsStatistics,
 
   -- ** Nodes and node lists
-  debugNode, printNode,
   whyNodes, whyNode,
 
   -- ** Environments, labels, and tables
@@ -489,8 +488,8 @@ setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
 -- |Print the internal title signifying an ATMS.
 --
 -- Translated from @print-atms@ in @atms.lisp@.
-printAtms :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-printAtms atms = liftIO $ putStrLn $ "#<ATMS: " ++ atmsTitle atms ++ ">"
+instance NodeDatum d => TmsPrinted (ATMS d i r) ATMST where
+  tmsPrint atms = liftIO $ putStrLn $ "#<ATMS: " ++ atmsTitle atms ++ ">"
 
 -- |Get the next node counter value, incrementing for future accesses.
 nextNodeCounter :: (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m Int
@@ -998,7 +997,7 @@ debugPropagateArgs justRule antecedent envs = do
   tmsDebug justRule
 
   case antecedent of
-    Just n -> debugNode n
+    Just n -> tmsDebug n
     Nothing -> liftIO $ putStrLn ". No antecedent"
 
   envLen <- sttLayer $ mlength envs
@@ -1243,7 +1242,7 @@ debugUpdateLabelFinal node labelEnvs newEnvs = do
           Just e -> tmsDebug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
-  debugNode node
+  tmsDebug node
 
 -- |Update the label of node @antecedent@ to include the given @envs@
 -- environments, pruning environments which are a superset of another
@@ -1352,7 +1351,7 @@ debugWeaveArgs :: (MonadIO m, NodeDatum d) =>
 debugWeaveArgs antecedent givenEnvs antecedents = do
   liftIO $ putStrLn "Calling weave with"
   case antecedent of
-    Just n -> debugNode n
+    Just n -> tmsDebug n
     Nothing -> liftIO $ putStrLn ". No antecedent"
   let atms = case antecedent of
                Just a  -> Just $ nodeATMS a
@@ -2335,22 +2334,21 @@ printTable msg (EnvTable arr) = do
       liftIO $ putStrLn $ "  " ++ show count ++ " of length " ++ show i
 
 -- |Give a verbose printout of an `ATMS`.
-debugAtms ::
-  (MonadIO m, NodeDatum d) => String -> ATMS d i r s m -> ATMST s m ()
-debugAtms blurb atms = do
-  liftIO $ putStrLn $ "=============== " ++ atmsTitle atms ++ ": " ++ blurb
-  debugNodes atms
-  debugJusts atms
-  debugAtmsEnvs atms
-  debugNogoods atms
-  liftIO $ putStrLn "=============== "
+instance NodeDatum d => TmsDebugged (ATMS d i r) ATMST where
+  tmsDebug atms = do
+    liftIO $ putStrLn $ "=============== " ++ atmsTitle atms
+    debugNodes atms
+    debugJusts atms
+    debugAtmsEnvs atms
+    debugNogoods atms
+    liftIO $ putStrLn "=============== "
 
 -- |Give a verbose printout of the `Node`s of an `ATMS`.
 debugNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNodes atms = do
   nodes <- getNodes atms
   liftIO $ putStrLn $ show (length nodes) ++ " nodes:"
-  forM_ (reverse nodes) debugNode
+  forM_ (reverse nodes) tmsDebug
 
 -- |`tmsFormat`, `tmsBlurb`, etc. may be applied to `Node`s in an
 -- `ATMST`.
@@ -2368,40 +2366,40 @@ formatNodeLabel node = do
     [] -> return "empty"
     _ -> tmsFormatss ", " $ map envAssumptions label
 
--- |Print a verbose summary of a `Node` of an `ATMS`.
+-- |Print a `Node` of an `ATMS` with its tag.
 --
 -- Translated from @print-tms-node@ in @atms.lisp@.
-printNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-printNode node = do
-  str <- nodeString node
-  liftIO $ putStr $ "<NODE: " ++ str ++ ">"
+instance NodeDatum d => TmsPrinted (Node d i r) ATMST where
+  tmsPrint node = do
+    str <- nodeString node
+    liftIO $ putStr $ "<NODE: " ++ str ++ ">"
 
 -- |Give a verbose printout of a `Node` of an `ATMS`.
-debugNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-debugNode node = do
-  let atms = nodeATMS node
-  datumFmt <- getDatumString atms
-  informantFmt <- getInformantString atms
-  liftIO $ putStrLn $ "- " ++ datumFmt (nodeDatum node)
+instance NodeDatum d => TmsDebugged (Node d i r) ATMST where
+  tmsDebug node = do
+    let atms = nodeATMS node
+    datumFmt <- getDatumString atms
+    informantFmt <- getInformantString atms
+    liftIO $ putStrLn $ "- " ++ datumFmt (nodeDatum node)
 
-  label <- getNodeLabel node
-  case label of
-    [] -> liftIO $ putStrLn "  Empty label"
-    [env] -> do
-      liftIO $ putStr "  Single environment label: "
-      tmsDebug env
-    _ -> forM_ label $ \env -> do
-      liftIO $ putStrLn "  - "
-      tmsDebug env
+    label <- getNodeLabel node
+    case label of
+      [] -> liftIO $ putStrLn "  Empty label"
+      [env] -> do
+        liftIO $ putStr "  Single environment label: "
+        tmsDebug env
+      _ -> forM_ label $ \env -> do
+        liftIO $ putStrLn "  - "
+        tmsDebug env
 
-  conseqs <- getNodeConsequences node
-  case conseqs of
-    [] -> liftIO $ putStrLn "  Antecedent to no justifications"
-    _ -> do
-      liftIO $ putStr "  Antecedent to:"
-      forM_ conseqs $ \ conseq -> do
-        liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
-      liftIO $ putStrLn ""
+    conseqs <- getNodeConsequences node
+    case conseqs of
+      [] -> liftIO $ putStrLn "  Antecedent to no justifications"
+      _ -> do
+        liftIO $ putStr "  Antecedent to:"
+        forM_ conseqs $ \ conseq -> do
+          liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
+        liftIO $ putStrLn ""
 
 -- |`tmsFormat`, `tmsBlurb`, etc. may be applied to `Node`s in an
 -- `ATMST`.
@@ -2446,7 +2444,7 @@ instance NodeDatum d => TmsPrinted (Justification d i r) ATMST where
     ByRule rule -> printJust rule
     ByAssumption node -> do
       liftIO $ putStr $ "Assumed node "
-      printNode node
+      tmsPrint node
     ByContradiction -> liftIO $ putStrLn $ "By contradiction"
 
 instance NodeDatum d => TmsDebugged (JustRule d i r) ATMST where

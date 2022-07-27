@@ -1,6 +1,8 @@
 module ATMSTrun where
 
+import Control.Monad.State
 import Data.Symbol
+import Data.TMS.Formatters
 import Data.TMS.ATMS.ATMST
 
 runATMS1 :: IO (Either AtmsErr ())
@@ -29,6 +31,8 @@ runATMS1 = do
     justifyNode "R3" nx [ng]
     -- debugAtms "After rule R3" atms
     nb <- createNode atms "B" True False
-    debugAtms "Added assumption node B" atms
+    liftIO $ putStrLn "Added assumption node B"
+    tmsDebug atms
     justifyNode "R4" nh [nb, nc]
-    debugAtms "After rule R4" atms
+    liftIO $ putStrLn "After rule R4"
+    tmsDebug atms
