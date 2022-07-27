@@ -1,7 +1,6 @@
 module ATMSTrun where
 
 import Control.Monad.State
-import Data.Symbol
 import Data.TMS.Formatters
 import Data.TMS.ATMS.ATMST
 
@@ -36,3 +35,11 @@ runATMS1 = do
     justifyNode "R4" nh [nb, nc]
     liftIO $ putStrLn "After rule R4"
     debug atms
+
+    i1 <- interpretations atms [[na, nc], [nh, ng]]
+    liftIO $ putStrLn "Interpretations for (a, c); (h, g): "
+    forM_ i1 $ \e -> debug e
+
+    i2 <- interpretations atms [[na, nc], [nh, ng]]
+    liftIO $ putStrLn "Interpretations for (h, g): "
+    forM_ i2 $ \e -> debug e

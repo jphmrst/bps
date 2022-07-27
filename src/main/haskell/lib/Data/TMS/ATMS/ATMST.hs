@@ -768,12 +768,11 @@ instance (Monad m, NodeDatum d) => Eq (Env d i r s m) where
 instance (Monad m, NodeDatum d) => Show (Env d i r s m) where
   show n = "<Env " ++ show (envIndex n) ++ ">"
 
--- |Print an environment.
---
--- Translated from @print-env@ in @atms.lisp@.
+-- |`pprint` for `Env`, translated from @print-env@ in @atms.lisp@.
 instance NodeDatum d => Printed (Env d i r) ATMST where
   pprint env = do
     whenM (envIsNogood env) $ liftIO $ putStr "* "
+    -- liftIO $ putStr "ZZZZZ "
     envString env
     liftIO $ putStrLn ""
 
@@ -998,7 +997,8 @@ isOutNode node env = fmap not $ isInNodeByEnv node env
 --
 -- Translated from @node-consistent-with?@ in @atms.lisp@.
 isNodeConsistentWith ::
-  (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
+  (Debuggable m, NodeDatum d) =>
+    Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isNodeConsistentWith node env = do
   labelEnvs <- getNodeLabel node
   anyByM (\ le -> do
@@ -1048,7 +1048,7 @@ assumeNode node =
 -- `ATMS`.
 --
 -- Translated from @make-contradiction@ in @atms.lisp@.
-makeContradiction :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+makeContradiction :: (Debuggable m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 makeContradiction node = do
   let atms = nodeATMS node
   unlessM (getNodeIsContradictory node) $ do
@@ -1093,14 +1093,13 @@ justifyNode informant consequence antecedents = do
 -- `Node`s to be a contradiction associated with the given informant.
 --
 -- Translated from @nogood-nodes@ in @atms.lisp@.
-nogoodNodes :: (Monad m, NodeDatum d) => i -> [Node d i r s m] -> ATMST s m ()
+nogoodNodes :: (Debuggable m, NodeDatum d) => i -> [Node d i r s m] -> ATMST s m ()
 nogoodNodes informant nodes = do
   contra <- getContradictionNode (nodeATMS (head nodes))
   justifyNode informant contra nodes
 
 -- * Label updating
 
---
 -- Translated from @propagate@ in @atms.lisp@.
 propagate ::
   (Debuggable m, NodeDatum d) =>
@@ -1147,7 +1146,6 @@ debugPropagateArgs justRule antecedent envs = do
           Just e -> debug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
---
 -- Translated from @update@ in @atms.lisp@.
 update ::
   (Debuggable m, NodeDatum d) =>
@@ -1200,12 +1198,10 @@ debugUpdateArgs ::
   (MonadIO m, NodeDatum d) =>
     MList s (Maybe (Env d i r s m)) ->
       Node d i r s m ->
-        JustRule d i r s m ->
+        Justification d i r s m ->
           ATMST s m ()
-debugUpdateArgs envs consequence justRule = do
+debugUpdateArgs envs consequence justification = do
   liftIO $ putStrLn "Calling update with"
-  let atms = nodeATMS $ justConsequence justRule
-
   envLen <- sttLayer $ mlength envs
   case envLen of
     0 -> liftIO $ putStrLn ". No envs"
@@ -1228,7 +1224,12 @@ debugUpdateArgs envs consequence justRule = do
   liftIO $ putStrLn ""
 
   liftIO $ putStr ". Just: "
-  debug justRule
+  case justification of
+    ByRule justRule -> debug justRule
+    ByAssumption node -> do
+      liftIO $ putStr "by assumption "
+      pprint node
+    ByContradiction -> liftIO $ putStrLn "by contradiction"
 
 -- |Internal method to update the label of this node to include the
 -- given environments.  The inclusion is not simply list extension;
@@ -1553,7 +1554,7 @@ debugWeaveLoopPairEnd addR envmsR = do
   liftIO $ putStrLn ""
 
 -- Translated from @in-antecedent?@ in @atms.lisp@.
-isInAntecedent :: (Monad m, NodeDatum d) => [Node d i r s m] -> ATMST s m Bool
+isInAntecedent :: (Debuggable m, NodeDatum d) => [Node d i r s m] -> ATMST s m Bool
 isInAntecedent [] = return True
 isInAntecedent nodes = do
   empty <- getEmptyEnvironment (nodeATMS (head nodes))
@@ -1563,7 +1564,7 @@ isInAntecedent nodes = do
 --
 -- Translated from @weave?@ in @atms.lisp@.
 isWeave ::
-  (Monad m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
+  (Debuggable m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
 isWeave _ [] = return True
 isWeave env (n : ns) =
   anyMM (\e -> do
@@ -1754,7 +1755,7 @@ debugConsEnvLookup (Just env) = do
 --
 -- Translated from @find-or-make-env@ in @atms.lisp@.
 findOrMakeEnv ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     [Node d i r s m] -> ATMS d i r s m -> ATMST s m (Env d i r s m)
 findOrMakeEnv [] atms = getEmptyEnvironment atms
 findOrMakeEnv assumptions atms = do
@@ -1975,7 +1976,7 @@ removeEnvFromLabels env atms = do
 -- here we simply call `interpretationsWithDefaults` with an empty
 -- list of defaults.
 interpretations ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m [Env d i r s m]
 interpretations atms choiceSets =
   interpretationsWithDefaults atms choiceSets []
@@ -1998,10 +1999,12 @@ interpretations atms choiceSets =
 -- >     ;; Then continuation is afterDepthSolutions for
 -- >     ;; cleanup and extend-via-defaults.
 interpretationsWithDefaults ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [[Node d i r s m]] -> [Node d i r s m] ->
       ATMST s m [Env d i r s m]
 interpretationsWithDefaults atms choiceSets defaults = do
+  $(dbg [| do liftIO $ putStr "- Refining choice sets "
+              liftIO $ putStrLn "" |])
   choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
   let cntn = afterDepthSolutions atms choiceSetEnvLists defaults return
   case choiceSetEnvLists of
@@ -2063,7 +2066,7 @@ type ChoiceSetCntn d i r s m =
 -- recursive call to this function on the remainder of the choice sets
 -- list.
 interpsForOneAlternative ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
 interpsForOneAlternative atms [] choiceSetEnvLists k solutions = k solutions
@@ -2111,7 +2114,7 @@ interpsForOneAlternative atms (env : envs) choiceSetEnvLists k solutions =
 -- >          (unless (env-nogood? new-solution)
 -- >            (get-depth-solutions1 new-solution (cdr choice-sets)))))))
 getDepthSolutions ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
 getDepthSolutions atms cand [] k solns = k $ filterWithNewSoln cand solns
@@ -2122,7 +2125,7 @@ getDepthSolutions atms partial (cs : css) k solns =
 
 -- |One pass through the body of the @getDepthSolutions$ loop.
 getDepthSolutionsFor ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
 getDepthSolutionsFor atms    _    []      _  k solns = k solns
@@ -2217,7 +2220,7 @@ filterWithNewSoln' e solns@(s:ss) =
 -- >     (delete nil *solutions* :TEST #'eq)))
 
 afterDepthSolutions ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [[Env d i r s m]] -> [Node d i r s m] ->
       ChoiceSetCntn d i r s m
 afterDepthSolutions atms choiceSets defaults k solutions =
@@ -2230,14 +2233,14 @@ afterDepthSolutions atms choiceSets defaults k solutions =
   else extendSolutionsIfDefaults atms defaults k solutions
 
 extendSolutionsIfDefaults ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [Node d i r s m] -> ChoiceSetCntn d i r s m
 extendSolutionsIfDefaults atms [] k solns = k solns
 extendSolutionsIfDefaults atms defaults k solns =
   extendSolutionsViaDefaults atms solns defaults k []
 
 extendSolutionsViaDefaults ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [Env d i r s m] -> [Node d i r s m] ->
       ChoiceSetCntn d i r s m
 extendSolutionsViaDefaults atms [] defaults k = k
@@ -2263,14 +2266,14 @@ extendSolutionsViaDefaults atms (s:ss) defaults k =
 -- >     (unless (env-nogood? new-solution)
 -- >       (extend-via-defaults new-solution (cdr defaults) original))))
 extendViaDefaults ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [Node d i r s m] -> [Node d i r s m] ->
       ChoiceSetCntn d i r s m
 extendViaDefaults atms baseSoln remaining original k solutions =
   extendViaDefaultsLoop atms baseSoln remaining original k solutions
 
 extendViaDefaultsLoop ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [Node d i r s m] -> [Node d i r s m] ->
       ChoiceSetCntn d i r s m
 extendViaDefaultsLoop atms candSoln [] original k solutions = do
@@ -2287,7 +2290,7 @@ extendViaDefaultsLoop atms baseSoln (d:ds) original k solutions = do
     (extendViaDefaultsLoop atms newSoln ds original nextLoop solutions)
 
 checkExtendedSoln ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [Node d i r s m] ->
       ChoiceSetCntn d i r s m
 checkExtendedSoln atms candSoln [] k solutions = k $ candSoln : solutions
