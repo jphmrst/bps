@@ -32,7 +32,7 @@ runATMS1 = do
     -- debugAtms "After rule R3" atms
     nb <- createNode atms "B" True False
     liftIO $ putStrLn "Added assumption node B"
-    tmsDebug atms
+    debug atms
     justifyNode "R4" nh [nb, nc]
     liftIO $ putStrLn "After rule R4"
-    tmsDebug atms
+    debug atms

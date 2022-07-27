@@ -22,6 +22,7 @@ module Data.TMS.Formatters where
 import Control.Monad
 import Control.Monad.State
 import Data.List
+import Data.Maybe
 import Data.Foldable
 
 -- |Class of artifacts which can be given a short formatted
@@ -31,49 +32,49 @@ import Data.Foldable
 -- type; the second, the monad.  Both type constructors take two
 -- arguments, the state thread type used by the TMS thread, and the
 -- enclosed monad constructor.
-class TmsFormatted item tmsMonad where
+class Formatted item tmsMonad where
   -- |Format a single artifact.
-  tmsFormat :: (Monad m) => item s m -> tmsMonad s m String
+  format :: (Monad m) => item s m -> tmsMonad s m String
 
   -- |Format several artifacts, with the given string between each
   -- pair.
-  tmsFormats ::
+  formats ::
     (Monad m, Monad (tmsMonad s m), Foldable k) =>
       String -> k (item s m) -> tmsMonad s m String
-  tmsFormats sep = foldM folder ""
+  formats sep = foldM folder ""
     where folder str itm = do
-            itmStr <- tmsFormat itm
+            itmStr <- format itm
             return $ itmStr ++ sep ++ str
 
   -- |Format several collections of artifacts, with the given string
   -- between each pair of collections, and a comma between each pair
   -- of artifacts.
-  tmsFormatss ::
+  formatss ::
     (Monad m, Monad (tmsMonad s m), Foldable k1, Foldable k2) =>
       String -> k1 (k2 (item s m)) -> tmsMonad s m String
-  tmsFormatss sep = foldM folder ""
+  formatss sep = foldM folder ""
     where folder str itms = do
-            itmsStr <- tmsFormats "," itms
+            itmsStr <- formats "," itms
             return $ itmsStr ++ sep ++ str
 
   -- |Print a short representation of an artifact to the standard
   -- output.
-  tmsBlurb :: (MonadIO m, MonadIO (tmsMonad s m)) => item s m -> tmsMonad s m ()
-  tmsBlurb i = tmsFormat i >>= liftIO . putStr
+  blurb :: (MonadIO m, MonadIO (tmsMonad s m)) => item s m -> tmsMonad s m ()
+  blurb i = format i >>= liftIO . putStr
 
   -- |Print a short representation of a collection of artifacts to the
   -- standard output.
-  tmsBlurbs ::
+  blurbs ::
     (MonadIO m, MonadIO (tmsMonad s m), Foldable k) =>
       String -> k (item s m) -> tmsMonad s m ()
-  tmsBlurbs sep xs = tmsFormats sep xs >>= liftIO . putStr
+  blurbs sep xs = formats sep xs >>= liftIO . putStr
 
   -- |Print a short representation of a collection of collections of
   -- artifacts to the standard output.
-  tmsBlurbss ::
+  blurbss ::
     (MonadIO m, MonadIO (tmsMonad s m), Foldable k1, Foldable k2) =>
       String -> k1 (k2 (item s m)) -> tmsMonad s m ()
-  tmsBlurbss sep xs = tmsFormatss sep xs >>= liftIO . putStr
+  blurbss sep xs = formatss sep xs >>= liftIO . putStr
 
 -- |Class of artifacts which can be printed in a `MonadIO` to the
 -- standard output, possibly over multiple lines, but in a terse
@@ -83,8 +84,8 @@ class TmsFormatted item tmsMonad where
 -- type; the second, the monad.  Both type constructors take two
 -- arguments, the state thread type used by the TMS thread, and the
 -- enclosed monad constructor.
-class TmsPrinted item tmsMonad where
-  tmsPrint :: (MonadIO m) => item s m -> tmsMonad s m ()
+class Printed item tmsMonad where
+  pprint :: (MonadIO m) => item s m -> tmsMonad s m ()
 
 -- |Class of artifacts which can be printed for the purpose of
 -- debugging in a `MonadIO` to the standard output.
@@ -93,5 +94,5 @@ class TmsPrinted item tmsMonad where
 -- type; the second, the monad.  Both type constructors take two
 -- arguments, the state thread type used by the TMS thread, and the
 -- enclosed monad constructor.
-class TmsDebugged item tmsMonad where
-  tmsDebug :: (MonadIO m) => item s m -> tmsMonad s m ()
+class Debugged item tmsMonad where
+  debug :: (MonadIO m) => item s m -> tmsMonad s m ()
