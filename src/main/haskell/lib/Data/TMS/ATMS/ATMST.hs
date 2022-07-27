@@ -112,7 +112,7 @@ module Data.TMS.ATMS.ATMST (
   printEnv, printNogoods, printEnvs, printEnvTable, printTable,
 
   -- ** Justifications
-  debugJust, printJust
+  printJust
 
   ) where
 
@@ -995,7 +995,7 @@ debugPropagateArgs justRule antecedent envs = do
   liftIO $ putStrLn "Calling propagate with"
   let atms = nodeATMS $ justConsequence justRule
   liftIO $ putStr ". Just: "
-  debugJust justRule
+  tmsDebug justRule
 
   case antecedent of
     Just n -> debugNode n
@@ -1099,7 +1099,7 @@ debugUpdateArgs envs consequence justRule = do
   liftIO $ putStrLn ""
 
   liftIO $ putStr ". Just: "
-  debugJust justRule
+  tmsDebug justRule
 
 -- |Internal method to update the label of this node to include the
 -- given environments.  The inclusion is not simply list extension;
@@ -2420,7 +2420,7 @@ debugJusts atms = do
   let len = length justs
   liftIO $ putStrLn $ show len ++ " justification structure"
     ++ (if len == 1 then "" else "s") ++ ":"
-  forM_ (sortOn justIndex justs) $ debugJust
+  forM_ (sortOn justIndex justs) $ tmsDebug
 
 -- |Computation returning a one-line summary of the informant of a
 -- `Just`ification rule of an `ATMS`.
@@ -2458,17 +2458,6 @@ instance NodeDatum d => TmsDebugged (JustRule d i r) ATMST where
       ++ "[" ++ informantFmt inf ++ "." ++ show idx ++ "] "
       ++ datumFmt (nodeDatum conseq) ++ " <= "
       ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
-
--- |Give a verbose printout of one `Just`ification rule of an `ATMS`.
-debugJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
-debugJust (JustRule idx inf conseq ants) = do
-  let atms = nodeATMS conseq
-  informantFmt <- getInformantString atms
-  datumFmt <- getDatumString atms
-  liftIO $ putStrLn $ "  "
-    ++ "[" ++ informantFmt inf ++ "." ++ show idx ++ "] "
-    ++ datumFmt (nodeDatum conseq) ++ " <= "
-    ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
 
 -- |Give a verbose printout of the `Env`ironments of an `ATMS`.
 debugAtmsEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
