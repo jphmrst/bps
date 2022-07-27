@@ -2334,7 +2334,6 @@ printTable msg (EnvTable arr) = do
       liftIO $ putStrLn $ "  " ++ show count ++ " of length " ++ show i
 
 -- |Give a verbose printout of an `ATMS`.
---
 debugAtms ::
   (MonadIO m, NodeDatum d) => String -> ATMS d i r s m -> ATMST s m ()
 debugAtms blurb atms = do
@@ -2346,7 +2345,6 @@ debugAtms blurb atms = do
   liftIO $ putStrLn "=============== "
 
 -- |Give a verbose printout of the `Node`s of an `ATMS`.
---
 debugNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNodes atms = do
   nodes <- getNodes atms
@@ -2362,7 +2360,6 @@ instance NodeDatum d => TmsFormatted (Node d i r) ATMST where
 
 -- |Computation returning a one-line summary of the label of a `Node`
 -- of an `ATMS`.
---
 formatNodeLabel :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 formatNodeLabel node = do
   label <- getNodeLabel node
@@ -2379,7 +2376,6 @@ printNode node = do
   liftIO $ putStr $ "<NODE: " ++ str ++ ">"
 
 -- |Give a verbose printout of a `Node` of an `ATMS`.
---
 debugNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 debugNode node = do
   let atms = nodeATMS node
@@ -2417,7 +2413,6 @@ instance NodeDatum d => TmsFormatted (Justification d i r) ATMST where
 
 -- |Give a verbose printout of the `Just`ification rules of an
 -- `ATMS`.
---
 debugJusts :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugJusts atms = do
   justs <- getJusts atms
@@ -2428,7 +2423,6 @@ debugJusts atms = do
 
 -- |Computation returning a one-line summary of the informant of a
 -- `Just`ification rule of an `ATMS`.
---
 formatJustInformant ::
   (Monad m, NodeDatum d) => JustRule d i r s m -> ATMST s m String
 formatJustInformant rule = do
@@ -2444,6 +2438,16 @@ printJust rule = do
   infStr <- formatJustInformant rule
   liftIO $ putStr $ "<" ++ infStr ++ " " ++ show (justIndex rule) ++ ">"
 
+-- |`tmsFormat`, `tmsBlurb`, etc. may be applied to `Justification`s
+-- in an `ATMST`.
+instance NodeDatum d => TmsPrinted (Justification d i r) ATMST where
+  tmsPrint j = case j of
+    ByRule rule -> printJust rule
+    ByAssumption node -> do
+      liftIO $ putStr $ "Assumed node "
+      printNode node
+    ByContradiction -> liftIO $ putStrLn $ "By contradiction"
+
 -- |Print a more verbose description of the `Justification`.
 printJustification ::
   (MonadIO m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
@@ -2455,7 +2459,6 @@ printJustification j = case j of
   ByContradiction -> liftIO $ putStrLn $ "By contradiction"
 
 -- |Give a verbose printout of one `Just`ification rule of an `ATMS`.
---
 debugJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
 debugJust (JustRule idx inf conseq ants) = do
   let atms = nodeATMS conseq
@@ -2467,7 +2470,6 @@ debugJust (JustRule idx inf conseq ants) = do
     ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
 
 -- |Give a verbose printout of the `Env`ironments of an `ATMS`.
---
 debugAtmsEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugAtmsEnvs atms = do
   liftIO $ putStrLn "Environments:"
@@ -2475,7 +2477,6 @@ debugAtmsEnvs atms = do
   debugEnvTable atms envTable
 
 -- |Give a verbose printout of one `Env`ironment of an `ATMS`.
---
 debugEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 debugEnv env = do
   isNogood <- envIsNogood env
@@ -2491,7 +2492,6 @@ debugEnv env = do
 
 -- |Print a short summary of a mutable list of nullable (via `Maybe`)
 -- `Env`ironments from an `ATMS`.
---
 blurbMaybeEnvMList ::
   (MonadIO m, NodeDatum d) => MList s (Maybe (Env d i r s m)) -> ATMST s m ()
 blurbMaybeEnvMList mlist = do
@@ -2508,7 +2508,6 @@ blurbMaybeEnvMList mlist = do
 
 -- |Print a short summary of a reference to a mutable list of
 -- nullable (via `Maybe`) `Env`ironments from an `ATMS`.
---
 blurbMaybeEnvMListRef ::
   (MonadIO m, NodeDatum d) =>
     STRef s (MList s (Maybe (Env d i r s m))) -> ATMST s m ()
@@ -2518,7 +2517,6 @@ blurbMaybeEnvMListRef mlistRef = do
 
 -- |Print a short summary of a nullable (via `Maybe`) reference to an
 -- `Env`ironment of an `ATMS`.
---
 blurbMaybeEnv ::
   (MonadIO m, NodeDatum d) => Maybe (Env d i r s m) -> ATMST s m ()
 blurbMaybeEnv envm = case envm of
@@ -2526,7 +2524,6 @@ blurbMaybeEnv envm = case envm of
                        Nothing -> liftIO $ putStr "<nothing>"
 
 -- |Print a short summary of one `Env`ironment of an `ATMS`.
---
 blurbEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 blurbEnv env = do
   wng <- sttLayer $ readSTRef $ envWhyNogood env
@@ -2542,7 +2539,6 @@ blurbEnv env = do
 
 -- |Give a verbose printout of the no-good `Env`ironments of an
 -- `ATMS`.
---
 debugNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNogoods atms = do
   liftIO $ putStrLn "No-good environments:"
@@ -2551,7 +2547,6 @@ debugNogoods atms = do
 
 -- |Give a verbose printout of the `Env`ironments of an `EnvTable` of
 -- an `ATMS`.
---
 debugEnvTable ::
   (MonadIO m, NodeDatum d) =>
     ATMS d i r s m -> EnvTable d i r s m -> ATMST s m ()
@@ -2565,7 +2560,6 @@ debugEnvTable atms (EnvTable array) = do
 
 {-
 -- |Print a short summary of the label of a `Node` of an `ATMS`.
---
 blurbNodeLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m String
 blurbNodeLabel node = do
@@ -2578,7 +2572,6 @@ blurbNodeLabel node = do
 -}
 
 -- |Give a verbose printout of the label of a `Node` of an `ATMS`.
---
 debugNodeLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 debugNodeLabel node = do
@@ -2590,7 +2583,6 @@ debugNodeLabel node = do
   liftIO $ putStrLn ""
 
 -- |Print a short summary of a list of `Env`ironments of an `ATMS`.
---
 blurbEnvList ::
   (MonadIO m, NodeDatum d) => Int -> String -> [Env d i r s m] -> ATMST s m ()
 blurbEnvList multiLineIf lineLead envs =
