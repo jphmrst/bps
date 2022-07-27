@@ -108,7 +108,7 @@ module Data.TMS.ATMS.ATMST (
   -- ** Environments, labels, and tables
   debugEnvTable, formatNodeLabel, debugNodeLabel,
   debugNogoods,
-  printNogoods, printEnvs, printTable,
+  printNogoods, printEnvs,
 
   -- ** Justifications
   printJust
@@ -2318,20 +2318,6 @@ printAtmsStatistics atms = do
   printEnvs atms
   liftIO $ putStrLn $ "Nogood table: "
   printNogoods atms
-
--- |Print the entries of an `EnvTable`.
---
--- Translated from @print-table@ in @atms.lisp@.
-printTable ::
-  (MonadIO m, NodeDatum d) => String -> EnvTable d i r s m -> ATMST s m ()
-printTable msg (EnvTable arr) = do
-  liftIO $ putStr msg
-  let (lo, hi) = boundsSTArray arr
-  forM_ [lo..hi] $ \i -> do
-    row <- sttLayer $ readSTArray arr i
-    let count = length row
-    when (count > 0) $
-      liftIO $ putStrLn $ "  " ++ show count ++ " of length " ++ show i
 
 -- |Give a verbose printout of an `ATMS`.
 instance NodeDatum d => TmsDebugged (ATMS d i r) ATMST where
