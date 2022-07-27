@@ -2243,12 +2243,13 @@ whyNodes atms = do
 -- >   (format t "~% For ~A:" (node-string node))
 -- >   (dolist (j (tms-node-justs node))
 -- >     (print-justification j stream)))
-nodeJustifications :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+nodeJustifications ::
+  (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 nodeJustifications node = do
   nodeStr <- nodeString node
   liftIO $ putStr $ " For " ++ nodeStr ++ ":"
   justs <- getNodeJusts node
-  forM_ justs printJustification
+  forM_ justs tmsPrint
 
 -- |Retrieve an `ATMS`'s `Env`ironment with the given index number.
 --
@@ -2447,16 +2448,6 @@ instance NodeDatum d => TmsPrinted (Justification d i r) ATMST where
       liftIO $ putStr $ "Assumed node "
       printNode node
     ByContradiction -> liftIO $ putStrLn $ "By contradiction"
-
--- |Print a more verbose description of the `Justification`.
-printJustification ::
-  (MonadIO m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
-printJustification j = case j of
-  ByRule rule -> printJust rule
-  ByAssumption node -> do
-    liftIO $ putStr $ "Assumed node "
-    printNode node
-  ByContradiction -> liftIO $ putStrLn $ "By contradiction"
 
 -- |Give a verbose printout of one `Just`ification rule of an `ATMS`.
 debugJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()

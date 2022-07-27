@@ -95,5 +95,3 @@ class TmsPrinted item tmsMonad where
 -- enclosed monad constructor.
 class TmsDebugged item tmsMonad where
   tmsDebug :: (MonadIO m) => item s m -> tmsMonad s m ()
-
-
