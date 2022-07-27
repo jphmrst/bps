@@ -2449,6 +2449,16 @@ instance NodeDatum d => TmsPrinted (Justification d i r) ATMST where
       printNode node
     ByContradiction -> liftIO $ putStrLn $ "By contradiction"
 
+instance NodeDatum d => TmsDebugged (JustRule d i r) ATMST where
+  tmsDebug (JustRule idx inf conseq ants) = do
+    let atms = nodeATMS conseq
+    informantFmt <- getInformantString atms
+    datumFmt <- getDatumString atms
+    liftIO $ putStrLn $ "  "
+      ++ "[" ++ informantFmt inf ++ "." ++ show idx ++ "] "
+      ++ datumFmt (nodeDatum conseq) ++ " <= "
+      ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
+
 -- |Give a verbose printout of one `Just`ification rule of an `ATMS`.
 debugJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
 debugJust (JustRule idx inf conseq ants) = do
