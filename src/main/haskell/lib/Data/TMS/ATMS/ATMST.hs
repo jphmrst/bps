@@ -108,10 +108,7 @@ module Data.TMS.ATMS.ATMST (
   -- ** Environments, labels, and tables
   debugEnvTable, formatNodeLabel, debugNodeLabel,
   debugNogoods,
-  printNogoods, printEnvs,
-
-  -- ** Justifications
-  printJust
+  printNogoods, printEnvs
 
   ) where
 
@@ -2418,16 +2415,16 @@ formatJustInformant rule = do
 -- `ATMS`.
 --
 -- Translated from @print-just@ in @atms.lisp@.
-printJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
-printJust rule = do
-  infStr <- formatJustInformant rule
-  liftIO $ putStr $ "<" ++ infStr ++ " " ++ show (justIndex rule) ++ ">"
+instance NodeDatum d => TmsPrinted (JustRule d i r) ATMST where
+  tmsPrint rule = do
+    infStr <- formatJustInformant rule
+    liftIO $ putStr $ "<" ++ infStr ++ " " ++ show (justIndex rule) ++ ">"
 
 -- |`tmsFormat`, `tmsBlurb`, etc. may be applied to `Justification`s
 -- in an `ATMST`.
 instance NodeDatum d => TmsPrinted (Justification d i r) ATMST where
   tmsPrint j = case j of
-    ByRule rule -> printJust rule
+    ByRule rule -> tmsPrint rule
     ByAssumption node -> do
       liftIO $ putStr $ "Assumed node "
       tmsPrint node
