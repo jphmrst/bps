@@ -1637,7 +1637,7 @@ debugCreateEnvStart ::
   (MonadIO m, NodeDatum d) => [Node d i r s m] -> ATMST s m ()
 debugCreateEnvStart nodes = do
   liftIO $ putStrLn $ "             - Running createEnv"
-  astr <- formats "," nodes
+  astr <- formats "<none>" "," nodes
   liftIO $ putStrLn $ "               assumptions " ++ astr
 
 debugCreateEnvEnv ::
@@ -2003,8 +2003,8 @@ interpretationsWithDefaults ::
     ATMS d i r s m -> [[Node d i r s m]] -> [Node d i r s m] ->
       ATMST s m [Env d i r s m]
 interpretationsWithDefaults atms choiceSets defaults = do
-  $(dbg [| do liftIO $ putStr "- Refining choice sets "
-              liftIO $ putStrLn "" |])
+  $(dbg [| do str <- formatss "<none>" "; " "<none>" "," choiceSets
+              liftIO $ putStr $ "- Refining choice sets " ++ str ++ "\n" |])
   choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
   let cntn = afterDepthSolutions atms choiceSetEnvLists defaults return
   case choiceSetEnvLists of
@@ -2448,7 +2448,7 @@ formatNodeLabel node = do
   label <- getNodeLabel node
   case label of
     [] -> return "empty"
-    _ -> formatss ", " $ map envAssumptions label
+    _ -> formatss "<none>" "; " "<none>" "," $ map envAssumptions label
 
 -- |Give a verbose printout of the `Just`ification rules of an
 -- `ATMS`.
