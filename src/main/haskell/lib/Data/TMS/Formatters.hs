@@ -16,6 +16,7 @@ language governing permissions and limitations under the License.
 -}
 
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Data.TMS.Formatters where
 
@@ -52,6 +53,12 @@ class Formatted item tmsMonad where
   formats none _ xs | null xs = return none
   formats _ sep xs = mapAndIntercalateM format sep xs
 
+  -- |Format several artifacts with the default separator.
+  formats' ::
+    (Monad m, Monad (tmsMonad s m), Traversable k) =>
+      k (item s m) -> tmsMonad s m String
+  formats' = formats "<none>" ","
+
   -- |Format several collections of artifacts, with the given string
   -- between each pair of collections, and a comma between each pair
   -- of artifacts.
@@ -62,6 +69,13 @@ class Formatted item tmsMonad where
   formatss outNone _ _ _ xs | null xs = return outNone
   formatss outNone outSep inNone inSep xs =
     mapAndIntercalateM (formats inNone inSep) outSep xs
+
+  -- |Format several collections of artifacts with the default
+  -- separators.
+  formatss' ::
+    (Monad m, Monad (tmsMonad s m), Traversable k) =>
+      k (k (item s m)) -> tmsMonad s m String
+  formatss' = formatss "<none>" "; " "<none>" ","
 
   -- |Print a short representation of an artifact to the standard
   -- output.

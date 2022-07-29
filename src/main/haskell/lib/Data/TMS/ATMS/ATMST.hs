@@ -123,6 +123,7 @@ module Data.TMS.ATMS.ATMST (
 
   ) where
 
+import Control.Monad
 import Control.Monad.State
 import Control.Monad.ST.Trans
 -- import Control.Monad.Except
@@ -767,6 +768,17 @@ instance (Monad m, NodeDatum d) => Eq (Env d i r s m) where
 
 instance (Monad m, NodeDatum d) => Show (Env d i r s m) where
   show n = "<Env " ++ show (envIndex n) ++ ">"
+
+-- |`format` etc. for `Env`, translated from @print-env@ in @atms.lisp@.
+instance NodeDatum d => Formatted (Env d i r) ATMST where
+  format env = do
+    let assumptions = envAssumptions env
+    case (null assumptions) of
+      True -> return "<none>"
+      False -> do
+        printer <- getNodeString $ nodeATMS $ head assumptions
+        strs <- mapM format assumptions
+        return $ intercalate "," strs
 
 -- |`pprint` for `Env`, translated from @print-env@ in @atms.lisp@.
 instance NodeDatum d => Printed (Env d i r) ATMST where
@@ -2003,9 +2015,11 @@ interpretationsWithDefaults ::
     ATMS d i r s m -> [[Node d i r s m]] -> [Node d i r s m] ->
       ATMST s m [Env d i r s m]
 interpretationsWithDefaults atms choiceSets defaults = do
-  $(dbg [| do str <- formatss "<none>" "; " "<none>" "," choiceSets
+  $(dbg [| do str <- formatss' choiceSets
               liftIO $ putStr $ "- Refining choice sets " ++ str ++ "\n" |])
   choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
+  $(dbg [| do str <- formatss' choiceSetEnvLists
+              liftIO $ putStr $ "  Environment lists " ++ str ++ "\n" |])
   let cntn = afterDepthSolutions atms choiceSetEnvLists defaults return
   case choiceSetEnvLists of
     [] -> cntn []
