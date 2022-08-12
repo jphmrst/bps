@@ -494,13 +494,14 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
   (let ((*solutions* nil)
 	(choice-sets
 	  (mapcar #'(lambda (alt-set)
-		      (format *trace-output*
-			  "~%  - ~a --> ???" alt-set)
+		      (format *trace-output* "~%  - ~a --> ???" alt-set)
 		      (let ((result
 			     ;; Like MAPCAR, but passing the result to NCONC.
 			     (mapcan #'(lambda (alt)
 					 (format *trace-output*
-					     "~%    - ~a --> ~a" alt (tms-node-label alt))
+					     "~%    - Node ~a (~a) labelled ~a"
+					   alt (tms-node-datum alt)
+					   (tms-node-label alt))
 					 (copy-list (tms-node-label alt)))
 				     alt-set)))
 			(format *trace-output*

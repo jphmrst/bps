@@ -774,11 +774,11 @@ instance NodeDatum d => Formatted (Env d i r) ATMST where
   format env = do
     let assumptions = envAssumptions env
     case (null assumptions) of
-      True -> return "<none>"
+      True -> return "<empty env>"
       False -> do
         printer <- getNodeString $ nodeATMS $ head assumptions
         strs <- mapM format assumptions
-        return $ intercalate "," strs
+        return $ "<env:" ++ intercalate "," strs ++ ">"
 
 -- |`pprint` for `Env`, translated from @print-env@ in @atms.lisp@.
 instance NodeDatum d => Printed (Env d i r) ATMST where
@@ -793,7 +793,7 @@ instance NodeDatum d => Debugged (Env d i r) ATMST where
   debug env = do
     isNogood <- envIsNogood env
     case envAssumptions env of
-      [] -> liftIO $ putStrLn "<empty>"
+      [] -> liftIO $ putStrLn "<empty env>"
       nodes @ (n : _) -> do
         let atms = nodeATMS n
         datumFmt <- getDatumString atms
@@ -1990,7 +1990,10 @@ removeEnvFromLabels env atms = do
 interpretations ::
   (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m [Env d i r s m]
-interpretations atms choiceSets =
+interpretations atms choiceSets = do
+  $(dbg [| do formatss' choiceSets >>=
+                liftIO . putStrLn . (++) "Called interpretations with "
+         |])
   interpretationsWithDefaults atms choiceSets []
 
 -- |Initial setup for @interpretations@: convert the @choiceSets@ over
@@ -2018,8 +2021,10 @@ interpretationsWithDefaults atms choiceSets defaults = do
   $(dbg [| do str <- formatss' choiceSets
               liftIO $ putStr $ "- Refining choice sets " ++ str ++ "\n" |])
   choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
-  $(dbg [| do str <- formatss' choiceSetEnvLists
-              liftIO $ putStr $ "  Environment lists " ++ str ++ "\n" |])
+  $(dbg [| do liftIO $ putStrLn $ "  Refined choice sets to environment lists:"
+              formatss' choiceSetEnvLists >>=
+                (liftIO . putStrLn . (++) "    ") |])
+
   let cntn = afterDepthSolutions atms choiceSetEnvLists defaults return
   case choiceSetEnvLists of
     [] -> cntn []
@@ -2049,10 +2054,13 @@ interpretationsWithDefaults atms choiceSets defaults = do
 -- >                         result))
 -- >                   choice-sets)))
 altSetToEnvList ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [Node d i r s m] -> ATMST s m [Env d i r s m]
 altSetToEnvList atms nodes = do
   mapped <- mapM getNodeLabel nodes
+  $(dbg [| do s1 <- formats' nodes
+              s2 <- formatss' mapped
+              liftIO $ putStrLn $ "  - " ++ s1 ++ " --> " ++ s2 |])
   return $ foldl (++) [] mapped
 
 -- |The body of @interpretations@ is translated from the Lisp in a
@@ -2083,8 +2091,10 @@ interpsForOneAlternative ::
   (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
-interpsForOneAlternative atms [] choiceSetEnvLists k solutions = k solutions
-interpsForOneAlternative atms (env : envs) choiceSetEnvLists k solutions =
+interpsForOneAlternative atms [] choiceSetEnvLists k solutions = do
+  $(dbg [| liftIO $ putStrLn "- Completed calls to getDepthSolutions" |])
+  k solutions
+interpsForOneAlternative atms (env : envs) choiceSetEnvLists k solutions = do
   getDepthSolutions atms env choiceSetEnvLists
                     (interpsForOneAlternative atms envs choiceSetEnvLists k)
                     solutions
@@ -2131,8 +2141,17 @@ getDepthSolutions ::
   (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
-getDepthSolutions atms cand [] k solns = k $ filterWithNewSoln cand solns
-getDepthSolutions atms partial (cs : css) k solns =
+getDepthSolutions atms cand [] k solns = do
+  let filtered = filterWithNewSoln cand solns
+  $(dbg [| formats' filtered >>= liftIO . putStrLn . (++) "    solutions => "
+         |])
+  k filtered
+getDepthSolutions atms partial (cs : css) k solns = do
+  $(dbg [| do format partial >>= liftIO . putStrLn .
+                (++) "- Calling getDepthSolutions with choice "
+              formats' cs >>= liftIO . putStrLn . (++) "    choice sets "
+              formats' solns >>= liftIO . putStrLn . (++) "    initial solns "
+         |])
   getDepthSolutionsFor atms partial cs css
     (getDepthSolutions atms partial css k)
     solns
@@ -2142,7 +2161,10 @@ getDepthSolutionsFor ::
   (Debuggable m, NodeDatum d) =>
     ATMS d i r s m -> Env d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
-getDepthSolutionsFor atms    _    []      _  k solns = k solns
+getDepthSolutionsFor atms    _    []      _  k solns = do
+  $(dbg [| do str' <- formats' solns
+              liftIO $ putStrLn $ "    solutions => " ++ str' |])
+  k solns
 getDepthSolutionsFor atms partial (c:cs) css k solns = do
   let k' = getDepthSolutionsFor atms partial cs css k
            -- To try the next alternative of this choice set
