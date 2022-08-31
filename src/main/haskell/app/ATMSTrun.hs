@@ -4,6 +4,7 @@ import Control.Monad.State
 import Data.TMS.Formatters
 import Data.TMS.ATMS.ATMST
 
+-- Corresponds to Lisp function `book-1` in src/main/lisp/atms/atest.lisp
 runATMS1 :: IO (Either AtmsErr ())
 runATMS1 = do
   runATMST $ do
@@ -40,6 +41,6 @@ runATMS1 = do
     liftIO $ putStrLn "Interpretations for (a, c); (h, g): "
     forM_ i1 $ \e -> debug e
 
-    i2 <- interpretations atms [[na, nc], [nh, ng]]
+    i2 <- interpretations atms [[nh, ng]]
     liftIO $ putStrLn "Interpretations for (h, g): "
     forM_ i2 $ \e -> debug e

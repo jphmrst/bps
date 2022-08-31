@@ -166,6 +166,9 @@ E-6: {B, C}
 
 ;;; Added JPHM
 (proclaim '(special e h g x))
+;;; Corresponds to
+;;; - Haskell function `runATMS1` in src/main/haskell/app/ATMSTrun.hs
+
 (defun book-1 (&aux i1 i2)
   (setq *atms* (create-atms "Step-1")
         a (tms-create-node *atms* "A")
