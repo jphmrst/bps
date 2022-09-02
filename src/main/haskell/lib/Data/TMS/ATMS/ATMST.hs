@@ -2142,19 +2142,20 @@ getDepthSolutions ::
     ATMS d i r s m -> Env d i r s m -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
 getDepthSolutions atms cand [] k solns = do
+  $(dbg [| formats' solns >>=
+             liftIO . putStrLn . (++) "    getDepthSolutions => "
+         |])
   let filtered = filterWithNewSoln cand solns
-  $(dbg [| formats' filtered >>= liftIO . putStrLn . (++) "    solutions => "
+  $(dbg [| formats' filtered >>= liftIO . putStrLn . (++) "    filtered "
          |])
   k filtered
 getDepthSolutions atms partial (cs : css) k solns = do
   $(dbg [| do format partial >>= liftIO . putStrLn .
-                (++) "- Calling getDepthSolutions with choice "
+                (++) "- Calling getDepthSolutions with partial solution "
               formats' cs >>= liftIO . putStrLn . (++) "    choice sets "
               formats' solns >>= liftIO . putStrLn . (++) "    initial solns "
          |])
-  getDepthSolutionsFor atms partial cs css
-    (getDepthSolutions atms partial css k)
-    solns
+  getDepthSolutionsFor atms partial cs css k solns
 
 -- |One pass through the body of the @getDepthSolutions$ loop.
 getDepthSolutionsFor ::
@@ -2162,16 +2163,29 @@ getDepthSolutionsFor ::
     ATMS d i r s m -> Env d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
       ChoiceSetCntn d i r s m
 getDepthSolutionsFor atms    _    []      _  k solns = do
-  $(dbg [| do str' <- formats' solns
-              liftIO $ putStrLn $ "    solutions => " ++ str' |])
+  $(dbg [| formats' solns >>=
+             liftIO . putStrLn . (++) "    getDepthSolutionsFor => " |])
   k solns
 getDepthSolutionsFor atms partial (c:cs) css k solns = do
+  $(dbg [| do format c >>= liftIO . putStrLn .
+                (++) "- Calling getDepthSolutionsFor with first choice "
+              formats' cs >>= liftIO . putStrLn . (++) "    other choices "
+              formatss' css >>=
+                liftIO . putStrLn . (++) "    other choice sets "
+              formats' solns >>= liftIO . putStrLn . (++) "    initial solns "
+         |])
   let k' = getDepthSolutionsFor atms partial cs css k
            -- To try the next alternative of this choice set
   newPartial <- unionEnv partial c
   ifM (envIsNogood newPartial)
-      (k' solns)
-      (getDepthSolutions atms newPartial css k' solns)
+      (do ($(dbg [| do format newPartial >>= liftIO . putStrLn .
+                         (++) "    nogood from unionEnv "
+                  |]))
+          k' solns)
+      (do ($(dbg [| do format partial >>= liftIO . putStrLn .
+                         (++) "    continuing with "
+                  |]))
+          (getDepthSolutions atms newPartial css k' solns))
 
 -- |Implementation of the list manipulation achieved in the DO-loop at:
 --

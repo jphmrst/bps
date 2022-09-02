@@ -194,14 +194,17 @@ E-6: {B, C}
   (why-nodes *atms*)
   (print-envs *atms*)
 
+  (format t "~%----------------------------------------")
   (setf i1 (interpretations *atms* (list (list a c) (list h g))))
   (format t "~%Interpretations with (a, c); (h, g): ~s~%" i1)
   (mapcar #'print-env i1)
 
+  (format t "~%----------------------------------------")
   (setf i2 (interpretations *atms* (list (list h g))))
   (format t "~%Interpretations with (h, g): ~s" i2)
   (mapcar #'print-env i2)
   
+  (format t "~%----------------------------------------")
   (setf i3 (interpretations *atms* (list (list h))))
   (format t "~%Interpretations with (h): ~s" i3)
   (mapcar #'print-env i3)

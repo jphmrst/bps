@@ -32,7 +32,7 @@ import qualified Control.Monad.Trans.Writer.Strict as WS
 
 -- | Flag which indicates whether debugging output should be compiled
 -- into modules using this system for runtime trace output.
-debuggingOn = True
+debuggingOn = False
 
 unitQ :: Q Exp
 {-# INLINE unitQ #-}

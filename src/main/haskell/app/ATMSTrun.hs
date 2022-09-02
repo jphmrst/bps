@@ -31,16 +31,24 @@ runATMS1 = do
     justifyNode "R3" nx [ng]
     -- debugAtms "After rule R3" atms
     nb <- createNode atms "B" True False
+
     liftIO $ putStrLn "Added assumption node B"
     debug atms
     justifyNode "R4" nh [nb, nc]
     liftIO $ putStrLn "After rule R4"
     debug atms
 
+    liftIO $ putStrLn "----------------------------------------"
     i1 <- interpretations atms [[na, nc], [nh, ng]]
     liftIO $ putStrLn "Interpretations for (a, c); (h, g): "
-    forM_ i1 $ \e -> debug e
+    forM_ i1 $ debug
 
+    liftIO $ putStrLn "----------------------------------------"
     i2 <- interpretations atms [[nh, ng]]
     liftIO $ putStrLn "Interpretations for (h, g): "
-    forM_ i2 $ \e -> debug e
+    forM_ i2 $ debug
+
+    liftIO $ putStrLn "----------------------------------------"
+    i3 <- interpretations atms [[nh]]
+    liftIO $ putStrLn "Interpretations for (h): "
+    forM_ i3 $ debug

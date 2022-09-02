@@ -12,6 +12,7 @@
 ;;; (atms-test1)
 
 (defsystem :atms
+    :depends-on (:trdbg)
     :components (;; (:file "package")
 		 (:file "adata" :depends-on ())
 		 (:file "ainter" :depends-on ())
