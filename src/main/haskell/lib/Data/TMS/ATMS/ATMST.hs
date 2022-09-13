@@ -17,10 +17,9 @@ deviations from the original are due to either Haskell's strong
 typing, which necessitates some additional tagging, and to the
 abomination which is Lisp's @do@ macro.  The translation relies on
 mutable data structures using `STT` state thread references.  A more
-pure translation, possibly not relying on the [@ST@
-monad]("Control.Monad.ST")/[@STT@
-transformer]("Control.Monad.ST.Trans"), is a significant piece of
-future work.
+pure translation, possibly not relying on the
+[@ST@ monad]("Control.Monad.ST")/[@STT@ transformer]("Control.Monad.ST.Trans"),
+is a significant piece of future work.
 
 Note also there are restrictions on the embedded monad @m@ which can
 be wrapped in the `STT` transformer; see [the @Control.Monad.ST.Trans@
@@ -43,6 +42,7 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
@@ -84,7 +84,7 @@ module Data.TMS.ATMS.ATMST (
   Env, EnvTable, envIndex, envAssumptions, getEnvNodes,
 
   -- * Deduction and search utilities
-  {- interpretations, -}
+  interpretations, interpretationsWithDefaults,
 
   -- ** Related to a node
   isTrueNode, isInNode, isInNodeByEnv, isOutNode, isNodeConsistentWith,
@@ -95,27 +95,35 @@ module Data.TMS.ATMS.ATMST (
 
   -- * Printing and debugging
 
-  -- |Functions prefixed @format@ build a computation returning a
+  -- | In addition to the functions documented below, many of the
+  -- types defined in this module are instances of the classes defined
+  -- in `Data.TMS.Formatters`.  Specifically:
+  --
+  --  - __Defined for `format`, `blurb`, etc:__ `Node`, `Justification`
+  --
+  --  - __Defined for `pprint`:__ `Node`, `JustRule`, `Justification`,
+  --    `Env`, `EnvTable`
+  --
+  --  - __Defined for `debug`:__ `ATMS`, `Node`, `JustRule`, `Env`
+  --
+  -- Functions prefixed @format@ build a computation returning a
   -- `String`.  Functions prefixed @debug@ or @print@ build a unit
   -- computation printing the artifact in question to standard output;
   -- those with prefix @debug@ are generally more verbose.
-  debugAtms, printAtms, debugAtmsEnvs,
+  debugAtmsEnvs,
   printAtmsStatistics,
 
   -- ** Nodes and node lists
-  formatNode, formatNodes, debugNode, printNode,
   whyNodes, whyNode,
 
   -- ** Environments, labels, and tables
-  debugEnv, debugEnvTable, formatNodeLabel,
+  debugEnvTable, formatNodeLabel, debugNodeLabel,
   debugNogoods,
-  printEnv, printNogoods, printEnvs, printEnvTable, printTable,
-
-  -- ** Justifications
-  debugJust, printJust, formatJustification
+  printNogoods, printEnvs
 
   ) where
 
+import Control.Monad
 import Control.Monad.State
 import Control.Monad.ST.Trans
 -- import Control.Monad.Except
@@ -123,6 +131,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.Extra
 import Data.List
 import Data.Symbol
+import Data.TMS.Formatters
 import Data.TMS.Helpers
 import Data.TMS.MList
 import Data.TMS.Dbg
@@ -325,8 +334,24 @@ data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   -- |List of external procedures to be executed for this ATMS.
   atmsEnqueueProcedure :: STRef s (r -> ATMST s m ()),
   -- |Set to `True` when we wish to debug this ATMS.
-  atmsDebugging :: STRef s Bool
+  adebugging :: STRef s Bool
 }
+
+-- |Print the internal title signifying an ATMS.
+--
+-- Translated from @print-atms@ in @atms.lisp@.
+instance NodeDatum d => Printed (ATMS d i r) ATMST where
+  pprint atms = liftIO $ putStrLn $ "#<ATMS: " ++ atmsTitle atms ++ ">"
+
+-- |Give a verbose printout of an `ATMS`.
+instance NodeDatum d => Debugged (ATMS d i r) ATMST where
+  debug atms = do
+    liftIO $ putStrLn $ "=============== " ++ atmsTitle atms
+    debugNodes atms
+    debugJusts atms
+    debugAtmsEnvs atms
+    debugNogoods atms
+    liftIO $ putStrLn "=============== "
 
 -- |Shortcut maker for reading from an `ATMS` reference.
 getATMSMutable ::
@@ -485,12 +510,6 @@ setEnqueueProcedure ::
 {-# INLINE setEnqueueProcedure #-}
 setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
 
--- |Print the internal title signifying an ATMS.
---
--- Translated from @print-atms@ in @atms.lisp@.
-printAtms :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-printAtms atms = liftIO $ putStrLn $ "#<ATMS: " ++ atmsTitle atms ++ ">"
-
 -- |Get the next node counter value, incrementing for future accesses.
 nextNodeCounter :: (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m Int
 nextNodeCounter jtms = sttLayer $ do
@@ -545,6 +564,48 @@ instance (Monad m, NodeDatum d) => Ord (Node d i r s m) where
 
 instance (Monad m, NodeDatum d) => Show (Node d i r s m) where
   show n = "<Node " ++ show (nodeIndex n) ++ ">"
+
+-- |`format`, `blurb`, etc. may be applied to `Node`s in an
+-- `ATMST`.
+instance NodeDatum d => Formatted (Node d i r) ATMST where
+  format node = do
+    datumFmt <- getDatumString $ nodeATMS node
+    return $ datumFmt (nodeDatum node)
+
+-- |Print a `Node` of an `ATMS` with its tag.
+--
+-- Translated from @print-tms-node@ in @atms.lisp@.
+instance NodeDatum d => Printed (Node d i r) ATMST where
+  pprint node = do
+    str <- nodeString node
+    liftIO $ putStr $ "<NODE: " ++ str ++ ">"
+
+-- |Give a verbose printout of a `Node` of an `ATMS`.
+instance NodeDatum d => Debugged (Node d i r) ATMST where
+  debug node = do
+    let atms = nodeATMS node
+    datumFmt <- getDatumString atms
+    informantFmt <- getInformantString atms
+    liftIO $ putStrLn $ "- " ++ datumFmt (nodeDatum node)
+
+    label <- getNodeLabel node
+    case label of
+      [] -> liftIO $ putStrLn "  Empty label"
+      [env] -> do
+        liftIO $ putStr "  Single environment label: "
+        debug env
+      _ -> forM_ label $ \env -> do
+        liftIO $ putStrLn "  - "
+        debug env
+
+    conseqs <- getNodeConsequences node
+    case conseqs of
+      [] -> liftIO $ putStrLn "  Antecedent to no justifications"
+      _ -> do
+        liftIO $ putStr "  Antecedent to:"
+        forM_ conseqs $ \ conseq -> do
+          liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
+        liftIO $ putStrLn ""
 
 -- |Shortcut maker for reading from a `Node` reference.
 getNodeMutable ::
@@ -628,9 +689,47 @@ data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
 instance (Monad m, NodeDatum d) => Eq (JustRule d i r s m) where
   e1 == e2 = (justIndex e1) == (justIndex e2)
 
+-- |Print a more verbose description of a `Just`ification rule of an
+-- `ATMS`.
+--
+-- Translated from @print-just@ in @atms.lisp@.
+instance NodeDatum d => Printed (JustRule d i r) ATMST where
+  pprint rule = do
+    infStr <- formatJustInformant rule
+    liftIO $ putStr $ "<" ++ infStr ++ " " ++ show (justIndex rule) ++ ">"
+
+instance NodeDatum d => Debugged (JustRule d i r) ATMST where
+  debug (JustRule idx inf conseq ants) = do
+    let atms = nodeATMS conseq
+    informantFmt <- getInformantString atms
+    datumFmt <- getDatumString atms
+    liftIO $ putStrLn $ "  "
+      ++ "[" ++ informantFmt inf ++ "." ++ show idx ++ "] "
+      ++ datumFmt (nodeDatum conseq) ++ " <= "
+      ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
+
 -- |Description of why a `Node` may be believed by the `ATMS`.
 data Justification d i r s m =
   ByRule (JustRule d i r s m) | ByAssumption (Node d i r s m) | ByContradiction
+
+-- |`format`, `blurb`, etc. may be applied to `Node`s in an
+-- `ATMST`.
+instance NodeDatum d => Formatted (Justification d i r) ATMST where
+  format (ByRule j) = return $ "By rule " ++ show (justIndex j)
+  format (ByAssumption n) = do
+    nodeFmt <- getNodeString (nodeATMS n)
+    return $ "By assumption " ++ nodeFmt n
+  format ByContradiction = return "By contradiction"
+
+-- |`format`, `blurb`, etc. may be applied to `Justification`s
+-- in an `ATMST`.
+instance NodeDatum d => Printed (Justification d i r) ATMST where
+  pprint j = case j of
+    ByRule rule -> pprint rule
+    ByAssumption node -> do
+      liftIO $ putStr $ "Assumed node "
+      pprint node
+    ByContradiction -> liftIO $ putStrLn $ "By contradiction"
 
 -- |Explanation of why a `Node` may be believed by the `ATMS` for
 -- output to a query.
@@ -670,6 +769,39 @@ instance (Monad m, NodeDatum d) => Eq (Env d i r s m) where
 instance (Monad m, NodeDatum d) => Show (Env d i r s m) where
   show n = "<Env " ++ show (envIndex n) ++ ">"
 
+-- |`format` etc. for `Env`, translated from @print-env@ in @atms.lisp@.
+instance NodeDatum d => Formatted (Env d i r) ATMST where
+  format env = do
+    let assumptions = envAssumptions env
+    case (null assumptions) of
+      True -> return "<empty env>"
+      False -> do
+        printer <- getNodeString $ nodeATMS $ head assumptions
+        strs <- mapM format assumptions
+        return $ "<env:" ++ intercalate "," strs ++ ">"
+
+-- |`pprint` for `Env`, translated from @print-env@ in @atms.lisp@.
+instance NodeDatum d => Printed (Env d i r) ATMST where
+  pprint env = do
+    whenM (envIsNogood env) $ liftIO $ putStr "* "
+    -- liftIO $ putStr "ZZZZZ "
+    envString env
+    liftIO $ putStrLn ""
+
+-- |Give a verbose printout of one `Env`ironment of an `ATMS`.
+instance NodeDatum d => Debugged (Env d i r) ATMST where
+  debug env = do
+    isNogood <- envIsNogood env
+    case envAssumptions env of
+      [] -> liftIO $ putStrLn "<empty env>"
+      nodes @ (n : _) -> do
+        let atms = nodeATMS n
+        datumFmt <- getDatumString atms
+        when isNogood $ liftIO $ putStr "[X] "
+        liftIO $ putStrLn $
+          (intercalate ", " $ map (datumFmt . nodeDatum) nodes)
+          ++ " (count " ++ show (length nodes) ++ ")"
+
 -- |Shortcut maker for reading from a `Env` reference.
 getEnvMutable ::
   (Monad m, NodeDatum d) =>
@@ -707,6 +839,15 @@ envIsNogood env = do
 -- |Type alias for the array storage of a table of `Env`s arranged by
 -- length.
 newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
+
+-- |Print the `Env`ironments contained in the given `EnvTable`.
+--
+-- Translated from @print-env-table@ in @atms.lisp@.
+instance NodeDatum d => Printed (EnvTable d i r) ATMST where
+  pprint (EnvTable arr) = do
+    let (lo, hi) = boundsSTArray arr
+    forM_ [lo..hi] $ \i ->
+      forMM_ (sttLayer $ readSTArray arr i) pprint
 
 findInEnvTable ::
   (Monad m, NodeDatum d) =>
@@ -868,7 +1009,8 @@ isOutNode node env = fmap not $ isInNodeByEnv node env
 --
 -- Translated from @node-consistent-with?@ in @atms.lisp@.
 isNodeConsistentWith ::
-  (Monad m, NodeDatum d) => Node d i r s m -> Env d i r s m -> ATMST s m Bool
+  (Debuggable m, NodeDatum d) =>
+    Node d i r s m -> Env d i r s m -> ATMST s m Bool
 isNodeConsistentWith node env = do
   labelEnvs <- getNodeLabel node
   anyByM (\ le -> do
@@ -918,7 +1060,7 @@ assumeNode node =
 -- `ATMS`.
 --
 -- Translated from @make-contradiction@ in @atms.lisp@.
-makeContradiction :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+makeContradiction :: (Debuggable m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 makeContradiction node = do
   let atms = nodeATMS node
   unlessM (getNodeIsContradictory node) $ do
@@ -948,7 +1090,8 @@ justifyNode informant consequence antecedents = do
 
   -- Register the new justification with the nodes that can trigger
   -- it.
-  sttLayer $ forM_ antecedents $ \node -> push just $ nodeConsequences node
+  sttLayer $ forM_ antecedents $ \node ->
+    {-# SCC "justifyNode.push" #-} push just $ nodeConsequences node
 
   -- Register the new justification with the ATMS itself.
   sttLayer $ push just $ atmsJusts atms
@@ -962,14 +1105,13 @@ justifyNode informant consequence antecedents = do
 -- `Node`s to be a contradiction associated with the given informant.
 --
 -- Translated from @nogood-nodes@ in @atms.lisp@.
-nogoodNodes :: (Monad m, NodeDatum d) => i -> [Node d i r s m] -> ATMST s m ()
+nogoodNodes :: (Debuggable m, NodeDatum d) => i -> [Node d i r s m] -> ATMST s m ()
 nogoodNodes informant nodes = do
   contra <- getContradictionNode (nodeATMS (head nodes))
   justifyNode informant contra nodes
 
 -- * Label updating
 
---
 -- Translated from @propagate@ in @atms.lisp@.
 propagate ::
   (Debuggable m, NodeDatum d) =>
@@ -993,10 +1135,10 @@ debugPropagateArgs justRule antecedent envs = do
   liftIO $ putStrLn "Calling propagate with"
   let atms = nodeATMS $ justConsequence justRule
   liftIO $ putStr ". Just: "
-  debugJust justRule
+  debug justRule
 
   case antecedent of
-    Just n -> debugNode n
+    Just n -> debug n
     Nothing -> liftIO $ putStrLn ". No antecedent"
 
   envLen <- sttLayer $ mlength envs
@@ -1007,16 +1149,15 @@ debugPropagateArgs justRule antecedent envs = do
       envm <- sttLayer $ mcar envs
       case envm of
         Nothing -> liftIO $ putStrLn "<nulled out>"
-        Just env -> debugEnv env
+        Just env -> debug env
     _ -> do
       liftIO $ putStrLn ". Envs:"
       mlistFor_ sttLayer envs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> debug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
---
 -- Translated from @update@ in @atms.lisp@.
 update ::
   (Debuggable m, NodeDatum d) =>
@@ -1069,12 +1210,10 @@ debugUpdateArgs ::
   (MonadIO m, NodeDatum d) =>
     MList s (Maybe (Env d i r s m)) ->
       Node d i r s m ->
-        JustRule d i r s m ->
+        Justification d i r s m ->
           ATMST s m ()
-debugUpdateArgs envs consequence justRule = do
+debugUpdateArgs envs consequence justification = do
   liftIO $ putStrLn "Calling update with"
-  let atms = nodeATMS $ justConsequence justRule
-
   envLen <- sttLayer $ mlength envs
   case envLen of
     0 -> liftIO $ putStrLn ". No envs"
@@ -1083,21 +1222,26 @@ debugUpdateArgs envs consequence justRule = do
       envm <- sttLayer $ mcar envs
       case envm of
         Nothing -> liftIO $ putStrLn "<nulled out>"
-        Just env -> debugEnv env
+        Just env -> debug env
     _ -> do
       liftIO $ putStrLn ". Envs:"
       mlistFor_ sttLayer envs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> debug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
   liftIO $ putStr ". Consequence: "
-  blurbNode consequence
+  blurb consequence
   liftIO $ putStrLn ""
 
   liftIO $ putStr ". Just: "
-  debugJust justRule
+  case justification of
+    ByRule justRule -> debug justRule
+    ByAssumption node -> do
+      liftIO $ putStr "by assumption "
+      pprint node
+    ByContradiction -> liftIO $ putStrLn "by contradiction"
 
 -- |Internal method to update the label of this node to include the
 -- given environments.  The inclusion is not simply list extension;
@@ -1187,7 +1331,7 @@ debugUpdateLabelArgs node newEnvs = do
   let atms = nodeATMS node
 
   liftIO $ putStr "Calling updateLabel with node "
-  blurbNode node
+  blurb node
   liftIO $ putStrLn ""
 
   envLen <- sttLayer $ mlength newEnvs
@@ -1198,13 +1342,13 @@ debugUpdateLabelArgs node newEnvs = do
       envm <- sttLayer $ mcar newEnvs
       case envm of
         Nothing -> liftIO $ putStrLn "<nulled out>"
-        Just env -> debugEnv env
+        Just env -> debug env
     _ -> do
       liftIO $ putStrLn ". Envs:"
       mlistFor_ sttLayer newEnvs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> debug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
 debugUpdateLabelFinal ::
@@ -1217,12 +1361,12 @@ debugUpdateLabelFinal node labelEnvs newEnvs = do
     [] -> liftIO $ putStrLn ". No label envs"
     [env] -> do
       liftIO $ putStr ". Single label env: "
-      debugEnv env
+      debug env
     _ -> do
       liftIO $ putStrLn ". Final envs:"
       forM_ labelEnvs $ \e -> do
         liftIO $ putStr "  . "
-        debugEnv e
+        debug e
 
   envLen <- sttLayer $ mlength newEnvs
   case envLen of
@@ -1232,16 +1376,16 @@ debugUpdateLabelFinal node labelEnvs newEnvs = do
       envm <- sttLayer $ mcar newEnvs
       case envm of
         Nothing -> liftIO $ putStrLn "<nulled out>"
-        Just env -> debugEnv env
+        Just env -> debug env
     _ -> do
       liftIO $ putStrLn ". Final envs:"
       mlistFor_ sttLayer newEnvs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> debug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
 
-  debugNode node
+  debug node
 
 -- |Update the label of node @antecedent@ to include the given @envs@
 -- environments, pruning environments which are a superset of another
@@ -1255,12 +1399,13 @@ weave :: (Debuggable m, NodeDatum d) =>
     (MList s (Maybe (Env d i r s m))) ->
       [Node d i r s m] ->
         ATMST s m (MList s (Maybe (Env d i r s m)))
-weave antecedent givenEnvs antecedents = do
+weave antecedent givenEnvs antecedents = {-# SCC "weave.top" #-} do
   $(dbg [| debugWeaveArgs antecedent givenEnvs antecedents |])
 
   envsRef <- sttLayer $ newSTRef givenEnvs
 
   forM_ antecedents $ \node ->
+    {-# SCC "weave.outer-ants" #-}
     unless (maybe False (node ==) antecedent) $ do
       $(dbg [| debugWeaveNodeAntecedent node |])
 
@@ -1277,11 +1422,11 @@ weave antecedent givenEnvs antecedents = do
       --  - An Env from the NODE's label.
       -- The union of these two is NEW-ENV, and the body of the loop
       -- considers how we should incorporate NEW-ENV into NEW-ENVS.
-      mlistFor_ sttLayer envs $ \envmaybe ->
+      {-# SCC "weave.forEnvLoop" #-} mlistFor_ sttLayer envs $ \envmaybe ->
         case envmaybe of
           Nothing -> return ()
           Just env -> do
-            forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
+            {-# SCC "weave.forEnv" #-} forMM_ (sttLayer $ readSTRef $ nodeLabel node) $ \nodeEnv -> do
               $(dbg [| debugWeavePairIntro env nodeEnv |])
 
               newEnv <- unionEnv env nodeEnv
@@ -1349,7 +1494,7 @@ debugWeaveArgs :: (MonadIO m, NodeDatum d) =>
 debugWeaveArgs antecedent givenEnvs antecedents = do
   liftIO $ putStrLn "Calling weave with"
   case antecedent of
-    Just n -> debugNode n
+    Just n -> debug n
     Nothing -> liftIO $ putStrLn ". No antecedent"
   let atms = case antecedent of
                Just a  -> Just $ nodeATMS a
@@ -1362,7 +1507,7 @@ debugWeaveArgs antecedent givenEnvs antecedents = do
       mlistFor_ sttLayer givenEnvs $ \em -> do
         liftIO $ putStr "  . "
         case em of
-          Just e -> debugEnv e
+          Just e -> debug e
           Nothing -> liftIO $ putStrLn "<nulled out>"
         return ()
     _ -> return ()
@@ -1421,7 +1566,7 @@ debugWeaveLoopPairEnd addR envmsR = do
   liftIO $ putStrLn ""
 
 -- Translated from @in-antecedent?@ in @atms.lisp@.
-isInAntecedent :: (Monad m, NodeDatum d) => [Node d i r s m] -> ATMST s m Bool
+isInAntecedent :: (Debuggable m, NodeDatum d) => [Node d i r s m] -> ATMST s m Bool
 isInAntecedent [] = return True
 isInAntecedent nodes = do
   empty <- getEmptyEnvironment (nodeATMS (head nodes))
@@ -1431,7 +1576,7 @@ isInAntecedent nodes = do
 --
 -- Translated from @weave?@ in @atms.lisp@.
 isWeave ::
-  (Monad m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
+  (Debuggable m, NodeDatum d) => Env d i r s m -> [Node d i r s m] -> ATMST s m Bool
 isWeave _ [] = return True
 isWeave env (n : ns) =
   anyMM (\e -> do
@@ -1504,7 +1649,7 @@ debugCreateEnvStart ::
   (MonadIO m, NodeDatum d) => [Node d i r s m] -> ATMST s m ()
 debugCreateEnvStart nodes = do
   liftIO $ putStrLn $ "             - Running createEnv"
-  astr <- formatNodes "," nodes
+  astr <- formats "<none>" "," nodes
   liftIO $ putStrLn $ "               assumptions " ++ astr
 
 debugCreateEnvEnv ::
@@ -1622,7 +1767,7 @@ debugConsEnvLookup (Just env) = do
 --
 -- Translated from @find-or-make-env@ in @atms.lisp@.
 findOrMakeEnv ::
-  (Monad m, NodeDatum d) =>
+  (Debuggable m, NodeDatum d) =>
     [Node d i r s m] -> ATMS d i r s m -> ATMST s m (Env d i r s m)
 findOrMakeEnv [] atms = getEmptyEnvironment atms
 findOrMakeEnv assumptions atms = do
@@ -1671,7 +1816,7 @@ lookupEnv assumptions@(a : _) = do
       ns = sortOn nodeIndex assumptions
   EnvTable envTable <- sttLayer $ readSTRef $ atmsEnvTable atms
   entries <- sttLayer $ readSTArray envTable $ length ns
-  case filter (\x -> envAssumptions x == ns) entries of
+  case filter (\x -> {-# SCC "lookupEnv.pred" #-} envAssumptions x == ns) entries of
     [] -> return Nothing
     (x : _) -> return $ Just x
 
@@ -1759,8 +1904,8 @@ debugNewNogoodStart ::
     Env d i r s m -> Justification d i r s m -> ATMST s m ()
 debugNewNogoodStart cenv why = do
   liftIO $ putStr "Starting newNogood with "
-  debugEnv cenv
-  formatJustification why >>= (liftIO . putStrLn)
+  debug cenv
+  format why >>= (liftIO . putStrLn)
 
 
 -- Translated from @set-env-contradictory@ in @atms.lisp@.
@@ -1839,6 +1984,246 @@ removeEnvFromLabels env atms = do
 -- nodes, under each environment in the result at least one node of
 -- each sublist will be believed.
 --
+-- This function is for the case where no nodes are taken as defaults;
+-- here we simply call `interpretationsWithDefaults` with an empty
+-- list of defaults.
+interpretations ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m [Env d i r s m]
+interpretations atms choiceSets = do
+  $(dbg [| do formatss' choiceSets >>=
+                liftIO . putStrLn . (++) "Called interpretations with "
+         |])
+  interpretationsWithDefaults atms choiceSets []
+
+-- |Initial setup for @interpretations@: convert the @choiceSets@ over
+-- `Node`s into structures over the nodes' labelling `Env`ironments,
+-- and set up the outermost loop.
+--
+-- Translated from these @interpretations@ in @atms.lisp@.
+--
+-- > (defun interpretations (atms choice-sets &optional defaults
+-- >                    &aux solutions)
+-- >   (let ( ;; ...
+-- >         (choice-sets (mapcar ;; Call to altSetToEnvList
+-- >                              choice-sets)))
+-- >     ;; First call interpsStartPrep for this loop
+-- >     (dolist (choice (car choice-sets))
+-- >       ;; ...
+-- >       )
+-- >     ;; Then continuation is afterDepthSolutions for
+-- >     ;; cleanup and extend-via-defaults.
+interpretationsWithDefaults ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> [[Node d i r s m]] -> [Node d i r s m] ->
+      ATMST s m [Env d i r s m]
+interpretationsWithDefaults atms choiceSets defaults = do
+  $(dbg [| do str <- formatss' choiceSets
+              liftIO $ putStr $ "- Refining choice sets " ++ str ++ "\n" |])
+  choiceSetEnvLists <- mapM (altSetToEnvList atms) choiceSets
+  $(dbg [| do liftIO $ putStrLn $ "  Refined choice sets to environment lists:"
+              formatss' choiceSetEnvLists >>=
+                (liftIO . putStrLn . (++) "    ") |])
+
+  let cntn = afterDepthSolutions atms choiceSetEnvLists defaults return
+  case choiceSetEnvLists of
+    [] -> cntn []
+    (cse:choiceSetEnvLists) ->
+      interpsForOneAlternative atms cse choiceSetEnvLists cntn []
+
+-- |Convert a `Node` passed in a choice-set of `interpretations` into
+-- the list of `Env`ironments in the label of that node.
+--
+-- Translated from the lambda expression of the @MAPCAR@ in this
+-- portion of @interpretations@ in @atms.lisp@:
+--
+-- >   (let ( ;; ...
+-- >         (choice-sets
+-- >           (mapcar #'(lambda (alt-set)
+-- >                       (format *trace-output*
+-- >                           "~%  - ~a --> ???" alt-set)
+-- >                       (let ((result
+-- >                              (mapcan #'(lambda (alt)
+-- >                                          (format *trace-output*
+-- >                                              "~%    - ~a --> ~a"
+-- >                                              alt (tms-node-label alt))
+-- >                                          (copy-list (tms-node-label alt)))
+-- >                                      alt-set)))
+-- >                         (format *trace-output*
+-- >                             "~%    ~a --> ~a" alt-set result)
+-- >                         result))
+-- >                   choice-sets)))
+altSetToEnvList ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> [Node d i r s m] -> ATMST s m [Env d i r s m]
+altSetToEnvList atms nodes = do
+  mapped <- mapM getNodeLabel nodes
+  $(dbg [| do s1 <- formats' nodes
+              s2 <- formatss' mapped
+              liftIO $ putStrLn $ "  - " ++ s1 ++ " --> " ++ s2 |])
+  return $ foldl (++) [] mapped
+
+-- |The body of @interpretations@ is translated from the Lisp in a
+-- continuation-passing style; this type is a shorthand for the common
+-- last two argument and result types of the continuation-processing
+-- functions.
+type ChoiceSetCntn d i r s m =
+  ([Env d i r s m] -> ATMST s m [Env d i r s m]) ->
+    [Env d i r s m] ->
+      ATMST s m [Env d i r s m]
+
+-- Control, and one pass through the body, of the loop in
+-- @interpretations@ (in file @atms.lisp@) in the context:
+--
+-- > (defun interpretations (atms choice-sets &optional defaults
+-- >                              &aux solutions)
+-- >   ...
+-- >   (let ((*solutions* nil)
+-- >         (choice-sets ...))
+-- >     (dolist (choice (car choice-sets)) ;; This loop
+--
+-- Aside from debugging tracing, the body of the loop just calls
+-- @getDepthSolutions@ for the first element of the list of choice
+-- sets.  The continuation of the @getDepthSolutions@ call is a
+-- recursive call to this function on the remainder of the choice sets
+-- list.
+interpsForOneAlternative ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
+      ChoiceSetCntn d i r s m
+interpsForOneAlternative atms [] choiceSetEnvLists k solutions = do
+  $(dbg [| liftIO $ putStrLn "- Completed calls to getDepthSolutions" |])
+  k solutions
+interpsForOneAlternative atms (env : envs) choiceSetEnvLists k solutions = do
+  getDepthSolutions atms env choiceSetEnvLists
+                    (interpsForOneAlternative atms envs choiceSetEnvLists k)
+                    solutions
+
+-- |Translation of @get-depth-solutions1@.  This function operates a
+-- depth-first traversal over possible solutions.  Each choice set in
+-- the @choice-sets@ argument could contribute @N@ different possible
+-- next-steps to building a solution; the original Lisp function
+-- contains multiple self-recursive calls, one for each of these
+-- possible steps.  At the end of a sequence of recursive calls, one
+-- construction step per choice set, the base case received a
+-- constructed candidate solution.  The base case considers adding a
+-- to a global list of found solutions, possibly removing previous
+-- solution elements made redundant by the new solution.
+--
+-- The translation, like the rest of the translation of
+-- @interpretations@, is in continuation-passing style.  Rather than a
+-- global variable of solutions, the continuation receives the
+-- solutions-to-date-list as its final argument.  Rather than multiple
+-- recursive calls which might mutate a global list, there are
+-- extensions of the continuation which might manipulate the solutions
+-- list they are eventually passed.  The test of a constructed
+-- candidate still occurs when the search reaches a leaf at a fully
+-- constructed candidate, and calls its continuation with its
+-- transformation of the solutions list.
+--
+-- > ;; In atms.lisp
+-- > (defun get-depth-solutions1 (solution choice-sets &aux new-solution)
+-- >   (cond
+-- >     ((null choice-sets)
+-- >      (unless (do ((old-solutions *solutions* (cdr old-solutions)))
+-- >                  ((null old-solutions))
+-- >                (when (car old-solutions)
+-- >                  (case (compare-env (car old-solutions) solution)
+-- >                    ((:EQ :S12) (return t))
+-- >                    (:S21 (rplaca old-solutions nil)))))
+-- >        (push solution *solutions*)))
+-- >     ((env-nogood? solution)) ;something died.
+-- >     (t (dolist (choice (car choice-sets))
+-- >          (setq new-solution (union-env solution choice))
+-- >          (unless (env-nogood? new-solution)
+-- >            (get-depth-solutions1 new-solution (cdr choice-sets)))))))
+getDepthSolutions ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [[Env d i r s m]] ->
+      ChoiceSetCntn d i r s m
+getDepthSolutions atms cand [] k solns = do
+  $(dbg [| formats' solns >>=
+             liftIO . putStrLn . (++) "    getDepthSolutions => "
+         |])
+  let filtered = filterWithNewSoln cand solns
+  $(dbg [| formats' filtered >>= liftIO . putStrLn . (++) "    filtered "
+         |])
+  k filtered
+getDepthSolutions atms partial (cs : css) k solns = do
+  $(dbg [| do format partial >>= liftIO . putStrLn .
+                (++) "- Calling getDepthSolutions with partial solution "
+              formats' cs >>= liftIO . putStrLn . (++) "    choice sets "
+              formats' solns >>= liftIO . putStrLn . (++) "    initial solns "
+         |])
+  getDepthSolutionsFor atms partial cs css k solns
+
+-- |One pass through the body of the @getDepthSolutions$ loop.
+getDepthSolutionsFor ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [Env d i r s m] -> [[Env d i r s m]] ->
+      ChoiceSetCntn d i r s m
+getDepthSolutionsFor atms    _    []      _  k solns = do
+  $(dbg [| formats' solns >>=
+             liftIO . putStrLn . (++) "    getDepthSolutionsFor => " |])
+  k solns
+getDepthSolutionsFor atms partial (c:cs) css k solns = do
+  $(dbg [| do format c >>= liftIO . putStrLn .
+                (++) "- Calling getDepthSolutionsFor with first choice "
+              formats' cs >>= liftIO . putStrLn . (++) "    other choices "
+              formatss' css >>=
+                liftIO . putStrLn . (++) "    other choice sets "
+              formats' solns >>= liftIO . putStrLn . (++) "    initial solns "
+         |])
+  let k' = getDepthSolutionsFor atms partial cs css k
+           -- To try the next alternative of this choice set
+  newPartial <- unionEnv partial c
+  ifM (envIsNogood newPartial)
+      (do ($(dbg [| do format newPartial >>= liftIO . putStrLn .
+                         (++) "    nogood from unionEnv "
+                  |]))
+          k' solns)
+      (do ($(dbg [| do format partial >>= liftIO . putStrLn .
+                         (++) "    continuing with "
+                  |]))
+          (getDepthSolutions atms newPartial css k' solns))
+
+-- |Implementation of the list manipulation achieved in the DO-loop at:
+--
+-- > ;; In atms.lisp
+-- > (defun get-depth-solutions1 (solution choice-sets &aux new-solution)
+-- >   (cond
+-- >     ((null choice-sets)
+-- >      (unless (do ((old-solutions *solutions* (cdr old-solutions)))
+-- >                  ((null old-solutions))
+--
+-- The purpose is to add a new solution to a list of solutions.  But
+-- first the solution must be tested against existing solution to find
+-- cases where the new one is nondisjoint from some old one(s).  If
+-- the new solution is smaller than an old, then the old is redundant
+-- and should be pruned.  If the old solution is a subset of the new
+-- solution, then the new one is redundant and need not be added to
+-- the solutions list at all.
+filterWithNewSoln ::
+  (Monad m, NodeDatum d) => Env d i r s m -> [Env d i r s m] -> [Env d i r s m]
+filterWithNewSoln env envs =
+  let (redundant, _, envs') = filterWithNewSoln' env envs
+  in if redundant then envs' else env : envs'
+
+filterWithNewSoln' ::
+  (Monad m, NodeDatum d) => Env d i r s m -> [Env d i r s m] ->
+    (Bool, Bool, [Env d i r s m])
+filterWithNewSoln' _ [] = (False, False, [])
+filterWithNewSoln' e solns@(s:ss) =
+  case compareEnv s e of
+    EQenv -> (True, False, solns)
+    S12env -> (True, False, solns)
+    S21env -> let (r, c, ss') = filterWithNewSoln' e ss
+              in (r, True, ss')
+    DisjEnv -> let (r, c, ss') = filterWithNewSoln' e ss
+               in if c
+                  then (r, c, s:ss')
+                  else (r, c, solns)
+
 -- TO BE TRANSLATED from @interpretations@ in @atms.lisp@.
 --
 -- > ;; In atms.lisp
@@ -1883,32 +2268,35 @@ removeEnvFromLabels env atms = do
 -- >       (dolist (solution solutions)
 -- >    (extend-via-defaults solution defaults defaults)))
 -- >     (delete nil *solutions* :TEST #'eq)))
-interpretations ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> [[Node d i r s m]] -> ATMST s m ()
-interpretations = error "< TODO unimplemented interpretations >"
 
--- |TO BE TRANSLATED from @get-depth-solutions1@ in @atms.lisp@.
---
--- > ;; In atms.lisp
--- > (defun get-depth-solutions1 (solution choice-sets
--- >                                  &aux new-solution)
--- >   (cond ((null choice-sets)
--- >     (unless (do ((old-solutions *solutions* (cdr old-solutions)))
--- >                 ((null old-solutions))
--- >               (when (car old-solutions)
--- >                 (case (compare-env (car old-solutions) solution)
--- >                   ((:EQ :S12) (return t))
--- >                   (:S21 (rplaca old-solutions nil)))))
--- >       (push solution *solutions*)))
--- >    ((env-nogood? solution)) ;something died.
--- >    (t (dolist (choice (car choice-sets))
--- >         (setq new-solution (union-env solution choice))
--- >         (unless (env-nogood? new-solution)
--- >           (get-depth-solutions1 new-solution
--- >                                 (cdr choice-sets)))))))
-getDepthSolutions1 ::
-  (Monad m, NodeDatum d) => Env d i r s m -> [[Env d i r s m]] -> ATMST s m ()
-getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
+afterDepthSolutions ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> [[Env d i r s m]] -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+afterDepthSolutions atms choiceSets defaults k solutions =
+  if (null solutions)
+  then if (null choiceSets)
+       then do
+         empty <- getEmptyEnvironment atms
+         extendSolutionsIfDefaults atms defaults k [empty]
+       else return []
+  else extendSolutionsIfDefaults atms defaults k solutions
+
+extendSolutionsIfDefaults ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> [Node d i r s m] -> ChoiceSetCntn d i r s m
+extendSolutionsIfDefaults atms [] k solns = k solns
+extendSolutionsIfDefaults atms defaults k solns =
+  extendSolutionsViaDefaults atms solns defaults k []
+
+extendSolutionsViaDefaults ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> [Env d i r s m] -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+extendSolutionsViaDefaults atms [] defaults k = k
+extendSolutionsViaDefaults atms (s:ss) defaults k =
+  extendViaDefaults atms s defaults defaults
+                    (extendSolutionsViaDefaults atms ss defaults k)
 
 -- |TO BE TRANSLATED from @extend-via-defaults@ in @atms.lisp@.
 --
@@ -1928,9 +2316,43 @@ getDepthSolutions1 = error "< TODO unimplemented getDepthSolutions1 >"
 -- >     (unless (env-nogood? new-solution)
 -- >       (extend-via-defaults new-solution (cdr defaults) original))))
 extendViaDefaults ::
-  (Monad m, NodeDatum d) =>
-    Env d i r s m -> [Node d i r s m] -> [Node d i r s m] -> ATMST s m ()
-extendViaDefaults = error "< TODO unimplemented extendViaDefaults >"
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [Node d i r s m] -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+extendViaDefaults atms baseSoln remaining original k solutions =
+  extendViaDefaultsLoop atms baseSoln remaining original k solutions
+
+extendViaDefaultsLoop ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [Node d i r s m] -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+extendViaDefaultsLoop atms candSoln [] original k solutions = do
+
+  --  TODO Check (member solution *solutions* :TEST #'eq)
+  --
+
+  checkExtendedSoln atms candSoln original k solutions
+extendViaDefaultsLoop atms baseSoln (d:ds) original k solutions = do
+  newSoln <- consEnv d baseSoln
+  let nextLoop = extendViaDefaultsLoop atms baseSoln ds original k
+  ifM (envIsNogood newSoln)
+    (nextLoop solutions)
+    (extendViaDefaultsLoop atms newSoln ds original nextLoop solutions)
+
+checkExtendedSoln ::
+  (Debuggable m, NodeDatum d) =>
+    ATMS d i r s m -> Env d i r s m -> [Node d i r s m] ->
+      ChoiceSetCntn d i r s m
+checkExtendedSoln atms candSoln [] k solutions = k $ candSoln : solutions
+checkExtendedSoln atms candSoln (orig:origs) k solutions =
+  if (elem orig (envAssumptions candSoln))
+  then k solutions
+  else do
+    allEnv <- consEnv orig candSoln
+    ifM (envIsNogood allEnv)
+        (k solutions)
+        (checkExtendedSoln atms candSoln origs k solutions)
+
 
 -- * Generating explanations
 
@@ -2003,12 +2425,13 @@ whyNodes atms = do
 -- >   (format t "~% For ~A:" (node-string node))
 -- >   (dolist (j (tms-node-justs node))
 -- >     (print-justification j stream)))
-nodeJustifications :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
+nodeJustifications ::
+  (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 nodeJustifications node = do
   nodeStr <- nodeString node
   liftIO $ putStr $ " For " ++ nodeStr ++ ":"
   justs <- getNodeJusts node
-  forM_ justs printJustification
+  forM_ justs pprint
 
 -- |Retrieve an `ATMS`'s `Env`ironment with the given index number.
 --
@@ -2024,15 +2447,6 @@ e :: (Monad m, NodeDatum d) =>
 e atms i = do
   table <- getEnvTable atms
   findInEnvTable (\env -> envIndex env == i) table
-
--- |Print an environment.
---
--- Translated from @print-env@ in @atms.lisp@.
-printEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
-printEnv env = do
-  whenM (envIsNogood env) $ liftIO $ putStr "* "
-  envString env
-  liftIO $ putStrLn ""
 
 -- |Convert an `Env`ironment into a string listing the nodes of the
 -- environment.
@@ -2051,22 +2465,13 @@ envString env = do
 --
 -- Translated from @print-nogoods@ in @atms.lisp@.
 printNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-printNogoods atms = getNogoodTable atms >>= \table -> printEnvTable table
+printNogoods atms = getNogoodTable atms >>= \table -> pprint table
 
 -- |Print the `Env`ironments of an `ATMS`.
 --
 -- Translated from @print-envs@ in @atms.lisp@.
 printEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
-printEnvs atms = getEnvTable atms >>= \table -> printEnvTable table
-
--- |Print the `Env`ironments contained in the given `EnvTable`.
---
--- Translated from @print-env-table@ in @atms.lisp@.
-printEnvTable :: (MonadIO m, NodeDatum d) => EnvTable d i r s m -> ATMST s m ()
-printEnvTable (EnvTable arr) = do
-  let (lo, hi) = boundsSTArray arr
-  forM_ [lo..hi] $ \i ->
-    forMM_ (sttLayer $ readSTArray arr i) printEnv
+printEnvs atms = getEnvTable atms >>= \table -> pprint table
 
 -- |Print statistics about an `ATMS`.
 --
@@ -2079,201 +2484,49 @@ printAtmsStatistics atms = do
   liftIO $ putStrLn $ "Nogood table: "
   printNogoods atms
 
--- |Print the entries of an `EnvTable`.
---
--- Translated from @print-table@ in @atms.lisp@.
-printTable ::
-  (MonadIO m, NodeDatum d) => String -> EnvTable d i r s m -> ATMST s m ()
-printTable msg (EnvTable arr) = do
-  liftIO $ putStr msg
-  let (lo, hi) = boundsSTArray arr
-  forM_ [lo..hi] $ \i -> do
-    row <- sttLayer $ readSTArray arr i
-    let count = length row
-    when (count > 0) $
-      liftIO $ putStrLn $ "  " ++ show count ++ " of length " ++ show i
-
--- |Give a verbose printout of an `ATMS`.
---
-debugAtms ::
-  (MonadIO m, NodeDatum d) => String -> ATMS d i r s m -> ATMST s m ()
-debugAtms blurb atms = do
-  liftIO $ putStrLn $ "=============== " ++ atmsTitle atms ++ ": " ++ blurb
-  debugNodes atms
-  debugJusts atms
-  debugAtmsEnvs atms
-  debugNogoods atms
-  liftIO $ putStrLn "=============== "
-
 -- |Give a verbose printout of the `Node`s of an `ATMS`.
---
 debugNodes :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNodes atms = do
   nodes <- getNodes atms
   liftIO $ putStrLn $ show (length nodes) ++ " nodes:"
-  forM_ (reverse nodes) debugNode
-
--- |Computation returning a one-line summary of one `Node` of an `ATMS`.
---
-formatNode :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
-formatNode node = do
-  datumFmt <- getDatumString $ nodeATMS node
-  return $ datumFmt (nodeDatum node)
-
--- |Computation returning a one-line summary of the `Node`s of an
--- `ATMS`.
---
-formatNodes ::
-  (Monad m, NodeDatum d) => String -> [Node d i r s m] -> ATMST s m String
-formatNodes sep = formatList sep formatNode
-
--- |Computation returning a one-line summary of a list of lists of
--- `Node`s of an `ATMS`.
---
-formatNodeLists ::
-  (Monad m, NodeDatum d) => String -> [[Node d i r s m]] -> ATMST s m String
-formatNodeLists sep = formatList sep $ formatNodes ","
+  forM_ (reverse nodes) debug
 
 -- |Computation returning a one-line summary of the label of a `Node`
 -- of an `ATMS`.
---
 formatNodeLabel :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m String
 formatNodeLabel node = do
   label <- getNodeLabel node
   case label of
     [] -> return "empty"
-    _ -> formatNodeLists ", " $ map envAssumptions label
-
--- |Print a short summary of a `Node` of an `ATMS`.
---
-blurbNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-blurbNode node = formatNode node >>= liftIO . putStr
-
--- |Print a verbose summary of a `Node` of an `ATMS`.
---
--- Translated from @print-tms-node@ in @atms.lisp@.
-printNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-printNode node = do
-  str <- nodeString node
-  liftIO $ putStr $ "<NODE: " ++ str ++ ">"
-
--- |Give a verbose printout of a `Node` of an `ATMS`.
---
-debugNode :: (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
-debugNode node = do
-  let atms = nodeATMS node
-  datumFmt <- getDatumString atms
-  informantFmt <- getInformantString atms
-  liftIO $ putStrLn $ "- " ++ datumFmt (nodeDatum node)
-
-  label <- getNodeLabel node
-  case label of
-    [] -> liftIO $ putStrLn "  Empty label"
-    [env] -> do
-      liftIO $ putStr "  Single environment label: "
-      debugEnv env
-    _ -> forM_ label $ \env -> do
-      liftIO $ putStrLn "  - "
-      debugEnv env
-
-  conseqs <- getNodeConsequences node
-  case conseqs of
-    [] -> liftIO $ putStrLn "  Antecedent to no justifications"
-    _ -> do
-      liftIO $ putStr "  Antecedent to:"
-      forM_ conseqs $ \ conseq -> do
-        liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
-      liftIO $ putStrLn ""
-
--- |Computation returning a one-line summary of the reason an `ATMS`
--- may believe a `Node`.
---
-formatJustification ::
-  (Monad m, NodeDatum d) => Justification d i r s m -> ATMST s m String
-formatJustification (ByRule j) = return $ "By rule " ++ show (justIndex j)
-formatJustification (ByAssumption n) = do
-  nodeFmt <- getNodeString (nodeATMS n)
-  return $ "By assumption " ++ nodeFmt n
-formatJustification ByContradiction = return "By contradiction"
-
+    _ -> formatss "<none>" "; " "<none>" "," $ map envAssumptions label
 
 -- |Give a verbose printout of the `Just`ification rules of an
 -- `ATMS`.
---
 debugJusts :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugJusts atms = do
   justs <- getJusts atms
   let len = length justs
   liftIO $ putStrLn $ show len ++ " justification structure"
     ++ (if len == 1 then "" else "s") ++ ":"
-  forM_ (sortOn justIndex justs) $ debugJust
+  forM_ (sortOn justIndex justs) $ debug
 
 -- |Computation returning a one-line summary of the informant of a
 -- `Just`ification rule of an `ATMS`.
---
 formatJustInformant ::
   (Monad m, NodeDatum d) => JustRule d i r s m -> ATMST s m String
 formatJustInformant rule = do
   informantFmt <- getInformantString $ nodeATMS $ justConsequence rule
   return $ informantFmt $ justInformant rule
 
--- |Print a more verbose description of a `Just`ification rule of an
--- `ATMS`.
---
--- Translated from @print-just@ in @atms.lisp@.
-printJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
-printJust rule = do
-  infStr <- formatJustInformant rule
-  liftIO $ putStr $ "<" ++ infStr ++ " " ++ show (justIndex rule) ++ ">"
-
--- |Print a more verbose description of the `Justification`.
-printJustification ::
-  (MonadIO m, NodeDatum d) => Justification d i r s m -> ATMST s m ()
-printJustification j = case j of
-  ByRule rule -> printJust rule
-  ByAssumption node -> do
-    liftIO $ putStr $ "Assumed node "
-    printNode node
-  ByContradiction -> liftIO $ putStrLn $ "By contradiction"
-
--- |Give a verbose printout of one `Just`ification rule of an `ATMS`.
---
-debugJust :: (MonadIO m, NodeDatum d) => JustRule d i r s m -> ATMST s m ()
-debugJust (JustRule idx inf conseq ants) = do
-  let atms = nodeATMS conseq
-  informantFmt <- getInformantString atms
-  datumFmt <- getDatumString atms
-  liftIO $ putStrLn $ "  "
-    ++ "[" ++ informantFmt inf ++ "." ++ show idx ++ "] "
-    ++ datumFmt (nodeDatum conseq) ++ " <= "
-    ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
-
 -- |Give a verbose printout of the `Env`ironments of an `ATMS`.
---
 debugAtmsEnvs :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugAtmsEnvs atms = do
   liftIO $ putStrLn "Environments:"
   envTable <- getEnvTable atms
   debugEnvTable atms envTable
 
--- |Give a verbose printout of one `Env`ironment of an `ATMS`.
---
-debugEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
-debugEnv env = do
-  isNogood <- envIsNogood env
-  case envAssumptions env of
-    [] -> liftIO $ putStrLn "<empty>"
-    nodes @ (n : _) -> do
-      let atms = nodeATMS n
-      datumFmt <- getDatumString atms
-      when isNogood $ liftIO $ putStr "[X] "
-      liftIO $ putStrLn $
-        (intercalate ", " $ map (datumFmt . nodeDatum) nodes)
-        ++ " (count " ++ show (length nodes) ++ ")"
-
 -- |Print a short summary of a mutable list of nullable (via `Maybe`)
 -- `Env`ironments from an `ATMS`.
---
 blurbMaybeEnvMList ::
   (MonadIO m, NodeDatum d) => MList s (Maybe (Env d i r s m)) -> ATMST s m ()
 blurbMaybeEnvMList mlist = do
@@ -2290,7 +2543,6 @@ blurbMaybeEnvMList mlist = do
 
 -- |Print a short summary of a reference to a mutable list of
 -- nullable (via `Maybe`) `Env`ironments from an `ATMS`.
---
 blurbMaybeEnvMListRef ::
   (MonadIO m, NodeDatum d) =>
     STRef s (MList s (Maybe (Env d i r s m))) -> ATMST s m ()
@@ -2300,7 +2552,6 @@ blurbMaybeEnvMListRef mlistRef = do
 
 -- |Print a short summary of a nullable (via `Maybe`) reference to an
 -- `Env`ironment of an `ATMS`.
---
 blurbMaybeEnv ::
   (MonadIO m, NodeDatum d) => Maybe (Env d i r s m) -> ATMST s m ()
 blurbMaybeEnv envm = case envm of
@@ -2308,7 +2559,6 @@ blurbMaybeEnv envm = case envm of
                        Nothing -> liftIO $ putStr "<nothing>"
 
 -- |Print a short summary of one `Env`ironment of an `ATMS`.
---
 blurbEnv :: (MonadIO m, NodeDatum d) => Env d i r s m -> ATMST s m ()
 blurbEnv env = do
   wng <- sttLayer $ readSTRef $ envWhyNogood env
@@ -2324,7 +2574,6 @@ blurbEnv env = do
 
 -- |Give a verbose printout of the no-good `Env`ironments of an
 -- `ATMS`.
---
 debugNogoods :: (MonadIO m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 debugNogoods atms = do
   liftIO $ putStrLn "No-good environments:"
@@ -2333,7 +2582,6 @@ debugNogoods atms = do
 
 -- |Give a verbose printout of the `Env`ironments of an `EnvTable` of
 -- an `ATMS`.
---
 debugEnvTable ::
   (MonadIO m, NodeDatum d) =>
     ATMS d i r s m -> EnvTable d i r s m -> ATMST s m ()
@@ -2343,36 +2591,33 @@ debugEnvTable atms (EnvTable array) = do
     envs <- sttLayer $ readSTArray array i
     forM_ (reverse envs) $ \ env -> do
       liftIO $ putStr "- "
-      debugEnv env
+      debug env
 
 {-
 -- |Print a short summary of the label of a `Node` of an `ATMS`.
---
 blurbNodeLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m String
 blurbNodeLabel node = do
   -- lbl <- getNodeLabel node
   lbl <- sttLayer $ readSTRef (nodeLabel node)
-  blurbNode node
+  blurb node
   liftIO $ putStr " label: "
   blurbEnvList 10000 "\n" lbl
   liftIO $ putStrLn ""
 -}
 
 -- |Give a verbose printout of the label of a `Node` of an `ATMS`.
---
 debugNodeLabel ::
   (MonadIO m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 debugNodeLabel node = do
   -- lbl <- getNodeLabel node
   lbl <- sttLayer $ readSTRef (nodeLabel node)
-  blurbNode node
+  blurb node
   liftIO $ putStr " label: "
   blurbEnvList 10000 "\n" lbl
   liftIO $ putStrLn ""
 
 -- |Print a short summary of a list of `Env`ironments of an `ATMS`.
---
 blurbEnvList ::
   (MonadIO m, NodeDatum d) => Int -> String -> [Env d i r s m] -> ATMST s m ()
 blurbEnvList multiLineIf lineLead envs =

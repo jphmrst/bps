@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+stack build --profile
+
+echo Time profiling
+stack exec --profile -- hbps_profile +RTS -p # Time profile
+
+echo Space profiling
+stack exec --profile -- hbps_profile +RTS -h # Heap profile
+hp2ps -e8in -c hbps_profile.hp

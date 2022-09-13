@@ -1,0 +1,20 @@
+
+[ANN] Haskell translations of Truth Maintenance System algorithms
+
+I've made a small library with implementations of two Truth Maintenance System available on Hackage and Github.  They are translations of Forbus and de Kleer's justification-based and assumption-based (JTMS and ATMS) algorithms.
+
+TMS algorithms are classic AI approaches to reasoning about logical implication relationships.  Code using a TMS defines /nodes/ representing sentences or logical ideas, and how some nodes can be used to conclude other nodes.  We can also identify "nogood" or contradictory sets of nodes.  Some nodes are distinguished as /assumptions/, and the TMS lets us reason about how the belief or disbelief in each assumption impacts whether we should also believe or disbelieve other nodes.
+
+- In the JTMS, the believe/disbelieve setting for each assumption is set directly, and the JTMS maintains the believe/disbelieve status of each node based on the current assumption beliefs.
+
+- In the ATMS, there is no setting of "current" beliefs.  Instead, the ATMS tracks the minimal consistent sets of assumptions which justify belief in each node.
+
+Please do not look for beautiful and pure functional algorithms here! At this point the implementations are direct translations of the original imperative Common Lisp implementations, implemented as a monad transformer, and using `STT`.  A non-stateful re-implementation remains an interesting idea for the (non-short-term) future!  I wrote this library to give myself a bit more insight into how this algorithm work on the inside, and some deeper practice with the state thread libraries than I'd had before, but I hope you find them interesting or useful!
+
+Hackage, https://hackage.haskell.org/package/BPS
+
+Github, https://hackage.haskell.org/package/BPS
+
+Wikipedia entry on reason maintenance, https://en.wikipedia.org/wiki/Reason_maintenance
+
+A standard reference on the subject, probably available at a library near you, https://mitpress.mit.edu/books/building-problem-solvers

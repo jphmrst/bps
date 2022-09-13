@@ -35,6 +35,7 @@ import Data.Symbol
 import Data.Void
 import Data.TMS.ATMS.ATMST
 import Data.TMS.Helpers
+import Data.TMS.Formatters
 import Data.TMS.Dbg
 import Control.Monad
 import Control.Monad.Extra
@@ -109,7 +110,7 @@ assertNodeLabelAssumptions node nodeLists = do
     "Expect " ++ show (length nodeLists) ++ " environments" ~:
       length nodeLists @==- length labelNodeLists
     forM_ nodeLists $ \ nodeList -> do
-      nl <- formatNodes "," nodeList
+      nl <- formats "(no nodes)" "," nodeList
       "Should have environment with assumptions " ++ nl
         ~::- elem nodeList labelNodeLists
 
