@@ -110,7 +110,7 @@ assertNodeLabelAssumptions node nodeLists = do
     "Expect " ++ show (length nodeLists) ++ " environments" ~:
       length nodeLists @==- length labelNodeLists
     forM_ nodeLists $ \ nodeList -> do
-      nl <- formats "," nodeList
+      nl <- formats "(no nodes)" "," nodeList
       "Should have environment with assumptions " ++ nl
         ~::- elem nodeList labelNodeLists
 
