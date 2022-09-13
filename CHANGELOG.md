@@ -5,6 +5,11 @@ Haskell releases adhere to Haskell's [Package Versioning
 Policy](https://pvp.haskell.org/); Scala releases use the [Semantic
 Versioning spec](https://semver.org/).
 
+# Version 0.6.0 (Haskell 0.1.1.0, Scala 0.1.0)
+
+ - Added `interpretations` in Haskell implementation.  Only lighted
+   tested at this point.
+
 # Version 0.5.0 (Haskell 0.1.0.0, Scala 0.1.0)
 
  - First version with Haskell: working implementation of a monad

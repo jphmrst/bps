@@ -81,8 +81,7 @@
 
 (defmacro debugging (atms msg &optional node &rest args)
   `(when (atms-debugging ,atms)
-     (format *trace-output*
-	     ,msg (if ,node (node-string ,node)) ,@args)))
+     (trdbg:trdbg (:atms 1) ,msg (if ,node (node-string ,node)) ,@args)))
 
 (defun default-node-string (n) (format nil "~A" (tms-node-datum n)))
 
@@ -368,21 +367,37 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
   e)
 
 (defun union-env (e1 e2)
-  (when (> (env-count e1)
-	   (env-count e2))
-    (psetq e1 e2 e2 e1))
-  (dolist (assume (env-assumptions e1))
-    (setq e2 (cons-env assume e2))
-    (if (env-nogood? e2) (return nil)))
-  e2)
+  (trdbg:trblock (:union-env 1
+		  :trace ("Called union-env with ~a ~a; ~a ~a"
+			  e1 (get-env-string e1) e2 (get-env-string e2)))
+    (when (> (env-count e1) (env-count e2))
+      (psetq e1 e2 e2 e1))
+    (dolist (assume (env-assumptions e1))
+      (trdbg:trblock (:union-env 1
+		      :trace ("Processing ~a" (tms-node-datum assume)))
+	(setq e2 (cons-env assume e2))
+	(trdbg:trdbg (:union-env 1) "Updated e2 to ~a ~a"
+	  e2 (get-env-string e2))
+	(when (env-nogood? e2)
+	  (trdbg:trdbg (:union-env 1) "nogood")
+	  (return nil))))
+    (trdbg:trdbg (:union-env 1) "Result is ~a ~a" e2 (get-env-string e2))
+    e2))
 
 (defun cons-env (assumption env &aux nassumes)
   "Derive an environment from the addition of one additional assumption to a previous ENV's assumption list."
-  (setq nassumes (ordered-insert assumption
-				 (env-assumptions env)
-				 #'assumption-order))
-  (or (lookup-env nassumes)
-      (create-env (tms-node-atms assumption) nassumes)))
+  (trdbg:trblock (:union-env 1
+		  :trace ("Called cons-env with ~a; ~a ~a"
+			  (tms-node-datum assumption)
+			  env (get-env-string env)))
+    (setq nassumes (ordered-insert assumption
+				   (env-assumptions env)
+				   #'assumption-order))
+    (trdbg:trdbg (:union-env 1) "List after insertion: ~a" nassumes)
+    (let ((lookup (lookup-env nassumes)))
+      (trdbg:trdbg (:union-env 1) "Lookup gives: ~a" lookup)
+      (or lookup
+	  (create-env (tms-node-atms assumption) nassumes)))))
 
 (defun find-or-make-env (assumptions atms)
   (unless assumptions
@@ -482,65 +497,99 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 
 ;;; Interpretation construction
 
-(proclaim '(special *solutions*))
+(defvar *solutions*)
+;; (proclaim '(special *solutions*))
 
 (defun interpretations (atms choice-sets &optional defaults
 			&aux solutions)
-  (if (atms-debugging atms)
-   (format *trace-output*
-	   "~%Constructing interpretations depth-first for ~a:" choice-sets))
-  (format *trace-output* "~%- Refining choice sets")
-  (let ((*solutions* nil)
-	(choice-sets
-	  (mapcar #'(lambda (alt-set)
-		      (format *trace-output*
-			  "~%  - ~a --> ???" alt-set)
-		      (let ((result
-			     ;; Like MAPCAR, but passing the result to NCONC.
-			     (mapcan #'(lambda (alt)
-					 (format *trace-output*
-					     "~%    - ~a --> ~a" alt (tms-node-label alt))
-					 (copy-list (tms-node-label alt)))
-				     alt-set)))
-			(format *trace-output*
-			    "~%    ~a --> ~a" alt-set result)
-			result))
-		  choice-sets)))
-    (format *trace-output* "~%  Refined choice sets to ~a" choice-sets)
-    (dolist (choice (car choice-sets))
-      (format *trace-output*
-	  "~%- Calling depth-solutions with choice ~a" choice)
-      (format *trace-output*
-	  "~%                               choice sets ~a" (car choice-sets))
-      (get-depth-solutions1 choice (cdr choice-sets))
-      (format *trace-output*
-	  "~%      => solutions ~a" *solutions*))
-    (setq *solutions* (delete nil *solutions* :TEST #'eq))
-    (unless *solutions*
-      (if choice-sets (return-from interpretations nil)
-	              (setq *solutions* (list (atms-empty-env atms)))))
-    (when defaults
-      (setq solutions *solutions* *solutions* nil)
-      (dolist (solution solutions)
-	(extend-via-defaults solution defaults defaults)))
-    (delete nil *solutions* :TEST #'eq)))
+  (trdbg:trblock (:interpretations 1
+	    :trace ("Constructing interpretations depth-first for ~a:"
+		    choice-sets))
+    (let ((*solutions* nil)
+	  (choice-sets
+	   (trdbg:trblock (:interpretations 1
+			   :trace ("Refining choice sets from ~a" choice-sets))
+	     (mapcar #'(lambda (alt-set)
+			 (trdbg:trblock (:interpretations 1
+					 :trace ("~a --> ???" alt-set))
+			   (let ((result
+				  ;; Like MAPCAR, but passing the
+				  ;; result to NCONC.
+				  (mapcan #'(lambda (alt)
+					      (trdbg:trdbg (:interpretations 1)
+						  "Node ~a (~a) labelled ~a"
+						alt (tms-node-datum alt)
+						(tms-node-label alt))
+					      (copy-list (tms-node-label alt)))
+					  alt-set)))
+			     (trdbg:trdbg (:interpretations 1)
+				 "~a --> ~a" alt-set result)
+			     result)))
+		   choice-sets))))
+      (trdbg:trdbg (:interpretations 1)
+	  "Refined choice sets to ~a" choice-sets)
+      (trdbg:trblock
+	  (:interpretations 1 :trace "Iterating through choice sets")
+	(dolist (choice (car choice-sets))
+	  (trdbg:trblock
+	      (:interpretations 1 :trace ("Considering choice set ~a" choice))
+	    (get-depth-solutions1 choice (cdr choice-sets))
+	    (trdbg:trdbg (:interpretations 1)
+		"*solutions* now ~a" *solutions*))))
+      (setq *solutions* (delete nil *solutions* :TEST #'eq))
+      (unless *solutions*
+	(if choice-sets (return-from interpretations nil)
+	    (setq *solutions* (list (atms-empty-env atms)))))
+      (when defaults
+	(setq solutions *solutions* *solutions* nil)
+	(dolist (solution solutions)
+	  (extend-via-defaults solution defaults defaults)))
+      (delete nil *solutions* :TEST #'eq))))
 
 (defun get-depth-solutions1 (solution choice-sets
 				      &aux new-solution)
-  (cond ((null choice-sets)
-	 (unless (do ((old-solutions *solutions* (cdr old-solutions)))
-		     ((null old-solutions))
-		   (when (car old-solutions)
-		     (case (compare-env (car old-solutions) solution)
-		       ((:EQ :S12) (return t))
-		       (:S21 (rplaca old-solutions nil)))))
-	   (push solution *solutions*)))
-	((env-nogood? solution)) ;something died.
-	(t (dolist (choice (car choice-sets))
-	     (setq new-solution (union-env solution choice))
-	     (unless (env-nogood? new-solution)
-	       (get-depth-solutions1 new-solution
-				     (cdr choice-sets)))))))
+  (trdbg:trblock (:interpretations 1
+	    :trace ("Called depth-solutions with partial solution ~a ~a"
+		    solution (get-env-string solution)))
+    (trdbg:trdbg (:interpretations 1) "choice sets ~a" choice-sets)
+    (trdbg:trdbg (:interpretations 1) "*solutions* now ~a" *solutions*)
+    (cond ((null choice-sets)
+	   (unless (trdbg:trblock
+		       (:interpretations 1
+			:trace ("Trying filter for ~a" solution))
+		     (trdbg:trdbg (:interpretations 1) 
+			 "*solutions* ~a" *solutions*)
+		     (do ((old-solutions *solutions* (cdr old-solutions)))
+			 ((null old-solutions))
+		       (when (car old-solutions)
+			 (trdbg:trblock
+			     (:interpretations 1
+			      :trace ("Checking ~a" (car old-solutions)))
+			   (case (compare-env (car old-solutions) solution)
+			     ((:EQ :S12)
+			      (trdbg:trdbg (:interpretations 1)
+				  "Redundant by ~a" (car old-solutions))
+			      (return t))
+			     (:S21 (trdbg:trdbg (:interpretations 1) 
+				       "Filtering ~a" (car old-solutions))
+				   (rplaca old-solutions nil))
+			     (otherwise
+			      (trdbg:trdbg (:interpretations 1) "OK")))))))
+	     (trdbg:trdbg (:interpretations 1) "Adding ~a ~a"
+	       solution (get-env-string solution))
+	     (push solution *solutions*)
+	     (trdbg:trdbg (:interpretations 1) "*solutions* now ~a"
+	       *solutions*)))
+	  ((env-nogood? solution)) ;something died.
+	  (t (dolist (choice (car choice-sets))
+	       (trdbg:trdbg (:interpretations 1) "depth-solution for ~a"
+		 (get-env-string choice))
+	       (setq new-solution (union-env solution choice))
+	       (if (env-nogood? new-solution)
+		 (trdbg:trdbg (:interpretations 1) "nogood ~a ~a"
+		     new-solution (get-env-string new-solution))
+		 (get-depth-solutions1 new-solution
+				       (cdr choice-sets))))))))
 
 
 (defun extend-via-defaults (solution remaining original)
@@ -625,13 +674,18 @@ Implements Algorithm 12.3 of /Building Problem Solvers/."
 		"* " " "))
   (env-string e stream))
 
-(defun env-string (e &optional stream 
-                     &aux assumptions strings printer)
+(defun get-env-string (e &aux assumptions strings printer)
   (setq assumptions (env-assumptions e))
   (when assumptions
     (setq printer (atms-node-string (tms-node-atms (car assumptions)))))
   (dolist (a assumptions) (push (funcall printer a) strings))
-  (format stream "{~{~A~^,~}}" (sort strings #'string-lessp)))
+  (format nil "{~{~A~^,~}}" (sort strings #'string-lessp)))
+
+(defun get-envs-string (es)
+  (format nil "[~{~A~^; ~}]" (mapcar #'get-env-string es)))
+
+(defun env-string (e &optional stream)
+  (format stream (get-env-string e)))
 
 ;;; Printing global data
 

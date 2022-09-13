@@ -1,5 +1,5 @@
 name:                BPS
-version:             0.1.0.0
+version:             0.1.1.0
 github:              "jphmrst/bps"
 license:             GPL-3
 license-file:        Haskell-LICENSE.txt
@@ -13,7 +13,7 @@ description:	     "Haskell monad transformer-based translations of two classic T
 
 extra-source-files:
 - README.md
-- ChangeLog.md
+- CHANGELOG.md
 - Haskell-LICENSE.txt
 
 dependencies:
@@ -90,6 +90,17 @@ executables:
     dependencies:
     - BPS
     - symbol
+  hbps_profile:
+    main:                Main.hs
+    source-dirs:         src/main/haskell/prof
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - BPS
+    - symbol
+    - MonadRandom
 
 tests:
   BPS-test:

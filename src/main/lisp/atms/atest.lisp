@@ -166,7 +166,10 @@ E-6: {B, C}
 
 ;;; Added JPHM
 (proclaim '(special e h g x))
-(defun book-1 ()
+;;; Corresponds to
+;;; - Haskell function `runATMS1` in src/main/haskell/app/ATMSTrun.hs
+
+(defun book-1 (&aux i1 i2)
   (setq *atms* (create-atms "Step-1")
         a (tms-create-node *atms* "A")
         c (tms-create-node *atms* "C")
@@ -190,4 +193,77 @@ E-6: {B, C}
   
   (why-nodes *atms*)
   (print-envs *atms*)
+
+  (format t "~%----------------------------------------")
+  (setf i1 (interpretations *atms* (list (list a c) (list h g))))
+  (format t "~%Interpretations with (a, c); (h, g): ~s~%" i1)
+  (mapcar #'print-env i1)
+
+  (format t "~%----------------------------------------")
+  (setf i2 (interpretations *atms* (list (list h g))))
+  (format t "~%Interpretations with (h, g): ~s" i2)
+  (mapcar #'print-env i2)
+  
+  (format t "~%----------------------------------------")
+  (setf i3 (interpretations *atms* (list (list h))))
+  (format t "~%Interpretations with (h): ~s" i3)
+  (mapcar #'print-env i3)
+
+
+  (format t "~%========================================")
+  (let ((*atms* (create-atms "Step-2"))
+        (na (tms-create-node *atms* "A"))
+        (nb (tms-create-node *atms* "B"))
+        (nc (tms-create-node *atms* "C"))
+        (nd (tms-create-node *atms* "D"))
+        (ne (tms-create-node *atms* "E"))
+        (nf (tms-create-node *atms* "F"))
+        (ng (tms-create-node *atms* "G"))
+        (nh (tms-create-node *atms* "H"))
+        (nm (tms-create-node *atms* "M"))
+        (nn (tms-create-node *atms* "N"))
+        (np (tms-create-node *atms* "P"))
+        (nq (tms-create-node *atms* "Q"))
+        (nr (tms-create-node *atms* "R"))
+        (ns (tms-create-node *atms* "S"))
+        (nk1 (tms-create-node *atms* "K1"))
+        (nk2 (tms-create-node *atms* "K2"))
+        (nk3 (tms-create-node *atms* "K3"))
+	nx)
+  
+    (setq nx (tms-create-node *atms* "X"))
+    (make-contradiction nx)
+    (justify-node 'xx nx (list nc nf))
+
+    (assume-node na)
+    (assume-node nb)
+    (assume-node nc)
+    (assume-node nd)
+    (assume-node ne)
+    (assume-node nf)
+    (assume-node ng)
+    (assume-node nh)
+
+    (justify-node 'r01 nm (list na nb))
+    (justify-node 'r02 nm (list nc nd))
+    (justify-node 'r03 nn (list nb nc))
+    (justify-node 'r04 np (list nc))
+    (justify-node 'r05 nq (list nc nd ne))
+    (justify-node 'r06 nr (list nf ng))
+    (justify-node 'r07 ns (list nf nh))
+    (justify-node 'r08 nk1 (list nm np))
+    (justify-node 'r09 nk1 (list nn nq))
+    (justify-node 'r10 nk2 (list nn))
+    (justify-node 'r11 nk2 (list np))
+    (justify-node 'r12 nk3 (list nn nq))
+    (justify-node 'r13 nk3 (list nq nr ns))
+
+    (format t "~%Title: ~a" (atms-title *atms*))
+    (format t "~%Label of k3: ~a" (tms-node-label nk3))
+    
+    (format t "~%----------------------------------------")
+    (setf i3 (interpretations *atms* (list (list nk3))))
+    (format t "~%Interpretations with (k3): ~s" i3)
+    (mapcar #'print-env i3)
+    )
   ) ; end defun book-1
