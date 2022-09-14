@@ -47,7 +47,9 @@ language governing permissions and limitations under the License.
 module Data.TMS.ATMS.ATMST (
   -- * The ATMST monad
   ATMST,
-  AtmsErr(CannotRemoveNodeWIthConsequences, InternalNoEmptyEnv, FromMonadFail),
+  AtmsErr(
+      CannotRemoveNodeWithConsequences, InternalNoEmptyEnv,
+      InternalNoContraNode, UnexpectedNonruleJustification, FromMonadFail),
   runATMST,
   setInitialEnvTableAlloc, setEnvTableIncr,
   getInitialEnvTableAlloc, getEnvTableIncr,
@@ -126,7 +128,6 @@ module Data.TMS.ATMS.ATMST (
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.ST.Trans
--- import Control.Monad.Except
 import Control.Monad.Trans.Except
 import Control.Monad.Extra
 import Data.List
@@ -143,7 +144,7 @@ import Data.TMS.Dbg
 -- wrapper.
 
 -- |Errors which can arise from ATMS operations.
-data AtmsErr = CannotRemoveNodeWIthConsequences String Int
+data AtmsErr = CannotRemoveNodeWithConsequences String Int
                -- ^ It is not possible to remove a `Node` from an
                -- `ATMS` after a `JustRule` which uses that `Node` is
                -- added to the `ATMS`.
@@ -1602,7 +1603,7 @@ removeNode node = do
   whenM (fmap (not . null) $ getNodeConsequences node) $ do
     nodeStr <- getNodeString atms
     exceptLayer $ throwE $
-      CannotRemoveNodeWIthConsequences (nodeStr node) (nodeIndex node)
+      CannotRemoveNodeWithConsequences (nodeStr node) (nodeIndex node)
 
   let nodeRef = atmsNodes atms
    in sttLayer $ readSTRef nodeRef >>= writeSTRef nodeRef . delete node

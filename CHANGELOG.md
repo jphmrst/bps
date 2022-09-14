@@ -5,15 +5,24 @@ Haskell releases adhere to Haskell's [Package Versioning
 Policy](https://pvp.haskell.org/); Scala releases use the [Semantic
 Versioning spec](https://semver.org/).
 
-# Version 0.6.0 (Haskell 0.1.1.0, Scala 0.1.0)
+# CURRENT (Haskell 0.2.0.0)
+
+ - Fix a typo in the ATMS errors, `CannotRemoveNodeWIthConsequences`
+   to `CannotRemoveNodeWithConsequences`.  Part of the API, so it's a
+   small-major version change.
+   
+ - Export some ATMS error constructors which were omitted in the
+   earlier versions.
+
+# Version 0.6.0 (Haskell 0.1.1.0)
 
  - Added `interpretations` in Haskell implementation.  Only lighted
    tested at this point.
 
 # Version 0.5.0 (Haskell 0.1.0.0, Scala 0.1.0)
 
- - First version with Haskell: working implementation of a monad
-   transformer for the JTMS and ATMS.  The `interpretations` and
+ - First version with Haskell: working implementation of monad
+   transformers for the JTMS and ATMS.  The `interpretations` and
    `explain-node` functions of the ATMS are not yet translated, and
    are omitted from the module API.
 

@@ -45,8 +45,10 @@ class Formatted item tmsMonad where
   -- |Format a single artifact.
   format :: (Monad m) => item s m -> tmsMonad s m String
 
-  -- |Format several artifacts, with the given string between each
-  -- pair.
+  -- |Format several artifacts.  The first `String` argument is
+  -- returned in the case of an empty list, and the second is placed
+  -- in between the representation of the elements of a non-empty
+  -- list.
   formats ::
     (Monad m, Monad (tmsMonad s m), Traversable k) =>
       String -> String -> k (item s m) -> tmsMonad s m String
