@@ -335,7 +335,7 @@ data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   -- |List of external procedures to be executed for this ATMS.
   atmsEnqueueProcedure :: STRef s (r -> ATMST s m ()),
   -- |Set to `True` when we wish to debug this ATMS.
-  adebugging :: STRef s Bool
+  atmsDebugging :: STRef s Bool
 }
 
 -- |Print the internal title signifying an ATMS.
