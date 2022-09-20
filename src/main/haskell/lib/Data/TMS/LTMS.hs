@@ -61,7 +61,6 @@ module Data.TMS.LTMS (
   LTMS,
 
   -- *** LTMS components
-  {-
   getLTMSMutable, setLTMSMutable,
   getNodes, getClauses,
   getDebugging, setDebugging,
@@ -77,7 +76,6 @@ module Data.TMS.LTMS (
   setInformantStringViaString, setInformantStringViaShow,
   getEnqueueProcedure, setEnqueueProcedure,
   nextNodeCounter, nextClauseCounter,
--}
 
   -- ** Nodes
   Node,
@@ -595,7 +593,6 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node
 -- >   (status nil))   ; :SUBSUMED | :QUEUED | :DIRTY | :NOT-INDEXED | nil
 newtype (Monad m, NodeDatum d) => Clause d i r s m = Clause ()
 
-{-
 $(makeAccessors ''LTMS ''LTMST 'sttLayer ''NodeDatum [
      ("getNodes", ParamsL ''Node, 'ltmsNodes),
      ("getClauses", ParamsL ''Clause, 'ltmsClauses),
@@ -607,7 +604,6 @@ $(makeAccessors ''LTMS ''LTMST 'sttLayer ''NodeDatum [
      ("getDelaySat", Simple ''Bool, 'ltmsDelaySat)
      ]
    [])
--}
 
 -- | TODO
 --

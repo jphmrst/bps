@@ -402,13 +402,6 @@ $(makeAccessors ''ATMS ''ATMST 'sttLayer ''NodeDatum [
      ("getNodeString", ParamsToString ''Node, 'atmsNodeString),
      ("getJustString", ParamsToString ''JustRule, 'atmsJustString),
      ("getDatumString", NodeDatumToString, 'atmsDatumString)
---     ("getClauses", ParamsL ''Clause, 'ltmsClauses),
---     ("getDebugging", Simple ''Bool, 'ltmsDebugging),
---     ("getPendingContradictions", ParamsL ''Node, 'ltmsPendingContradictions),
---     ("getCheckingContradictions", Simple ''Bool, 'ltmsCheckingContradictions),
---     ("getComplete", Simple ''Bool, 'ltmsComplete),
---     ("getViolatedClauses", ParamsL ''Clause, 'ltmsViolatedClauses),
---     ("getDelaySat", Simple ''Bool, 'ltmsDelaySat)
      ]
    [])
 
