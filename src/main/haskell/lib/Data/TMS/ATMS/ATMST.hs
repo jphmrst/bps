@@ -391,7 +391,7 @@ isNogood :: WhyNogood d i r s m -> Bool
 isNogood Good = False
 isNogood _ = True
 
-$(makeAccessors ''ATMS ''ATMST 'sttLayer ''NodeDatum [
+$(makeAccessors [t|ATMS|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] [
      ("getNodes", ParamsL ''Node, 'atmsNodes),
      ("getEnvTable", Params ''EnvTable, 'atmsEnvTable),
      ("getNogoodTable", Params ''EnvTable, 'atmsNogoodTable),
@@ -401,7 +401,9 @@ $(makeAccessors ''ATMS ''ATMST 'sttLayer ''NodeDatum [
      -- Some Unmaybe here
      ("getNodeString", ParamsToString ''Node, 'atmsNodeString),
      ("getJustString", ParamsToString ''JustRule, 'atmsJustString),
-     ("getDatumString", NodeDatumToString, 'atmsDatumString)
+     ("getDatumString", NodeDatumToString, 'atmsDatumString),
+     ("getInformantString", InformantToString, 'atmsInformantString),
+     ("getEnqueueProcedure", RuleProc ''ATMST, 'atmsEnqueueProcedure)
      ]
    [])
 
@@ -488,11 +490,6 @@ setDatumStringViaShow ::
   (NodeDatum d, Show d, Monad m) => ATMS d i r s m -> ATMST s m ()
 setDatumStringViaShow atms = setDatumString atms show
 
--- |Return the `ATMS`'s current informant formatter.
-getInformantString ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (i -> String)
-{-# INLINE getInformantString #-}
-getInformantString = getATMSMutable atmsInformantString
 -- |Shortcut to write to the reference to a ATMS's informant formatter.
 setInformantString ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> (i -> String) -> ATMST s m ()
@@ -513,12 +510,6 @@ setInformantStringViaShow ::
   (Show i, Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 setInformantStringViaShow atms = setInformantString atms show
 
--- |Return the `ATMS`'s current rule-queueing procedure.
-getEnqueueProcedure ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> ATMST s m (r -> ATMST s m ())
-{-# INLINE getEnqueueProcedure #-}
-getEnqueueProcedure = getATMSMutable atmsEnqueueProcedure
 -- |Shortcut to write to the reference to a ATMS's rule-queueing procedure.
 setEnqueueProcedure ::
   (Monad m, NodeDatum d) =>
