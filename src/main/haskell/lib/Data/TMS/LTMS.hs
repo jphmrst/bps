@@ -594,14 +594,14 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node
 newtype (Monad m, NodeDatum d) => Clause d i r s m = Clause ()
 
 $(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] [t|NodeDatum|] [
-     ("getNodes", ParamsL ''Node, 'ltmsNodes),
-     ("getClauses", ParamsL ''Clause, 'ltmsClauses),
-     ("getDebugging", Simple ''Bool, 'ltmsDebugging),
-     ("getPendingContradictions", ParamsL ''Node, 'ltmsPendingContradictions),
-     ("getCheckingContradictions", Simple ''Bool, 'ltmsCheckingContradictions),
-     ("getComplete", Simple ''Bool, 'ltmsComplete),
-     ("getViolatedClauses", ParamsL ''Clause, 'ltmsViolatedClauses),
-     ("getDelaySat", Simple ''Bool, 'ltmsDelaySat)
+     ("Nodes", ParamsL [t|Node|], [|ltmsNodes|]),
+     ("Clauses", ParamsL [t|Clause|], [|ltmsClauses|]),
+     ("Debugging", Simple [t|Bool|], [|ltmsDebugging|]),
+     ("PendingContradictions", ParamsL [t|Node|], [|ltmsPendingContradictions|]),
+     ("CheckingContradictions", Simple [t|Bool|], [|ltmsCheckingContradictions|]),
+     ("Complete", Simple [t|Bool|], [|ltmsComplete|]),
+     ("ViolatedClauses", ParamsL [t|Clause|], [|ltmsViolatedClauses|]),
+     ("DelaySat", Simple [t|Bool|], [|ltmsDelaySat|])
      ]
    [])
 

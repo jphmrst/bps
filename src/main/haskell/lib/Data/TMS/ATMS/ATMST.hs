@@ -392,18 +392,18 @@ isNogood Good = False
 isNogood _ = True
 
 $(makeAccessors [t|ATMS|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] [
-     ("getNodes", ParamsL ''Node, 'atmsNodes),
-     ("getEnvTable", Params ''EnvTable, 'atmsEnvTable),
-     ("getNogoodTable", Params ''EnvTable, 'atmsNogoodTable),
-     ("getJusts", ParamsL ''JustRule, 'atmsJusts),
-     ("getContradictions", ParamsL ''Node, 'atmsContradictions),
-     ("getAssumptions", ParamsL ''Node, 'atmsAssumptions),
+     ("Nodes", ParamsL [t|Node|], [|atmsNodes|]),
+     ("EnvTable", Params [t|EnvTable|], [|atmsEnvTable|]),
+     ("NogoodTable", Params [t|EnvTable|], [|atmsNogoodTable|]),
+     ("Justs", ParamsL [t|JustRule|], [|atmsJusts|]),
+     ("Contradictions", ParamsL [t|Node|], [|atmsContradictions|]),
+     ("Assumptions", ParamsL [t|Node|], [|atmsAssumptions|]),
      -- Some Unmaybe here
-     ("getNodeString", ParamsToString ''Node, 'atmsNodeString),
-     ("getJustString", ParamsToString ''JustRule, 'atmsJustString),
-     ("getDatumString", NodeDatumToString, 'atmsDatumString),
-     ("getInformantString", InformantToString, 'atmsInformantString),
-     ("getEnqueueProcedure", RuleProc ''ATMST, 'atmsEnqueueProcedure)
+     ("NodeString", ParamsToString [t|Node|], [|atmsNodeString|]),
+     ("JustString", ParamsToString [t|JustRule|], [|atmsJustString|]),
+     ("DatumString", NodeDatumToString, [|atmsDatumString|]),
+     ("InformantString", InformantToString, [|atmsInformantString|]),
+     ("EnqueueProcedure", RuleProc [t|ATMST|], [|atmsEnqueueProcedure|])
      ]
    [])
 

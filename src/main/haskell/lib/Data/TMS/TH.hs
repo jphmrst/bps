@@ -12,8 +12,8 @@ import Language.Haskell.TH.Syntax
 import Control.Monad.ST.Trans
 
 makeAccessors :: Q Type -> Q Type -> Q Exp -> Q Type
-                  -> [(String, TypeForm, Name)]
-                   -> [(String, TypeForm, Name)]
+                  -> [(String, TypeForm, Q Exp)]
+                   -> [(String, TypeForm, Q Exp)]
                     -> Q [Dec]
 makeAccessors valType monadType stLayerFn nodeDatumCon readOnly readWrite =do
   getters1 <- mapM (makeGetter valType monadType stLayerFn nodeDatumCon) readOnly
@@ -35,27 +35,22 @@ tapp :: Q Type -> Q Type -> Q Type
 tapp a b = [t| $a $b |]
 
 data TypeForm =
-  Simple Name | Params Name | ParamsL Name | ParamsToString Name
-  | NodeDatumToString | InformantToString | RuleProc Name
-
-qtf :: Name -> Q Type
-qtf = return . ConT
+  Simple (Q Type) | Params (Q Type) | ParamsL (Q Type) | ParamsToString (Q Type)
+  | NodeDatumToString | InformantToString | RuleProc (Q Type)
 
 applyForm ::
   TypeForm -> Q Type -> Q Type -> Q Type -> Q Type -> Q Type -> Q Type
-applyForm (Simple n) _ _ _ _ _ = qtf n
-applyForm (Params n) d i r s m = [t| $(return $ ConT n)  $d $i $r $s $m |]
-applyForm (ParamsL n) d i r s m = [t| [ $(return $ ConT n) $d $i $r $s $m ] |]
-applyForm (ParamsToString n) d i r s m =
-  [t| ($(return $ ConT n) $d $i $r $s $m) -> String |]
+applyForm (Simple n) _ _ _ _ _ = n
+applyForm (Params n) d i r s m = [t| $n $d $i $r $s $m |]
+applyForm (ParamsL n) d i r s m = [t| [ $n $d $i $r $s $m ] |]
+applyForm (ParamsToString n) d i r s m = [t| ($n $d $i $r $s $m) -> String |]
 applyForm (NodeDatumToString) d _ _ _ _ = [t| $d -> String |]
 applyForm (InformantToString) _ i _ _ _ = [t| $i -> String |]
-applyForm (RuleProc mdCon) d i r s m =
-  [t| $r -> ($(return $ ConT mdCon) $s $m ()) |]
+applyForm (RuleProc mdCon) d i r s m = [t| $r -> ($mdCon $s $m ()) |]
 
-makeGetter :: Q Type -> Q Type -> Q Exp -> Q Type -> (String, TypeForm, Name) -> Q [Dec]
-makeGetter valType monadType stLayerFn nodeDatumCon (getterString, resultTyFormer, fieldFn) = do
-  let getter = mkName getterString
+makeGetter :: Q Type -> Q Type -> Q Exp -> Q Type -> (String, TypeForm, Q Exp) -> Q [Dec]
+makeGetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer, fieldFn) = do
+  let getter = mkName ("get" ++ coreString)
   tms <- newName "tms"
   d <- fmap VarT $ newName "d"
   i <- fmap VarT $ newName "i"
@@ -66,6 +61,7 @@ makeGetter valType monadType stLayerFn nodeDatumCon (getterString, resultTyForme
                                          (return s) (return m)
   coreType <- [t| ($valType $(return d) $(return i) $(return r) $(return s) $(return m))
                     -> ($monadType $(return s) $(return m) $(return resultType)) |]
+  field <- fieldFn
   stLayer <- stLayerFn
   nodeDatum <- nodeDatumCon
   return [
@@ -80,7 +76,7 @@ makeGetter valType monadType stLayerFn nodeDatumCon (getterString, resultTyForme
                      stLayer
                      (AppE
                        (VarE 'readSTRef)
-                       (AppE (VarE fieldFn) (VarE tms)))))
+                       (AppE field (VarE tms)))))
           []
         ]
     ]
@@ -90,7 +86,7 @@ makeGetter valType monadType stLayerFn nodeDatumCon (getterString, resultTyForme
 -- getLTMSMutable refGetter ltms = sttLayer $ readSTRef (refGetter ltms)
 -- getLTMSMutable refGetter = sttLayer . readSTRef . refGetter
 
-makeSetter :: Q Type -> Q Type -> Q Exp -> Q Type -> (String, TypeForm, Name) -> Q [Dec]
+makeSetter :: Q Type -> Q Type -> Q Exp -> Q Type -> (String, TypeForm, Q Exp) -> Q [Dec]
 makeSetter valType monadType stLayerFn nodeDatumCon (setterString, resultFormer, fieldFn) =
   return []
 
