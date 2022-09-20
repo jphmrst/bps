@@ -3,7 +3,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Data.TMS.TH (makeAccessors, TypeForm(Simple, Params, ParamsL)) where
+module Data.TMS.TH (
+  makeAccessors,
+  TypeForm(Simple, Params, ParamsL, ParamsToString, NodeDatumToString)) where
 
 import Language.Haskell.TH.Syntax
 import Control.Monad.ST.Trans
@@ -31,7 +33,9 @@ infixl `tapp`
 tapp :: Type -> Type -> Type
 tapp a b = AppT a b
 
-data TypeForm = Simple Name | Params Name | ParamsL Name
+data TypeForm =
+  Simple Name | Params Name | ParamsL Name | ParamsToString Name
+  | NodeDatumToString
 
 applyForm :: TypeForm -> Name -> Name -> Name -> Name -> Name -> Type
 applyForm (Simple n) _ _ _ _ _ = ConT n
@@ -41,6 +45,10 @@ applyForm (Params n) d i r s m =
 applyForm (ParamsL n) d i r s m =
   ListT `tapp` ((ConT n) `tapp` (VarT d) `tapp` (VarT i) `tapp` (VarT r)
                          `tapp` (VarT s) `tapp` (VarT m))
+applyForm (ParamsToString n) d i r s m =
+  ((ConT n) `tapp` (VarT d) `tapp` (VarT i) `tapp` (VarT r)
+    `tapp` (VarT s) `tapp` (VarT m)) `tarr` (ConT ''String)
+applyForm (NodeDatumToString) d i r s m = (VarT d) `tarr` (ConT ''String)
 
 makeGetter :: Name -> Name -> Name -> Name -> (String, TypeForm, Name) -> Q [Dec]
 makeGetter valType monadType stLayerFn nodeDatumCon (getterString, resultTyFormer, fieldFn) = do

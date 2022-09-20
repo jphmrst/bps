@@ -438,37 +438,11 @@ setLTMSMutable ::
 setLTMSMutable refGetter ltms envs =
   sttLayer $ writeSTRef (refGetter ltms) envs
 
-{-
--- |Return the `LTMS`'s current `Node` list.
-getNodes ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m [Node d i r s m]
-{-# INLINE getNodes #-}
-getNodes = getLTMSMutable ltmsNodes
- -}
-
--- |Return the `LTMS`'s current `Clause` list.
--- getClauses ::
---   (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m [Clause d i r s m]
--- {-# INLINE getClauses #-}
--- getClauses = getLTMSMutable ltmsClauses
-
--- |Return the `LTMS`'s current `Node` formatter.
--- getDebugging ::
---   (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m Bool
--- {-# INLINE getDebugging #-}
--- getDebugging = getLTMSMutable ltmsDebugging
-
 -- |Shortcut to write to the reference to a LTMS's `Node` formatter.
 setDebugging ::
   (Monad m, NodeDatum d) => LTMS d i r s m -> Bool -> LTMST s m ()
 {-# INLINE setDebugging #-}
 setDebugging = setLTMSMutable ltmsDebugging
-
--- |Return the `LTMS`'s current `Node` formatter.
--- getCheckingContradictions ::
---   (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m Bool
--- {-# INLINE getCheckingContradictions #-}
--- getCheckingContradictions = getLTMSMutable ltmsCheckingContradictions
 
 -- |Shortcut to write to the reference to a LTMS's `Node` formatter.
 setCheckingContradictions ::
@@ -490,34 +464,12 @@ setNodeString ::
 {-# INLINE setNodeString #-}
 setNodeString = setLTMSMutable ltmsNodeString
 
--- |Return the `LTMS`'s current `Node` list of pending contradictions.
-getPendingContradictions ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m [Node d i r s m]
-{-# INLINE getPendingContradictions #-}
-getPendingContradictions = getLTMSMutable ltmsPendingContradictions
-
--- |Return the `LTMS`'s current `Node` formatter.
-getComplete ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m Bool
-{-# INLINE getComplete #-}
-getComplete = getLTMSMutable ltmsComplete
 -- |Shortcut to write to the reference to a LTMS's `Node` formatter.
 setComplete ::
   (Monad m, NodeDatum d) => LTMS d i r s m -> Bool -> LTMST s m ()
 {-# INLINE setComplete #-}
 setComplete = setLTMSMutable ltmsComplete
 
--- |Return the `LTMS`'s current violated `Clause`s list.
-getViolatedClauses ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m [Clause d i r s m]
-{-# INLINE getViolatedClauses #-}
-getViolatedClauses = getLTMSMutable ltmsViolatedClauses
-
--- |Return the `LTMS`'s current `Node` formatter.
-getDelaySat ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m Bool
-{-# INLINE getDelaySat #-}
-getDelaySat = getLTMSMutable ltmsDelaySat
 -- |Shortcut to write to the reference to a LTMS's `Node` formatter.
 setDelaySat ::
   (Monad m, NodeDatum d) => LTMS d i r s m -> Bool -> LTMST s m ()
@@ -645,7 +597,11 @@ $(makeAccessors ''LTMS ''LTMST 'sttLayer ''NodeDatum [
      ("getNodes", ParamsL ''Node, 'ltmsNodes),
      ("getClauses", ParamsL ''Clause, 'ltmsClauses),
      ("getDebugging", Simple ''Bool, 'ltmsDebugging),
-     ("getCheckingContradictions", Simple ''Bool, 'ltmsCheckingContradictions)
+     ("getPendingContradictions", ParamsL ''Node, 'ltmsPendingContradictions),
+     ("getCheckingContradictions", Simple ''Bool, 'ltmsCheckingContradictions),
+     ("getComplete", Simple ''Bool, 'ltmsComplete),
+     ("getViolatedClauses", ParamsL ''Clause, 'ltmsViolatedClauses),
+     ("getDelaySat", Simple ''Bool, 'ltmsDelaySat)
      ]
    [])
 

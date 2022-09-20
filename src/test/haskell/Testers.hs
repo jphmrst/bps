@@ -36,6 +36,7 @@ import Data.Void
 import Data.TMS.ATMS.ATMST
 import Data.TMS.Helpers
 import Data.TMS.Formatters
+import Data.TMS.Common
 import Data.TMS.Dbg
 import Control.Monad
 import Control.Monad.Extra

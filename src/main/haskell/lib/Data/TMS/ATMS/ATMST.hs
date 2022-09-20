@@ -56,9 +56,6 @@ module Data.TMS.ATMS.ATMST (
 
   -- * ATMS data structures
 
-  -- ** Component classes
-  NodeDatum, contradictionNodeDatum,
-
   -- ** Top-level ATMS
   ATMS, createATMS, atmsTitle,
 
@@ -135,6 +132,8 @@ import Data.Symbol
 import Data.TMS.Formatters
 import Data.TMS.Helpers
 import Data.TMS.MList
+import Data.TMS.Common
+import Data.TMS.TH
 import Data.TMS.Dbg
 
 
@@ -278,18 +277,6 @@ runATMST atmst = do
 
 {- ----------------------------------------------------------------- -}
 
--- |Class of type which can be used as the datum underlying `Node`s in
--- an `ATMS`.
-class NodeDatum d where
-  -- |The datum associated with the contradiction node in a
-  -- newly-initialized `ATMS` with `Node` data of this type.
-  contradictionNodeDatum :: d
-
-instance NodeDatum String where
-  contradictionNodeDatum = "The contradiction"
-instance NodeDatum Symbol where
-  contradictionNodeDatum = intern "The contradiction"
-
 -- |Top-level representation of an assumption-based truth maintenance
 -- system.
 data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
@@ -338,6 +325,94 @@ data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
   atmsDebugging :: STRef s Bool
 }
 
+-- |Wrapper for the datum associated with a node of the `ATMS`.
+--
+-- Translated from @(tms-node@ in @atms.lisp@.
+data (Monad m, NodeDatum d) => Node d i r s m = Node {
+  nodeIndex :: Int,
+  -- |Retrieve the datum associated with a `Node`.
+  nodeDatum :: d,
+  nodeLabel :: STRef s [Env d i r s m],
+  nodeJusts :: STRef s [Justification d i r s m],
+  nodeConsequences :: STRef s [JustRule d i r s m],
+  nodeIsContradictory :: STRef s Bool,
+  nodeIsAssumption :: STRef s Bool,
+  nodeRules :: STRef s [r],
+  -- |Retrieve the `ATMS` associated with a `Node`.
+  nodeATMS :: ATMS d i r s m
+}
+
+-- |The justification of one `ATMS` `Node` by zero or more others.
+data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
+  justIndex :: Int,
+  -- |The informant associated with applying this inference rule.
+  justInformant :: i,
+  -- |The conclusion of this inference rule.
+  justConsequence :: Node d i r s m,
+  -- |The antecedents of this inference rule.
+  justAntecedents :: [Node d i r s m]
+}
+
+-- |Description of why a `Node` may be believed by the `ATMS`.
+data Justification d i r s m =
+  ByRule (JustRule d i r s m) | ByAssumption (Node d i r s m) | ByContradiction
+
+-- |An environment of `Node`s which may be used as the basis of
+-- reasoning in an `ATMS`.
+data (Monad m, NodeDatum d) => Env d i r s m = Env {
+  -- |The unique nomber of this `Env` within its `ATMS`.
+  envIndex :: Int,
+  -- |The number of assumptions contained within this `Env`.
+  envCount :: Int,
+  -- |The assumptions contained within this `Env`.
+  envAssumptions :: [Node d i r s m],
+  envNodes :: STRef s [Node d i r s m],
+  envWhyNogood :: STRef s (WhyNogood d i r s m),
+  envRules :: STRef s [r]
+}
+
+-- |Type alias for the array storage of a table of `Env`s arranged by
+-- length.
+newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
+
+-- |Explanation of why a `Node` may be believed by the `ATMS` for
+-- output to a query.
+data Explanation d i r s m =
+  IsRule (JustRule d i r s m) | IsAssumption (Node d i r s m)
+
+-- |Explanation of why a `Node` may be classified as no-good by the
+-- `ATMS`.
+data WhyNogood d i r s m =
+  Good | ByJustification (Justification d i r s m) | ByEnv (Env d i r s m)
+
+-- |Translation of the explanation of why a `Node` may be classified
+-- (or not) as no-good to a boolean value.
+isNogood :: WhyNogood d i r s m -> Bool
+isNogood Good = False
+isNogood _ = True
+
+$(makeAccessors ''ATMS ''ATMST 'sttLayer ''NodeDatum [
+     ("getNodes", ParamsL ''Node, 'atmsNodes),
+     ("getEnvTable", Params ''EnvTable, 'atmsEnvTable),
+     ("getNogoodTable", Params ''EnvTable, 'atmsNogoodTable),
+     ("getJusts", ParamsL ''JustRule, 'atmsJusts),
+     ("getContradictions", ParamsL ''Node, 'atmsContradictions),
+     ("getAssumptions", ParamsL ''Node, 'atmsAssumptions),
+     -- Some Unmaybe here
+     ("getNodeString", ParamsToString ''Node, 'atmsNodeString),
+     ("getJustString", ParamsToString ''JustRule, 'atmsJustString),
+     ("getDatumString", NodeDatumToString, 'atmsDatumString)
+--     ("getClauses", ParamsL ''Clause, 'ltmsClauses),
+--     ("getDebugging", Simple ''Bool, 'ltmsDebugging),
+--     ("getPendingContradictions", ParamsL ''Node, 'ltmsPendingContradictions),
+--     ("getCheckingContradictions", Simple ''Bool, 'ltmsCheckingContradictions),
+--     ("getComplete", Simple ''Bool, 'ltmsComplete),
+--     ("getViolatedClauses", ParamsL ''Clause, 'ltmsViolatedClauses),
+--     ("getDelaySat", Simple ''Bool, 'ltmsDelaySat)
+     ]
+   [])
+
+
 -- |Print the internal title signifying an ATMS.
 --
 -- Translated from @print-atms@ in @atms.lisp@.
@@ -368,42 +443,6 @@ setATMSMutable ::
 setATMSMutable refGetter atms envs =
   sttLayer $ writeSTRef (refGetter atms) envs
 
--- |Return the `ATMS`'s current `Node` list.
-getNodes ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [Node d i r s m]
-{-# INLINE getNodes #-}
-getNodes = getATMSMutable atmsNodes
-
--- |Return the `ATMS`'s current `EnvTable`.
-getEnvTable ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (EnvTable d i r s m)
-{-# INLINE getEnvTable #-}
-getEnvTable = getATMSMutable atmsEnvTable
-
--- |Return the `ATMS`'s current `EnvTable` for nogood `Env`s.
-getNogoodTable ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (EnvTable d i r s m)
-{-# INLINE getNogoodTable #-}
-getNogoodTable = getATMSMutable atmsNogoodTable
-
--- |Return the `ATMS`'s current `JustRule` list.
-getJusts ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [JustRule d i r s m]
-{-# INLINE getJusts #-}
-getJusts = getATMSMutable atmsJusts
-
--- |Return the `ATMS`'s current contradictions list.
-getContradictions ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [Node d i r s m]
-{-# INLINE getContradictions #-}
-getContradictions = getATMSMutable atmsContradictions
-
--- |Return the `ATMS`'s current assumptions list.
-getAssumptions ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m [Node d i r s m]
-{-# INLINE getAssumptions #-}
-getAssumptions = getATMSMutable atmsAssumptions
-
 -- |Return the `ATMS`'s built-in empty environment.
 getEmptyEnvironment ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (Env d i r s m)
@@ -424,12 +463,6 @@ getContradictionNode atms = do
     Just node -> return node
     Nothing -> exceptLayer $ throwE InternalNoContraNode
 
--- |Return the `ATMS`'s current `Node` formatter.
-getNodeString ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> ATMST s m (Node d i r s m -> String)
-{-# INLINE getNodeString #-}
-getNodeString = getATMSMutable atmsNodeString
 -- |Shortcut to write to the reference to a ATMS's `Node` formatter.
 setNodeString ::
   (Monad m, NodeDatum d) =>
@@ -437,12 +470,6 @@ setNodeString ::
 {-# INLINE setNodeString #-}
 setNodeString = setATMSMutable atmsNodeString
 
--- |Return the `ATMS`'s current `JustRule` formatter.
-getJustString ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> ATMST s m (JustRule d i r s m -> String)
-{-# INLINE getJustString #-}
-getJustString = getATMSMutable atmsJustString
 -- |Shortcut to write to the reference to a ATMS's `JustRule` formatter.
 setJustString ::
   (Monad m, NodeDatum d) =>
@@ -450,11 +477,6 @@ setJustString ::
 {-# INLINE setJustString #-}
 setJustString = setATMSMutable atmsJustString
 
--- |Return the `ATMS`'s current datum formatter.
-getDatumString ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m (d -> String)
-{-# INLINE getDatumString #-}
-getDatumString = getATMSMutable atmsDatumString
 -- |Shortcut to write to the reference to a ATMS's datum formatter.
 setDatumString ::
   (Monad m, NodeDatum d) => ATMS d i r s m -> (d -> String) -> ATMST s m ()
@@ -538,23 +560,6 @@ nextEnvCounter atms = sttLayer $ do
   return envId
 
 {- ----------------------------------------------------------------- -}
-
--- |Wrapper for the datum associated with a node of the `ATMS`.
---
--- Translated from @(tms-node@ in @atms.lisp@.
-data (Monad m, NodeDatum d) => Node d i r s m = Node {
-  nodeIndex :: Int,
-  -- |Retrieve the datum associated with a `Node`.
-  nodeDatum :: d,
-  nodeLabel :: STRef s [Env d i r s m],
-  nodeJusts :: STRef s [Justification d i r s m],
-  nodeConsequences :: STRef s [JustRule d i r s m],
-  nodeIsContradictory :: STRef s Bool,
-  nodeIsAssumption :: STRef s Bool,
-  nodeRules :: STRef s [r],
-  -- |Retrieve the `ATMS` associated with a `Node`.
-  nodeATMS :: ATMS d i r s m
-}
 
 instance (Monad m, NodeDatum d) => Eq (Node d i r s m) where
   n1 == n2 = nodeIndex n1 == nodeIndex n2
@@ -676,17 +681,6 @@ getNodeIsAssumption ::
   (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
 getNodeIsAssumption node = sttLayer $ readSTRef (nodeIsAssumption node)
 
--- |The justification of one `ATMS` `Node` by zero or more others.
-data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
-  justIndex :: Int,
-  -- |The informant associated with applying this inference rule.
-  justInformant :: i,
-  -- |The conclusion of this inference rule.
-  justConsequence :: Node d i r s m,
-  -- |The antecedents of this inference rule.
-  justAntecedents :: [Node d i r s m]
-}
-
 instance (Monad m, NodeDatum d) => Eq (JustRule d i r s m) where
   e1 == e2 = (justIndex e1) == (justIndex e2)
 
@@ -709,10 +703,6 @@ instance NodeDatum d => Debugged (JustRule d i r) ATMST where
       ++ datumFmt (nodeDatum conseq) ++ " <= "
       ++ intercalate ", " (map (datumFmt . nodeDatum) ants)
 
--- |Description of why a `Node` may be believed by the `ATMS`.
-data Justification d i r s m =
-  ByRule (JustRule d i r s m) | ByAssumption (Node d i r s m) | ByContradiction
-
 -- |`format`, `blurb`, etc. may be applied to `Node`s in an
 -- `ATMST`.
 instance NodeDatum d => Formatted (Justification d i r) ATMST where
@@ -732,37 +722,7 @@ instance NodeDatum d => Printed (Justification d i r) ATMST where
       pprint node
     ByContradiction -> liftIO $ putStrLn $ "By contradiction"
 
--- |Explanation of why a `Node` may be believed by the `ATMS` for
--- output to a query.
-data Explanation d i r s m =
-  IsRule (JustRule d i r s m) | IsAssumption (Node d i r s m)
-
--- |Explanation of why a `Node` may be classified as no-good by the
--- `ATMS`.
-data WhyNogood d i r s m =
-  Good | ByJustification (Justification d i r s m) | ByEnv (Env d i r s m)
-
--- |Translation of the explanation of why a `Node` may be classified
--- (or not) as no-good to a boolean value.
-isNogood :: WhyNogood d i r s m -> Bool
-isNogood Good = False
-isNogood _ = True
-
 {- ----------------------------------------------------------------- -}
-
--- |An environment of `Node`s which may be used as the basis of
--- reasoning in an `ATMS`.
-data (Monad m, NodeDatum d) => Env d i r s m = Env {
-  -- |The unique nomber of this `Env` within its `ATMS`.
-  envIndex :: Int,
-  -- |The number of assumptions contained within this `Env`.
-  envCount :: Int,
-  -- |The assumptions contained within this `Env`.
-  envAssumptions :: [Node d i r s m],
-  envNodes :: STRef s [Node d i r s m],
-  envWhyNogood :: STRef s (WhyNogood d i r s m),
-  envRules :: STRef s [r]
-}
 
 instance (Monad m, NodeDatum d) => Eq (Env d i r s m) where
   e1 == e2 = (envIndex e1) == (envIndex e2)
@@ -836,10 +796,6 @@ setEnvRules = setEnvMutable envRules
 envIsNogood :: (Monad m, NodeDatum d) => Env d i r s m -> ATMST s m Bool
 envIsNogood env = do
   fmap isNogood $ sttLayer $ readSTRef $ envWhyNogood env
-
--- |Type alias for the array storage of a table of `Env`s arranged by
--- length.
-newtype EnvTable d i r s m = EnvTable (STArray s Int [Env d i r s m])
 
 -- |Print the `Env`ironments contained in the given `EnvTable`.
 --
