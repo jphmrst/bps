@@ -5,34 +5,48 @@
 
 module Data.TMS.TH (
   makeAccessors,
+  TypeFormer, noTyParams, withParams, inList, fnToString, fnToVoid,
+  datumType, informantType,
+
   TypeForm(Simple, Params, ParamsL, ParamsToString,
            NodeDatumToString, InformantToString, RuleProc)) where
 
 import Language.Haskell.TH.Syntax
 import Control.Monad.ST.Trans
 
+type AccessorSpec = (String, TypeForm, Q Exp)
+
 makeAccessors :: Q Type -> Q Type -> Q Exp -> Q Type
-                  -> [(String, TypeForm, Q Exp)]
-                   -> [(String, TypeForm, Q Exp)]
-                    -> Q [Dec]
+                  -> [AccessorSpec] -> [AccessorSpec] -> Q [Dec]
 makeAccessors valType monadType stLayerFn nodeDatumCon readOnly readWrite =do
   getters1 <- mapM (makeGetter valType monadType stLayerFn nodeDatumCon) readOnly
   getters2 <- mapM (makeGetter valType monadType stLayerFn nodeDatumCon) readWrite
   setters2 <- mapM (makeSetter valType monadType stLayerFn nodeDatumCon) readWrite
   return $
     foldr (++) [] getters1 ++ foldr (++) [] getters2 ++ foldr (++) [] setters2
---   $getter ::
---      (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m [$typ]
---   {-# INLINE $getter #-}
 
+type TypeFormer = Q Type -> Q Type -> Q Type -> Q Type -> Q Type -> Q Type
 
-infixr `tarr`
-tarr :: Q Type -> Q Type -> Q Type
-tarr a b = [t| $a -> $b |]
+noTyParams :: Q Type -> TypeFormer
+noTyParams base _ _ _ _ _ = base
 
-infixl `tapp`
-tapp :: Q Type -> Q Type -> Q Type
-tapp a b = [t| $a $b |]
+withParams :: Q Type -> TypeFormer
+withParams base d i r s m = [t| $base $d $i $r $s $m |]
+
+inList :: TypeFormer -> TypeFormer
+inList f d i r s m = [t| [ $(f d i r s m) ] |]
+
+fnToString :: TypeFormer -> TypeFormer
+fnToString f d i r s m = [t| ($(f d i r s m)) -> String |]
+
+fnToVoid :: TypeFormer -> TypeFormer
+fnToVoid f d i r s m = [t| ($(f d i r s m)) -> () |]
+
+datumType :: TypeFormer
+datumType d i r s m = d
+
+informantType :: TypeFormer
+informantType d i r s m = i
 
 data TypeForm =
   Simple (Q Type) | Params (Q Type) | ParamsL (Q Type) | ParamsToString (Q Type)
@@ -48,7 +62,7 @@ applyForm (NodeDatumToString) d _ _ _ _ = [t| $d -> String |]
 applyForm (InformantToString) _ i _ _ _ = [t| $i -> String |]
 applyForm (RuleProc mdCon) d i r s m = [t| $r -> ($mdCon $s $m ()) |]
 
-makeGetter :: Q Type -> Q Type -> Q Exp -> Q Type -> (String, TypeForm, Q Exp) -> Q [Dec]
+makeGetter :: Q Type -> Q Type -> Q Exp -> Q Type -> AccessorSpec -> Q [Dec]
 makeGetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer, fieldFn) = do
   let getter = mkName ("get" ++ coreString)
   tms <- newName "tms"
@@ -80,44 +94,39 @@ makeGetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer,
           []
         ]
     ]
--- getDebugging :: (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m Bool
--- {- # INLINE getDebugging #-}
--- getDebugging = getLTMSMutable ltmsDebugging
--- getLTMSMutable refGetter ltms = sttLayer $ readSTRef (refGetter ltms)
--- getLTMSMutable refGetter = sttLayer . readSTRef . refGetter
-
-makeSetter :: Q Type -> Q Type -> Q Exp -> Q Type -> (String, TypeForm, Q Exp) -> Q [Dec]
-makeSetter valType monadType stLayerFn nodeDatumCon (setterString, resultFormer, fieldFn) =
-  return []
-
-{-
-makeGetter valTyCon monadTyCon getterString resultType fieldFn =
---   $getter ::
---      (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m [$typ]
---   {-# INLINE $getter #-}
+makeSetter :: Q Type -> Q Type -> Q Exp -> Q Type -> AccessorSpec -> Q [Dec]
+makeSetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer, fieldFn) = do
+  let setter = mkName ("set" ++ coreString)
+  let arg = mkName "arg"
+  tms <- newName "tms"
+  d <- fmap VarT $ newName "d"
+  i <- fmap VarT $ newName "i"
+  r <- fmap VarT $ newName "r"
+  s <- fmap VarT $ newName "s"
+  m <- fmap VarT $ newName "m"
+  resultType <- applyForm resultTyFormer (return d) (return i) (return r)
+                                         (return s) (return m)
+  coreType <-
+    [t| ($valType $(return d) $(return i) $(return r) $(return s) $(return m))
+          -> $(return resultType)
+            -> ($monadType $(return s) $(return m) ()) |]
+  field <- fieldFn
+  stLayer <- stLayerFn
+  nodeDatum <- nodeDatumCon
   return [
-    FunD (mkName getterString) [
-        Clause []
-          (NormalB (AppE (VarE getMutable) (VarE field)))
+    SigD setter
+      (ForallT [] [ AppT (ConT ''Monad) m,
+                    AppT nodeDatum d ]
+        coreType),
+    PragmaD (InlineP setter Inline FunLike AllPhases),
+    FunD setter [
+        Clause [VarP tms, VarP arg]
+          (NormalB (AppE
+                     stLayer
+                     (AppE (AppE
+                             (VarE 'writeSTRef)
+                             (AppE field (VarE tms)))
+                           (VarE arg))))
           []
         ]
     ]
-
-makeGetterSetter :: String -> String -> Name -> Name -> Name -> Name -> Q [Dec]
-makeGetterSetter getter setter getMutable setMutable typ field =
---   $getter ::
---      (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m [$typ]
---   {-# INLINE $getter #-}
-  return [
-    FunD (mkName getter) [
-        Clause []
-          (NormalB (AppE (VarE getMutable) (VarE field)))
-          []
-        ],
-    FunD (mkName setter) [
-        Clause []
-          (NormalB (AppE (VarE setMutable) (VarE field)))
-          []
-        ]
-  ]
--}

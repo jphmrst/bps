@@ -397,16 +397,21 @@ $(makeAccessors [t|ATMS|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] [
      ("NogoodTable", Params [t|EnvTable|], [|atmsNogoodTable|]),
      ("Justs", ParamsL [t|JustRule|], [|atmsJusts|]),
      ("Contradictions", ParamsL [t|Node|], [|atmsContradictions|]),
-     ("Assumptions", ParamsL [t|Node|], [|atmsAssumptions|]),
+     ("Assumptions", ParamsL [t|Node|], [|atmsAssumptions|])
      -- Some Unmaybe here
+     ]
+   [
      ("NodeString", ParamsToString [t|Node|], [|atmsNodeString|]),
      ("JustString", ParamsToString [t|JustRule|], [|atmsJustString|]),
      ("DatumString", NodeDatumToString, [|atmsDatumString|]),
      ("InformantString", InformantToString, [|atmsInformantString|]),
      ("EnqueueProcedure", RuleProc [t|ATMST|], [|atmsEnqueueProcedure|])
-     ]
-   [])
+   ])
 
+$(makeAccessors [t|Node|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] []
+  [
+    ("NodeLabel", ParamsL [t|Env|], [|nodeLabel|])
+  ])
 
 -- |Print the internal title signifying an ATMS.
 --
@@ -430,13 +435,6 @@ getATMSMutable ::
     (ATMS d i r s m -> STRef s a) -> ATMS d i r s m  -> ATMST s m a
 {-# INLINE getATMSMutable #-}
 getATMSMutable refGetter atms = sttLayer $ readSTRef (refGetter atms)
--- |Shortcut to write to an ATMS reference.
-setATMSMutable ::
-  (Monad m, NodeDatum d) =>
-    (ATMS d i r s m -> STRef s a) -> ATMS d i r s m -> a -> ATMST s m ()
-{-# INLINE setATMSMutable #-}
-setATMSMutable refGetter atms envs =
-  sttLayer $ writeSTRef (refGetter atms) envs
 
 -- |Return the `ATMS`'s built-in empty environment.
 getEmptyEnvironment ::
@@ -458,26 +456,6 @@ getContradictionNode atms = do
     Just node -> return node
     Nothing -> exceptLayer $ throwE InternalNoContraNode
 
--- |Shortcut to write to the reference to a ATMS's `Node` formatter.
-setNodeString ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> (Node d i r s m -> String) -> ATMST s m ()
-{-# INLINE setNodeString #-}
-setNodeString = setATMSMutable atmsNodeString
-
--- |Shortcut to write to the reference to a ATMS's `JustRule` formatter.
-setJustString ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> (JustRule d i r s m -> String) -> ATMST s m ()
-{-# INLINE setJustString #-}
-setJustString = setATMSMutable atmsJustString
-
--- |Shortcut to write to the reference to a ATMS's datum formatter.
-setDatumString ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> (d -> String) -> ATMST s m ()
-{-# INLINE setDatumString #-}
-setDatumString = setATMSMutable atmsDatumString
-
 -- |When the data associated with `Node`s are all `String`s, we can
 -- direct the `ATMS` to display each datum as itself.
 setDatumStringViaString :: Monad m => ATMS String i r s m -> ATMST s m ()
@@ -489,12 +467,6 @@ setDatumStringViaString atms = setDatumString atms id
 setDatumStringViaShow ::
   (NodeDatum d, Show d, Monad m) => ATMS d i r s m -> ATMST s m ()
 setDatumStringViaShow atms = setDatumString atms show
-
--- |Shortcut to write to the reference to a ATMS's informant formatter.
-setInformantString ::
-  (Monad m, NodeDatum d) => ATMS d i r s m -> (i -> String) -> ATMST s m ()
-{-# INLINE setInformantString #-}
-setInformantString = setATMSMutable atmsInformantString
 
 -- |When the informants associated with `JustRule`s are all
 -- `String`s, we can direct the `ATMS` to display each informant as
@@ -509,13 +481,6 @@ setInformantStringViaString atms = setInformantString atms id
 setInformantStringViaShow ::
   (Show i, Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m ()
 setInformantStringViaShow atms = setInformantString atms show
-
--- |Shortcut to write to the reference to a ATMS's rule-queueing procedure.
-setEnqueueProcedure ::
-  (Monad m, NodeDatum d) =>
-    ATMS d i r s m -> (r -> ATMST s m ()) -> ATMST s m ()
-{-# INLINE setEnqueueProcedure #-}
-setEnqueueProcedure = setATMSMutable atmsEnqueueProcedure
 
 -- |Get the next node counter value, incrementing for future accesses.
 nextNodeCounter :: (Monad m, NodeDatum d) => ATMS d i r s m -> ATMST s m Int
@@ -609,17 +574,6 @@ setNodeMutable ::
     (Node d i r s m -> STRef s a) -> Node d i r s m -> a -> ATMST s m ()
 {-# INLINE setNodeMutable #-}
 setNodeMutable refGetter node val = sttLayer $ writeSTRef (refGetter node) val
-
--- |Return the `Node`'s label.
-getNodeLabel ::
-  (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [Env d i r s m]
-{-# INLINE getNodeLabel #-}
-getNodeLabel = getNodeMutable nodeLabel
--- |Shortcut to write to the reference to a node's label.
-setNodeLabel ::
-  (Monad m, NodeDatum d) => Node d i r s m -> [Env d i r s m] -> ATMST s m ()
-{-# INLINE setNodeLabel #-}
-setNodeLabel = setNodeMutable nodeLabel
 
 -- |Return the `Node`'s rules.
 getNodeRules :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [r]
