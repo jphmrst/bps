@@ -61,7 +61,6 @@ module Data.TMS.LTMS (
   LTMS,
 
   -- *** LTMS components
-  getLTMSMutable, setLTMSMutable,
   getNodes, getClauses,
   getDebugging, setDebugging,
   getCheckingContradictions, setCheckingContradictions,
@@ -424,119 +423,6 @@ data (Monad m, NodeDatum d) => LTMS d i r s m = LTMS {
   ltmsInformantString :: STRef s (i -> String)
   }
 
--- |Shortcut maker for reading from an `LTMS` reference.
-getLTMSMutable ::
-  (Monad m, NodeDatum d) =>
-    (LTMS d i r s m -> STRef s a) -> LTMS d i r s m  -> LTMST s m a
-{-# INLINE getLTMSMutable #-}
-getLTMSMutable refGetter ltms = sttLayer $ readSTRef (refGetter ltms)
--- |Shortcut to write to an LTMS reference.
-setLTMSMutable ::
-  (Monad m, NodeDatum d) =>
-    (LTMS d i r s m -> STRef s a) -> LTMS d i r s m -> a -> LTMST s m ()
-{-# INLINE setLTMSMutable #-}
-setLTMSMutable refGetter ltms envs =
-  sttLayer $ writeSTRef (refGetter ltms) envs
-
--- |Shortcut to write to the reference to a LTMS's `Node` formatter.
-setDebugging ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> Bool -> LTMST s m ()
-{-# INLINE setDebugging #-}
-setDebugging = setLTMSMutable ltmsDebugging
-
--- |Shortcut to write to the reference to a LTMS's `Node` formatter.
-setCheckingContradictions ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> Bool -> LTMST s m ()
-{-# INLINE setCheckingContradictions #-}
-setCheckingContradictions = setLTMSMutable ltmsCheckingContradictions
-
--- |Return the `LTMS`'s current `Node` formatter.
-getNodeString ::
-  (Monad m, NodeDatum d) =>
-    LTMS d i r s m -> LTMST s m (Node d i r s m -> String)
-{-# INLINE getNodeString #-}
-getNodeString = getLTMSMutable ltmsNodeString
-
--- |Shortcut to write to the reference to a LTMS's `Node` formatter.
-setNodeString ::
-  (Monad m, NodeDatum d) =>
-    LTMS d i r s m -> (Node d i r s m -> String) -> LTMST s m ()
-{-# INLINE setNodeString #-}
-setNodeString = setLTMSMutable ltmsNodeString
-
--- |Shortcut to write to the reference to a LTMS's `Node` formatter.
-setComplete ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> Bool -> LTMST s m ()
-{-# INLINE setComplete #-}
-setComplete = setLTMSMutable ltmsComplete
-
--- |Shortcut to write to the reference to a LTMS's `Node` formatter.
-setDelaySat ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> Bool -> LTMST s m ()
-{-# INLINE setDelaySat #-}
-setDelaySat = setLTMSMutable ltmsDelaySat
-
--- |Return the `LTMS`'s current datum formatter.
-getDatumString ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m (d -> String)
-{-# INLINE getDatumString #-}
-getDatumString = getLTMSMutable ltmsDatumString
--- |Shortcut to write to the reference to a LTMS's datum formatter.
-setDatumString ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> (d -> String) -> LTMST s m ()
-{-# INLINE setDatumString #-}
-setDatumString = setLTMSMutable ltmsDatumString
-
--- |When the data associated with `Node`s are all `String`s, we can
--- direct the `LTMS` to display each datum as itself.
-setDatumStringViaString :: Monad m => LTMS String i r s m -> LTMST s m ()
-setDatumStringViaString ltms = setDatumString ltms id
-
--- |When the data associated with `Node`s are of a type of class
--- `Show`, we can direct the `LTMS` to display each datum using the
--- `show` instance.
-setDatumStringViaShow ::
-  (NodeDatum d, Show d, Monad m) => LTMS d i r s m -> LTMST s m ()
-setDatumStringViaShow ltms = setDatumString ltms show
-
--- |Return the `LTMS`'s current informant formatter.
-getInformantString ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m (i -> String)
-{-# INLINE getInformantString #-}
-getInformantString = getLTMSMutable ltmsInformantString
--- |Shortcut to write to the reference to a LTMS's informant formatter.
-setInformantString ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> (i -> String) -> LTMST s m ()
-{-# INLINE setInformantString #-}
-setInformantString = setLTMSMutable ltmsInformantString
-
--- |When the informants associated with `JustRule`s are all
--- `String`s, we can direct the `LTMS` to display each informant as
--- itself.
-setInformantStringViaString ::
-  (Monad m, NodeDatum d) => LTMS d String r s m -> LTMST s m ()
-setInformantStringViaString ltms = setInformantString ltms id
-
--- |When the informants associated with `JustRule`s are of a type of
--- class `Show`, we can direct the `LTMS` to display each datum using
--- the `show` instance.
-setInformantStringViaShow ::
-  (Show i, Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m ()
-setInformantStringViaShow ltms = setInformantString ltms show
-
--- |Return the `LTMS`'s current rule-queueing procedure.
-getEnqueueProcedure ::
-  (Monad m, NodeDatum d) =>
-    LTMS d i r s m -> LTMST s m (r -> LTMST s m ())
-{-# INLINE getEnqueueProcedure #-}
-getEnqueueProcedure = getLTMSMutable ltmsEnqueueProcedure
--- |Shortcut to write to the reference to a LTMS's rule-queueing procedure.
-setEnqueueProcedure ::
-  (Monad m, NodeDatum d) =>
-    LTMS d i r s m -> (r -> LTMST s m ()) -> LTMST s m ()
-{-# INLINE setEnqueueProcedure #-}
-setEnqueueProcedure = setLTMSMutable ltmsEnqueueProcedure
-
 -- |Get the next node counter value, incrementing for future accesses.
 nextNodeCounter :: (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m Int
 nextNodeCounter jtms = sttLayer $ do
@@ -593,17 +479,49 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node
 -- >   (status nil))   ; :SUBSUMED | :QUEUED | :DIRTY | :NOT-INDEXED | nil
 newtype (Monad m, NodeDatum d) => Clause d i r s m = Clause ()
 
-$(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] [t|NodeDatum|] [
-     ("Nodes", inList $ withParams [t|Node|], [|ltmsNodes|]),
-     ("Clauses", inList $ withParams [t|Clause|], [|ltmsClauses|]),
-     ("Debugging", noTyParams [t|Bool|], [|ltmsDebugging|]),
-     ("PendingContradictions", inList $ withParams [t|Node|], [|ltmsPendingContradictions|]),
-     ("CheckingContradictions", noTyParams [t|Bool|], [|ltmsCheckingContradictions|]),
-     ("Complete", noTyParams [t|Bool|], [|ltmsComplete|]),
-     ("ViolatedClauses", inList $ withParams [t|Clause|], [|ltmsViolatedClauses|]),
-     ("DelaySat", noTyParams [t|Bool|], [|ltmsDelaySat|])
-     ]
-   [])
+$(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] [t|NodeDatum|]
+  [
+    ("Nodes", inList $ withParams [t|Node|], [|ltmsNodes|]),
+    ("Clauses", inList $ withParams [t|Clause|], [|ltmsClauses|]),
+    ("PendingContradictions", inList $ withParams [t|Node|], [|ltmsPendingContradictions|]),
+    ("ViolatedClauses", inList $ withParams [t|Clause|], [|ltmsViolatedClauses|])
+  ] [
+    ("Debugging", noTyParams [t|Bool|], [|ltmsDebugging|]),
+    ("Complete", noTyParams [t|Bool|], [|ltmsComplete|]),
+    ("CheckingContradictions", noTyParams [t|Bool|],
+     [|ltmsCheckingContradictions|]),
+    ("DelaySat", noTyParams [t|Bool|], [|ltmsDelaySat|]),
+    ("EnqueueProcedure", ruleTypeToVoidComp [t|LTMST|], [|ltmsEnqueueProcedure|]),
+    ("NodeString", fnToString $ withParams [t|Node|], [|ltmsNodeString|]),
+    ("DatumString", fnToString $ datumType, [|ltmsDatumString|]),
+    ("InformantString", fnToString $ informantType, [|ltmsInformantString|])
+  ])
+
+-- |When the data associated with `Node`s are all `String`s, we can
+-- direct the `LTMS` to display each datum as itself.
+setDatumStringViaString :: Monad m => LTMS String i r s m -> LTMST s m ()
+setDatumStringViaString ltms = setDatumString ltms id
+
+-- |When the data associated with `Node`s are of a type of class
+-- `Show`, we can direct the `LTMS` to display each datum using the
+-- `show` instance.
+setDatumStringViaShow ::
+  (NodeDatum d, Show d, Monad m) => LTMS d i r s m -> LTMST s m ()
+setDatumStringViaShow ltms = setDatumString ltms show
+
+-- |When the informants associated with `JustRule`s are all
+-- `String`s, we can direct the `LTMS` to display each informant as
+-- itself.
+setInformantStringViaString ::
+  (Monad m, NodeDatum d) => LTMS d String r s m -> LTMST s m ()
+setInformantStringViaString ltms = setInformantString ltms id
+
+-- |When the informants associated with `JustRule`s are of a type of
+-- class `Show`, we can direct the `LTMS` to display each datum using
+-- the `show` instance.
+setInformantStringViaShow ::
+  (Show i, Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m ()
+setInformantStringViaShow ltms = setInformantString ltms show
 
 -- | TODO
 --
