@@ -408,9 +408,21 @@ $(makeAccessors [t|ATMS|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] [
      ("EnqueueProcedure", ruleTypeToVoidComp [t|ATMST|], [|atmsEnqueueProcedure|])
    ])
 
-$(makeAccessors [t|Node|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] []
+$(makeAccessors [t|Node|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|]
   [
-    ("NodeLabel", inList $ withParams [t|Env|], [|nodeLabel|])
+    ("NodeJusts", inList $ withParams [t|Justification|], [|nodeJusts|]),
+    ("NodeIsAssumption", noTyParams [t|Bool|], [|nodeIsAssumption|]),
+    ("NodeIsContradictory", noTyParams [t|Bool|], [|nodeIsContradictory|])
+  ] [
+    ("NodeLabel", inList $ withParams [t|Env|], [|nodeLabel|]),
+    ("NodeRules", inList ruleType, [|nodeRules|]),
+    ("NodeConsequences", inList $ withParams [t|JustRule|], [|nodeConsequences|])
+   ])
+
+$(makeAccessors [t|Env|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] []
+  [
+     ("EnvNodes", inList $ withParams [t|Node|], [|envNodes|]),
+     ("EnvRules", inList $ ruleType, [|envRules|])
   ])
 
 -- |Print the internal title signifying an ATMS.
@@ -562,62 +574,11 @@ instance NodeDatum d => Debugged (Node d i r) ATMST where
           liftIO $ putStr $ " " ++ informantFmt (justInformant conseq)
         liftIO $ putStrLn ""
 
--- |Shortcut maker for reading from a `Node` reference.
-getNodeMutable ::
-  (Monad m, NodeDatum d) =>
-    (Node d i r s m -> STRef s a) -> Node d i r s m  -> ATMST s m a
-{-# INLINE getNodeMutable #-}
-getNodeMutable refGetter node = sttLayer $ readSTRef (refGetter node)
--- |Shortcut to write to the reference to a node's label.
-setNodeMutable ::
-  (Monad m, NodeDatum d) =>
-    (Node d i r s m -> STRef s a) -> Node d i r s m -> a -> ATMST s m ()
-{-# INLINE setNodeMutable #-}
-setNodeMutable refGetter node val = sttLayer $ writeSTRef (refGetter node) val
-
--- |Return the `Node`'s rules.
-getNodeRules :: (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [r]
-{-# INLINE getNodeRules #-}
-getNodeRules = getNodeMutable nodeRules
--- |Shortcut to write to the reference to a node's rules.
-setNodeRules :: (Monad m, NodeDatum d) => Node d i r s m -> [r] -> ATMST s m ()
-{-# INLINE setNodeRules #-}
-setNodeRules = setNodeMutable nodeRules
-
--- |Return the `JustRule`s concluding a `Node`.
-getNodeJusts ::
-  (Monad m, NodeDatum d) =>
-    Node d i r s m -> ATMST s m [Justification d i r s m]
-{-# INLINE getNodeJusts #-}
-getNodeJusts = getNodeMutable nodeJusts
-
--- |Return the `Node`'s consequences.
-getNodeConsequences ::
-  (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m [JustRule d i r s m]
-{-# INLINE getNodeConsequences #-}
-getNodeConsequences = getNodeMutable nodeConsequences
--- |Shortcut to write to the reference to a node's consequences.
-setNodeConsequences ::
-  (Monad m, NodeDatum d) =>
-    Node d i r s m -> [JustRule d i r s m] -> ATMST s m ()
-{-# INLINE setNodeConsequences #-}
-setNodeConsequences = setNodeMutable nodeConsequences
-
--- |Return whether the `Node`'s is currently contradictory.
-getNodeIsContradictory ::
-  (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
-getNodeIsContradictory node = sttLayer $ readSTRef (nodeIsContradictory node)
-
 -- |Set whether a `Node`'s is currently contradictory.
 setNodeIsContradictory ::
   (Monad m, NodeDatum d) => Node d i r s m -> ATMST s m ()
 setNodeIsContradictory node =
   sttLayer $ writeSTRef (nodeIsContradictory node) True
-
--- |Return whether the `Node`'s is currently markable as an assumption.
-getNodeIsAssumption ::
-  (Monad m, NodeDatum d) => Node d i r s m  -> ATMST s m Bool
-getNodeIsAssumption node = sttLayer $ readSTRef (nodeIsAssumption node)
 
 instance (Monad m, NodeDatum d) => Eq (JustRule d i r s m) where
   e1 == e2 = (justIndex e1) == (justIndex e2)
@@ -700,35 +661,6 @@ instance NodeDatum d => Debugged (Env d i r) ATMST where
         liftIO $ putStrLn $
           (intercalate ", " $ map (datumFmt . nodeDatum) nodes)
           ++ " (count " ++ show (length nodes) ++ ")"
-
--- |Shortcut maker for reading from a `Env` reference.
-getEnvMutable ::
-  (Monad m, NodeDatum d) =>
-    (Env d i r s m -> STRef s a) -> Env d i r s m  -> ATMST s m a
-{-# INLINE getEnvMutable #-}
-getEnvMutable refGetter env = sttLayer $ readSTRef (refGetter env)
--- |Shortcut to write to the reference to a env's label.
-setEnvMutable ::
-  (Monad m, NodeDatum d) =>
-    (Env d i r s m -> STRef s a) -> Env d i r s m -> a -> ATMST s m ()
-{-# INLINE setEnvMutable #-}
-setEnvMutable refGetter env envs = sttLayer $ writeSTRef (refGetter env) envs
-
--- |Shortcut for reading the `Node`s of an `Env`.
-getEnvNodes ::
-  (Monad m, NodeDatum d) => Env d i r s m  -> ATMST s m [Node d i r s m]
-getEnvNodes = getEnvMutable envNodes
--- |Shortcut for writing the `Node`s of an `Env`.
-setEnvNodes ::
-  (Monad m, NodeDatum d) => Env d i r s m  -> [Node d i r s m] -> ATMST s m ()
-setEnvNodes = setEnvMutable envNodes
-
--- |Shortcut for reading the rules of an `Env`.
-getEnvRules :: (Monad m, NodeDatum d) => Env d i r s m  -> ATMST s m [r]
-getEnvRules = getEnvMutable envRules
--- |Shortcut for writing the rules of an `Env`.
-setEnvRules :: (Monad m, NodeDatum d) => Env d i r s m  -> [r] -> ATMST s m ()
-setEnvRules = setEnvMutable envRules
 
 -- |Shortcut for testing whether an `Env` is nogood.
 envIsNogood :: (Monad m, NodeDatum d) => Env d i r s m -> ATMST s m Bool
