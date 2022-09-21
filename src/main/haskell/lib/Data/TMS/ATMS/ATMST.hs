@@ -392,25 +392,25 @@ isNogood Good = False
 isNogood _ = True
 
 $(makeAccessors [t|ATMS|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] [
-     ("Nodes", ParamsL [t|Node|], [|atmsNodes|]),
-     ("EnvTable", Params [t|EnvTable|], [|atmsEnvTable|]),
-     ("NogoodTable", Params [t|EnvTable|], [|atmsNogoodTable|]),
-     ("Justs", ParamsL [t|JustRule|], [|atmsJusts|]),
-     ("Contradictions", ParamsL [t|Node|], [|atmsContradictions|]),
-     ("Assumptions", ParamsL [t|Node|], [|atmsAssumptions|])
+     ("Nodes", inList $ withParams [t|Node|], [|atmsNodes|]),
+     ("EnvTable", withParams [t|EnvTable|], [|atmsEnvTable|]),
+     ("NogoodTable", withParams [t|EnvTable|], [|atmsNogoodTable|]),
+     ("Justs", inList $ withParams [t|JustRule|], [|atmsJusts|]),
+     ("Contradictions", inList $ withParams [t|Node|], [|atmsContradictions|]),
+     ("Assumptions", inList $ withParams [t|Node|], [|atmsAssumptions|])
      -- Some Unmaybe here
      ]
    [
-     ("NodeString", ParamsToString [t|Node|], [|atmsNodeString|]),
-     ("JustString", ParamsToString [t|JustRule|], [|atmsJustString|]),
-     ("DatumString", NodeDatumToString, [|atmsDatumString|]),
-     ("InformantString", InformantToString, [|atmsInformantString|]),
-     ("EnqueueProcedure", RuleProc [t|ATMST|], [|atmsEnqueueProcedure|])
+     ("NodeString", fnToString $ withParams [t|Node|], [|atmsNodeString|]),
+     ("JustString", fnToString $ withParams [t|JustRule|], [|atmsJustString|]),
+     ("DatumString", fnToString $ datumType, [|atmsDatumString|]),
+     ("InformantString", fnToString $ informantType, [|atmsInformantString|]),
+     ("EnqueueProcedure", ruleTypeToVoidComp [t|ATMST|], [|atmsEnqueueProcedure|])
    ])
 
 $(makeAccessors [t|Node|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] []
   [
-    ("NodeLabel", ParamsL [t|Env|], [|nodeLabel|])
+    ("NodeLabel", inList $ withParams [t|Env|], [|nodeLabel|])
   ])
 
 -- |Print the internal title signifying an ATMS.

@@ -594,14 +594,14 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node
 newtype (Monad m, NodeDatum d) => Clause d i r s m = Clause ()
 
 $(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] [t|NodeDatum|] [
-     ("Nodes", ParamsL [t|Node|], [|ltmsNodes|]),
-     ("Clauses", ParamsL [t|Clause|], [|ltmsClauses|]),
-     ("Debugging", Simple [t|Bool|], [|ltmsDebugging|]),
-     ("PendingContradictions", ParamsL [t|Node|], [|ltmsPendingContradictions|]),
-     ("CheckingContradictions", Simple [t|Bool|], [|ltmsCheckingContradictions|]),
-     ("Complete", Simple [t|Bool|], [|ltmsComplete|]),
-     ("ViolatedClauses", ParamsL [t|Clause|], [|ltmsViolatedClauses|]),
-     ("DelaySat", Simple [t|Bool|], [|ltmsDelaySat|])
+     ("Nodes", inList $ withParams [t|Node|], [|ltmsNodes|]),
+     ("Clauses", inList $ withParams [t|Clause|], [|ltmsClauses|]),
+     ("Debugging", noTyParams [t|Bool|], [|ltmsDebugging|]),
+     ("PendingContradictions", inList $ withParams [t|Node|], [|ltmsPendingContradictions|]),
+     ("CheckingContradictions", noTyParams [t|Bool|], [|ltmsCheckingContradictions|]),
+     ("Complete", noTyParams [t|Bool|], [|ltmsComplete|]),
+     ("ViolatedClauses", inList $ withParams [t|Clause|], [|ltmsViolatedClauses|]),
+     ("DelaySat", noTyParams [t|Bool|], [|ltmsDelaySat|])
      ]
    [])
 

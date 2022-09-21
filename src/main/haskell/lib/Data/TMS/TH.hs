@@ -6,15 +6,15 @@
 module Data.TMS.TH (
   makeAccessors,
   TypeFormer, noTyParams, withParams, inList, fnToString, fnToVoid,
-  datumType, informantType,
-
-  TypeForm(Simple, Params, ParamsL, ParamsToString,
-           NodeDatumToString, InformantToString, RuleProc)) where
+  datumType, informantType, ruleType, ruleTypeToVoidComp -- ,
+  -- TypeForm(Simple, Params, ParamsL, ParamsToString,
+  --       NodeDatumToString, InformantToString, RuleProc)
+  ) where
 
 import Language.Haskell.TH.Syntax
 import Control.Monad.ST.Trans
 
-type AccessorSpec = (String, TypeForm, Q Exp)
+type AccessorSpec = (String, TypeFormer, Q Exp)
 
 makeAccessors :: Q Type -> Q Type -> Q Exp -> Q Type
                   -> [AccessorSpec] -> [AccessorSpec] -> Q [Dec]
@@ -48,19 +48,11 @@ datumType d i r s m = d
 informantType :: TypeFormer
 informantType d i r s m = i
 
-data TypeForm =
-  Simple (Q Type) | Params (Q Type) | ParamsL (Q Type) | ParamsToString (Q Type)
-  | NodeDatumToString | InformantToString | RuleProc (Q Type)
+ruleType :: TypeFormer
+ruleType d i r s m = r
 
-applyForm ::
-  TypeForm -> Q Type -> Q Type -> Q Type -> Q Type -> Q Type -> Q Type
-applyForm (Simple n) _ _ _ _ _ = n
-applyForm (Params n) d i r s m = [t| $n $d $i $r $s $m |]
-applyForm (ParamsL n) d i r s m = [t| [ $n $d $i $r $s $m ] |]
-applyForm (ParamsToString n) d i r s m = [t| ($n $d $i $r $s $m) -> String |]
-applyForm (NodeDatumToString) d _ _ _ _ = [t| $d -> String |]
-applyForm (InformantToString) _ i _ _ _ = [t| $i -> String |]
-applyForm (RuleProc mdCon) d i r s m = [t| $r -> ($mdCon $s $m ()) |]
+ruleTypeToVoidComp :: Q Type -> TypeFormer
+ruleTypeToVoidComp comp d i r s m = [t| $r -> $comp $s $m () |]
 
 makeGetter :: Q Type -> Q Type -> Q Exp -> Q Type -> AccessorSpec -> Q [Dec]
 makeGetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer, fieldFn) = do
@@ -71,8 +63,8 @@ makeGetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer,
   r <- fmap VarT $ newName "r"
   s <- fmap VarT $ newName "s"
   m <- fmap VarT $ newName "m"
-  resultType <- applyForm resultTyFormer (return d) (return i) (return r)
-                                         (return s) (return m)
+  resultType <- resultTyFormer (return d) (return i) (return r)
+                               (return s) (return m)
   coreType <- [t| ($valType $(return d) $(return i) $(return r) $(return s) $(return m))
                     -> ($monadType $(return s) $(return m) $(return resultType)) |]
   field <- fieldFn
@@ -104,8 +96,8 @@ makeSetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer,
   r <- fmap VarT $ newName "r"
   s <- fmap VarT $ newName "s"
   m <- fmap VarT $ newName "m"
-  resultType <- applyForm resultTyFormer (return d) (return i) (return r)
-                                         (return s) (return m)
+  resultType <- resultTyFormer (return d) (return i) (return r)
+                               (return s) (return m)
   coreType <-
     [t| ($valType $(return d) $(return i) $(return r) $(return s) $(return m))
           -> $(return resultType)
