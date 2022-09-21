@@ -391,7 +391,7 @@ isNogood :: WhyNogood d i r s m -> Bool
 isNogood Good = False
 isNogood _ = True
 
-$(makeAccessors [t|ATMS|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] [
+$(makeAccessors [t|ATMS|] [t|ATMST|] [|sttLayer|] (Just [t|NodeDatum|]) [
      ("Nodes", inList $ withParams [t|Node|], [|atmsNodes|]),
      ("EnvTable", withParams [t|EnvTable|], [|atmsEnvTable|]),
      ("NogoodTable", withParams [t|EnvTable|], [|atmsNogoodTable|]),
@@ -408,7 +408,7 @@ $(makeAccessors [t|ATMS|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] [
      ("EnqueueProcedure", ruleTypeToVoidComp [t|ATMST|], [|atmsEnqueueProcedure|])
    ])
 
-$(makeAccessors [t|Node|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|]
+$(makeAccessors [t|Node|] [t|ATMST|] [|sttLayer|] (Just [t|NodeDatum|])
   [
     ("NodeJusts", inList $ withParams [t|Justification|], [|nodeJusts|]),
     ("NodeIsAssumption", noTyParams [t|Bool|], [|nodeIsAssumption|]),
@@ -419,7 +419,7 @@ $(makeAccessors [t|Node|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|]
     ("NodeConsequences", inList $ withParams [t|JustRule|], [|nodeConsequences|])
    ])
 
-$(makeAccessors [t|Env|] [t|ATMST|] [|sttLayer|] [t|NodeDatum|] []
+$(makeAccessors [t|Env|] [t|ATMST|] [|sttLayer|] (Just [t|NodeDatum|]) []
   [
      ("EnvNodes", inList $ withParams [t|Node|], [|envNodes|]),
      ("EnvRules", inList $ ruleType, [|envRules|])

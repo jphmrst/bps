@@ -5,10 +5,8 @@
 
 module Data.TMS.TH (
   makeAccessors,
-  TypeFormer, noTyParams, withParams, inList, fnToString, fnToVoid,
-  datumType, informantType, ruleType, ruleTypeToVoidComp -- ,
-  -- TypeForm(Simple, Params, ParamsL, ParamsToString,
-  --       NodeDatumToString, InformantToString, RuleProc)
+  TypeFormer, noTyParams, withParams, inList, inMaybe, fnToString, fnToVoid,
+  datumType, informantType, ruleType, ruleTypeToVoidComp, paramListToVoidComp
   ) where
 
 import Language.Haskell.TH.Syntax
@@ -16,12 +14,15 @@ import Control.Monad.ST.Trans
 
 type AccessorSpec = (String, TypeFormer, Q Exp)
 
-makeAccessors :: Q Type -> Q Type -> Q Exp -> Q Type
+makeAccessors :: Q Type -> Q Type -> Q Exp -> Maybe (Q Type)
                   -> [AccessorSpec] -> [AccessorSpec] -> Q [Dec]
-makeAccessors valType monadType stLayerFn nodeDatumCon readOnly readWrite =do
-  getters1 <- mapM (makeGetter valType monadType stLayerFn nodeDatumCon) readOnly
-  getters2 <- mapM (makeGetter valType monadType stLayerFn nodeDatumCon) readWrite
-  setters2 <- mapM (makeSetter valType monadType stLayerFn nodeDatumCon) readWrite
+makeAccessors valType monadType stLayerFn ifNodeDatumCon readOnly readWrite = do
+  getters1 <- mapM (makeGetter valType monadType stLayerFn ifNodeDatumCon)
+                   readOnly
+  getters2 <- mapM (makeGetter valType monadType stLayerFn ifNodeDatumCon)
+                   readWrite
+  setters2 <- mapM (makeSetter valType monadType stLayerFn ifNodeDatumCon)
+                   readWrite
   return $
     foldr (++) [] getters1 ++ foldr (++) [] getters2 ++ foldr (++) [] setters2
 
@@ -35,6 +36,9 @@ withParams base d i r s m = [t| $base $d $i $r $s $m |]
 
 inList :: TypeFormer -> TypeFormer
 inList f d i r s m = [t| [ $(f d i r s m) ] |]
+
+inMaybe :: TypeFormer -> TypeFormer
+inMaybe f d i r s m = [t| Maybe ($(f d i r s m)) |]
 
 fnToString :: TypeFormer -> TypeFormer
 fnToString f d i r s m = [t| ($(f d i r s m)) -> String |]
@@ -54,8 +58,12 @@ ruleType d i r s m = r
 ruleTypeToVoidComp :: Q Type -> TypeFormer
 ruleTypeToVoidComp comp d i r s m = [t| $r -> $comp $s $m () |]
 
-makeGetter :: Q Type -> Q Type -> Q Exp -> Q Type -> AccessorSpec -> Q [Dec]
-makeGetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer, fieldFn) = do
+paramListToVoidComp :: Q Type -> Q Type -> TypeFormer
+paramListToVoidComp arg comp d i r s m =
+  [t| [$arg $d $i $r $s $m] -> $comp $s $m () |]
+
+makeGetter :: Q Type -> Q Type -> Q Exp -> Maybe (Q Type) -> AccessorSpec -> Q [Dec]
+makeGetter valType monadType stLayerFn ifNodeDatumCon (coreString, resultTyFormer, fieldFn) = do
   let getter = mkName ("get" ++ coreString)
   tms <- newName "tms"
   d <- fmap VarT $ newName "d"
@@ -65,16 +73,18 @@ makeGetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer,
   m <- fmap VarT $ newName "m"
   resultType <- resultTyFormer (return d) (return i) (return r)
                                (return s) (return m)
-  coreType <- [t| ($valType $(return d) $(return i) $(return r) $(return s) $(return m))
-                    -> ($monadType $(return s) $(return m) $(return resultType)) |]
+  coreType <- [t| ($valType $(return d) $(return i) $(return r)
+                            $(return s) $(return m))
+                    -> ($monadType $(return s) $(return m)
+                                   $(return resultType)) |]
   field <- fieldFn
   stLayer <- stLayerFn
-  nodeDatum <- nodeDatumCon
+  datumConstraint <-
+    case ifNodeDatumCon of
+      Nothing -> return []
+      Just nodeDatum -> fmap (\nd -> [ AppT nd d ]) nodeDatum
   return [
-    SigD getter
-      (ForallT [] [ AppT (ConT ''Monad) m,
-                    AppT nodeDatum d ]
-        coreType),
+    SigD getter (ForallT [] (AppT (ConT ''Monad) m : datumConstraint) coreType),
     PragmaD (InlineP getter Inline FunLike AllPhases),
     FunD getter [
         Clause [VarP tms]
@@ -86,8 +96,9 @@ makeGetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer,
           []
         ]
     ]
-makeSetter :: Q Type -> Q Type -> Q Exp -> Q Type -> AccessorSpec -> Q [Dec]
-makeSetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer, fieldFn) = do
+makeSetter ::
+  Q Type -> Q Type -> Q Exp -> Maybe (Q Type) -> AccessorSpec -> Q [Dec]
+makeSetter valType monadType stLayerFn ifNodeDatumCon (coreString, resultTyFormer, fieldFn) = do
   let setter = mkName ("set" ++ coreString)
   let arg = mkName "arg"
   tms <- newName "tms"
@@ -104,11 +115,13 @@ makeSetter valType monadType stLayerFn nodeDatumCon (coreString, resultTyFormer,
             -> ($monadType $(return s) $(return m) ()) |]
   field <- fieldFn
   stLayer <- stLayerFn
-  nodeDatum <- nodeDatumCon
+  datumConstraint <-
+    case ifNodeDatumCon of
+      Nothing -> return []
+      Just nodeDatum -> fmap (\nd -> [ AppT nd d ]) nodeDatum
   return [
     SigD setter
-      (ForallT [] [ AppT (ConT ''Monad) m,
-                    AppT nodeDatum d ]
+      (ForallT [] (AppT (ConT ''Monad) m : datumConstraint)
         coreType),
     PragmaD (InlineP setter Inline FunLike AllPhases),
     FunD setter [

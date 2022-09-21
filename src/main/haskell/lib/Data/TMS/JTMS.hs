@@ -41,6 +41,7 @@ language governing permissions and limitations under the License.
 -}
 
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Data.TMS.JTMS (
   -- * The JTMST monad
@@ -117,8 +118,10 @@ import Control.Monad.State
 import Control.Monad.ST.Trans
 import Control.Monad.Except
 import Control.Monad.Extra
+import Data.TMS.Common
 import Data.TMS.Helpers
 import Data.TMS.Dbg
+import Data.TMS.TH
 
 -- * The @JTMST@ monad transformer
 --
@@ -242,7 +245,6 @@ data Monad m => JTMS d i r s m = JTMS {
 instance Monad m => Eq (JTMS d i r s m) where
   j1 == j2 = jtmsTitle j1 == jtmsTitle j2
 
-
 -- |Get the next node counter value, incrementing for future accesses.
 nextNodeCounter :: Monad m => JTMS d i r s m -> JTMSTInner s m Int
 nextNodeCounter jtms = lift $
@@ -261,60 +263,6 @@ nextJustCounter jtms = lift $
     justId <- readSTRef justCounter
     writeSTRef justCounter $ 1 + justId
     return justId
-
--- | Return the current list of `Node`s of a `JTMS`.
-getJtmsNodes :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
-getJtmsNodes = jLiftSTT . readSTRef . jtmsNodes
-
--- | Return the current `JustRule`s of a `JTMS`.
-getJtmsJusts :: Monad m => JTMS d i r s m -> JTMST s m [JustRule d i r s m]
-getJtmsJusts = jLiftSTT . readSTRef . jtmsJusts
-
--- | Return the current designated contradictory `Node`s of a `JTMS`.
-getJtmsContradictions :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
-getJtmsContradictions = jLiftSTT . readSTRef . jtmsContradictions
-
--- | Return the current possible assumption `Node`s of a `JTMS`.  Note
--- that these nodes will not be used as assumptions unless activated
--- by `enableAssumption`.
-getJtmsAssumptions :: Monad m => JTMS d i r s m -> JTMST s m [Node d i r s m]
-getJtmsAssumptions = jLiftSTT . readSTRef . jtmsAssumptions
-
--- | Return whether a `JTMS` is currently invoking its external
--- handler for deduced contradictions.
-getJtmsCheckingContradictions :: Monad m => JTMS d i r s m -> JTMST s m Bool
-getJtmsCheckingContradictions = jLiftSTT . readSTRef . jtmsCheckingContradictions
-
--- | Return the current `Node` formatter of a `JTMS`.
-getJtmsNodeString ::
-  Monad m => JTMS d i r s m -> JTMST s m (Node d i r s m -> String)
-getJtmsNodeString = jLiftSTT . readSTRef . jtmsNodeString
-
--- | Return the current `JustRule` formatter of a `JTMS`.
-getJtmsJustString ::
-  Monad m => JTMS d i r s m -> JTMST s m (JustRule d i r s m -> String)
-getJtmsJustString = jLiftSTT . readSTRef . jtmsJustString
-
--- | Return the current @d@ datum formatter of a `JTMS`.
-getJtmsDatumString :: Monad m => JTMS d i r s m -> JTMST s m (d -> String)
-getJtmsDatumString = jLiftSTT . readSTRef . jtmsDatumString
-
--- | Return the current @i@ informant formatter of a `JTMS`.
-getJtmsInformantString :: Monad m => JTMS d i r s m -> JTMST s m (i -> String)
-getJtmsInformantString = jLiftSTT . readSTRef . jtmsInformantString
-
--- | Return the current external queuing procedure of a `JTMS`.
-getJtmsEnqueueProcedure :: Monad m => JTMS d i r s m -> JTMST s m (r -> JTMST s m ())
-getJtmsEnqueueProcedure = jLiftSTT . readSTRef . jtmsEnqueueProcedure
-
--- | Return the current external handler of a `JTMS` for reacting to a
--- deduced contradiction.
-getJtmsContradictionHandler :: Monad m => JTMS d i r s m -> JTMST s m ([Node d i r s m] -> JTMST s m ())
-getJtmsContradictionHandler = jLiftSTT . readSTRef . jtmsContradictionHandler
-
--- | Return the current debugging flag setting of a `JTMS`.
-getJtmsDebugging :: Monad m => JTMS d i r s m -> JTMST s m Bool
-getJtmsDebugging = jLiftSTT . readSTRef . jtmsDebugging
 
 -- |Print a simple tag with the title of this JTMS.  Forces the
 -- enclosed monad to be `MonadIO`.
@@ -366,66 +314,6 @@ data Monad m => Node d i r s m = Node {
 instance Monad m => Eq (Node d i r s m) where
   n1 == n2 = nodeJTMS n1 == nodeJTMS n2 && nodeIndex n1 == nodeIndex n2
 
--- |Write one node in the standard way for this JTMS.  Forces the
--- wrapped monad to be `MonadIO`.
---
--- ===== __Lisp origins:__
---
--- > ;; In jtms.lisp:
--- > (defun print-tms-node (node stream ignore)
--- >   (declare (ignore ignore))
--- >   (format stream "#<Node: ~A>" (node-string node)))
-printTmsNode :: MonadIO m => Node d i r s m -> JTMST s m ()
-printTmsNode node = do
-  s <- nodeString node
-  liftIO $ putStr $ "#<Node: " ++ s ++ ">"
-
--- *** Readers of current `Node` state
-
--- |Return whether a `Node` may currently be used as an assumption.
-getNodeIsAssumption :: Monad m => Node d i r s m -> JTMST s m Bool
-getNodeIsAssumption = jLiftSTT . readSTRef . nodeIsAssumption
-
--- |Return whether a `Node` is currently considered a contradiction.
-getNodeIsContradictory :: Monad m => Node d i r s m -> JTMST s m Bool
-getNodeIsContradictory = jLiftSTT . readSTRef . nodeIsContradictory
-
--- |Return the current support for believing a `Node`.
-getNodeSupport ::
-  Monad m => Node d i r s m -> JTMST s m (Maybe (Justification d i r s m))
-getNodeSupport = jLiftSTT . readSTRef . nodeSupport
-
--- |Return where a `Node` is supported by a particular `JustRule`.
-getIsNodeSupportedBy ::
-  Monad m => Node d i r s m -> JustRule d i r s m -> JTMST s m Bool
-getIsNodeSupportedBy node jrule = do
-  support <- getNodeSupport node
-  case support of
-    Just (ByRule j) | j == jrule -> return True
-    _ -> return False
-
--- |Return whether a `Node` is currently believed.
-getNodeBelieved :: Monad m => Node d i r s m -> JTMST s m Bool
-getNodeBelieved = jLiftSTT . readSTRef . nodeBelieved
-
--- |Return the `JustRule`s which use a `Node` as an antecedent.
-getNodeConsequences ::
-  Monad m => Node d i r s m -> JTMST s m [JustRule d i r s m]
-getNodeConsequences = jLiftSTT . readSTRef . nodeConsequences
-
--- |Return the current in-rules of a `Node`.
-getNodeInRules :: Monad m => Node d i r s m -> JTMST s m [r]
-getNodeInRules = jLiftSTT . readSTRef . nodeInRules
-
--- |Return the current out-rules of a `Node`.
-getNodeOutRules :: Monad m => Node d i r s m -> JTMST s m [r]
-getNodeOutRules = jLiftSTT . readSTRef . nodeOutRules
-
--- |Return the `JustRule`s which currently give a `Node` as their
--- conclusion.
-getNodeJusts :: Monad m => Node d i r s m -> JTMST s m [JustRule d i r s m]
-getNodeJusts = jLiftSTT . readSTRef . nodeJusts
-
 
 -- ** Justifications
 
@@ -470,6 +358,60 @@ printJustRule just =
 data Monad m => Justification d i r s m =
   ByRule (JustRule d i r s m) | EnabledAssumption | UserStipulation
 
+$(makeAccessors [t|JTMS|] [t|JTMST|] [|jLiftSTT|] Nothing
+  [
+    ("JtmsNodes", inList $ withParams [t|Node|], [|jtmsNodes|]),
+    ("JtmsJusts", inList $ withParams [t|JustRule|], [|jtmsJusts|]),
+    ("JtmsContradictions", inList $ withParams [t|Node|], [|jtmsContradictions|]),
+    ("JtmsAssumptions", inList $ withParams [t|Node|], [|jtmsAssumptions|]),
+    ("JtmsCheckingContradictions", noTyParams [t|Bool|],
+     [|jtmsCheckingContradictions|]),
+    ("JtmsNodeString", fnToString $ withParams [t|Node|],
+     [|jtmsNodeString|]),
+    ("JtmsJustString", fnToString $ withParams [t|JustRule|],
+     [|jtmsJustString|]),
+    ("JtmsDatumString", fnToString datumType, [|jtmsDatumString|]),
+    ("JtmsInformantString", fnToString informantType, [|jtmsInformantString|]),
+    ("JtmsEnqueueProcedure", ruleTypeToVoidComp [t|JTMST|], [|jtmsEnqueueProcedure|]),
+    ("JtmsContradictionHandler", paramListToVoidComp [t|Node|] [t|JTMST|], [|jtmsContradictionHandler|]),
+    ("JtmsDebugging", noTyParams [t|Bool|], [|jtmsDebugging|])
+  ] [
+  ])
+
+$(makeAccessors [t|Node|] [t|JTMST|] [|jLiftSTT|] Nothing
+  [
+    ("NodeIsAssumption", noTyParams [t|Bool|], [|nodeIsAssumption|]),
+    ("NodeIsContradictory", noTyParams [t|Bool|], [|nodeIsContradictory|]),
+    ("NodeSupport", inMaybe $ withParams [t|Justification|], [|nodeSupport|]),
+    ("NodeBelieved", noTyParams [t|Bool|], [|nodeBelieved|]),
+    ("NodeConsequences", inList $ withParams [t|JustRule|], [|nodeConsequences|]),
+    ("NodeInRules", inList ruleType, [|nodeInRules|]),
+    ("NodeOutRules", inList ruleType, [|nodeOutRules|]),
+    ("NodeJusts", inList $ withParams [t|JustRule|], [|nodeJusts|])
+  ] [])
+
+-- |Return where a `Node` is supported by a particular `JustRule`.
+getIsNodeSupportedBy ::
+  Monad m => Node d i r s m -> JustRule d i r s m -> JTMST s m Bool
+getIsNodeSupportedBy node jrule = do
+  support <- getNodeSupport node
+  case support of
+    Just (ByRule j) | j == jrule -> return True
+    _ -> return False
+
+-- |Write one node in the standard way for this JTMS.  Forces the
+-- wrapped monad to be `MonadIO`.
+--
+-- ===== __Lisp origins:__
+--
+-- > ;; In jtms.lisp:
+-- > (defun print-tms-node (node stream ignore)
+-- >   (declare (ignore ignore))
+-- >   (format stream "#<Node: ~A>" (node-string node)))
+printTmsNode :: MonadIO m => Node d i r s m -> JTMST s m ()
+printTmsNode node = do
+  s <- nodeString node
+  liftIO $ putStr $ "#<Node: " ++ s ++ ">"
 -- |Returns @True@ when the node is supported by a `JustRule` with no
 -- antecedents.
 --

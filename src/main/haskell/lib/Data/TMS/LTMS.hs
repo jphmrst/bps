@@ -479,7 +479,7 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node
 -- >   (status nil))   ; :SUBSUMED | :QUEUED | :DIRTY | :NOT-INDEXED | nil
 newtype (Monad m, NodeDatum d) => Clause d i r s m = Clause ()
 
-$(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] [t|NodeDatum|]
+$(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
   [
     ("Nodes", inList $ withParams [t|Node|], [|ltmsNodes|]),
     ("Clauses", inList $ withParams [t|Clause|], [|ltmsClauses|]),
