@@ -51,16 +51,16 @@ module Data.TMS.LTMS (
           NullClause, UnknownNode, GlobalContradiction, TotalContradiction,
           FromMonadFail),
   runLTMST,
+  defaultNodeString,
 
   -- * LTMS data structures
 
-  -- ** Component classes
-  NodeDatum, contradictionNodeDatum,
-
   -- ** Top-level LTMS
   LTMS,
+  createLtms,
 
   -- *** LTMS components
+  ltmsTitle,
   getNodes, getClauses,
   getDebugging, setDebugging,
   getCheckingContradictions, setCheckingContradictions,
@@ -77,13 +77,47 @@ module Data.TMS.LTMS (
   nextNodeCounter, nextClauseCounter,
 
   -- ** Nodes
-  Node,
+  Node, NodeTruth,
+  tmsCreateNode,
+  isUnknownNode,
+  isKnownNode,
+  isTrueNode,
+  isFalseNode,
+  enableAssumption,
+  convertToAssumption,
+  retractAssumption,
+  signedNodeString,
+  whyNode,
+  whyNodes,
+  explainNode,
+  explain1,
+
   -- *** Node components
+  nodeIndex, nodeDatum, nodeLabel, nodeLtms,
+  getNodeSupport, setNodeSupport,
+  getNodeTrueClauses, setNodeTrueClauses,
+  getNodeFalseClauses, setNodeFalseClauses,
+  nodeConsequences,
+
   -- *** Setting node status
 
   -- ** Clauses
+  ClauseStatus(Subsumed, Queued, Dirty, NotIndexed, NilClause),
   Clause,
+  isSatisfiedClause,
+  isViolatedClause,
+  simplifyClause,
+  sortClause,
+  normalize,
+  normalize1,
+  normalizeTax,
+  normalizeConjunction,
+  normalizeIff,
+  normalizeDisjunction,
+
   -- *** Clause components
+  clauseIndex, clauseInformant, clauseStatus,
+
   -- *** Setting clause status
 
   -- ** Justifications
@@ -113,39 +147,16 @@ module Data.TMS.LTMS (
   -- `String`.  Functions prefixed @debug@ or @print@ build a unit
   -- computation printing the artifact in question to standard output;
   -- those with prefix @debug@ are generally more verbose.
+  {- printLtms, -}
+  nodeString,
 
   -- ** Nodes and node lists
 
   -- ** Environments, labels, and tables
 
   -- * TODO
-  printLtms,
-  printTmsNode,
-  printClause,
-  nodeString,
-  ltmsError,
-  defaultNodeString,
-  isSatisfiedClause,
-  isViolatedClause,
-  createLtms,
-  changeLtms,
-  isUnknownNode,
-  isKnownNode,
-  isTrueNode,
-  isFalseNode,
-  tmsCreateNode,
-  enableAssumption,
-  convertToAssumption,
-  retractAssumption,
+  -- ltmsError,
   addFormula,
-  simplifyClause,
-  sortClause,
-  normalize,
-  normalize1,
-  normalizeTax,
-  normalizeConjunction,
-  normalizeIff,
-  normalizeDisjunction,
   disjoin,
   findNode,
   walkClauses,
@@ -181,12 +192,6 @@ module Data.TMS.LTMS (
   tmsAnswer,
   avoidAll,
   clauseAntecedents,
-  signedNodeString,
-  nodeConsequences,
-  whyNode,
-  whyNodes,
-  explainNode,
-  explain1,
   prettyPrintClauses,
   prettyPrintClause,
   showNodeConsequences,
@@ -195,13 +200,16 @@ module Data.TMS.LTMS (
   ) where
 
 import Control.Monad
+import Control.Monad.Except
+import Control.Monad.Extra
 import Control.Monad.State
 import Control.Monad.ST
 import Control.Monad.ST.Trans
 import Control.Monad.Trans.Except
-import Control.Monad.Extra
 import Data.List
+import Data.Maybe
 import Data.Symbol
+import Data.TMS.Common (NodeDatum, contradictionNodeDatum)
 import Data.TMS.Formatters
 import Data.TMS.Helpers
 import Data.TMS.MList
@@ -322,6 +330,12 @@ stateLayer ::
   Monad m => StateT LtmstState (STT s m) r -> LTMST s m r
 stateLayer = LtmsT . lift
 
+-- | Throw an error in the `LTMST` monad.
+--
+-- Replaces @ltms-error@ in @ltms.lisp@.
+ltmsError :: (Monad m) => LtmsErr -> LTMST s m a
+ltmsError err = exceptLayer $ throwError err
+
 instance Monad m => MonadFail (LTMST s m) where
   fail s = exceptLayer $ throwE $ FromMonadFail s
 
@@ -355,39 +369,13 @@ runLTMST ltmst = do
 
 {- ===== LTMS structure types. ============================================ -}
 
--- |Class of type which can be used as the datum underlying `Node`s in
--- an `LTMS`.
-class NodeDatum d where
-  -- |The datum associated with the contradiction node in a
-  -- newly-initialized `LTMS` with `Node` data of this type.
-  contradictionNodeDatum :: d
-
-instance NodeDatum String where
-  contradictionNodeDatum = "The contradiction"
-instance NodeDatum Symbol where
-  contradictionNodeDatum = intern "The contradiction"
-
 -- | Top-level representation of a logic-based truth maintenance
 -- system.
 --
--- > (defstruct (ltms (:PRINT-FUNCTION print-ltms))
--- >   (title nil)
--- >   (node-counter 0)              ; unique namer for nodes.
--- >   (clause-counter 0)            ; unique namer for justifications.
--- >   (nodes nil)                   ; hash table for nodes.
--- >   (clauses nil)                 ; list of all clauses.
--- >   (debugging nil)               ; debugging flag
--- >   (checking-contradictions t)
--- >   (node-string nil)
--- >   (contradiction-handlers nil)
--- >   (pending-contradictions nil)
--- >   (enqueue-procedure nil)
--- >   (complete nil)                ; Is this a complete LTMS?
--- >   (violated-clauses nil)
--- >   (queue nil)                      ; Queue of clauses to resolve.
--- >   (conses nil)                     ; Source of conses to reuse in inner loop.
--- >   (delay-sat nil)          ; Don't resolve satisfied clauses.
--- >   (cons-size 0))           ; Size of temporary structure.
+-- These fields from the Lisp code are not (yet) translated into Lisp.
+--
+-- >   (conses nil)            ; Source of conses to reuse in inner loop.
+-- >   (cons-size 0)           ; Size of temporary structure.
 data (Monad m, NodeDatum d) => LTMS d i r s m = LTMS {
   -- |Name of this LTMS.
   ltmsTitle :: String,
@@ -404,7 +392,7 @@ data (Monad m, NodeDatum d) => LTMS d i r s m = LTMS {
   -- |Unique namer for clauses.
   ltmsCheckingContradictions :: STRef s Bool,
   -- |Function for formatting a `Node` of this LTMS.
-  ltmsNodeString :: STRef s (Node d i r s m -> String),
+  ltmsNodeString :: STRef s (Node d i r s m -> LTMST s m String),
   -- |
   ltmsPendingContradictions :: STRef s [Node d i r s m],
   -- |List of external procedures to be executed for this LTMS.
@@ -418,9 +406,9 @@ data (Monad m, NodeDatum d) => LTMS d i r s m = LTMS {
   -- |Don't resolve satisfied clauses
   ltmsDelaySat :: STRef s Bool,
   -- |Function for representing the data associated with `Node`s.
-  ltmsDatumString :: STRef s (d -> String),
+  ltmsDatumString :: STRef s (d -> LTMST s m String),
   -- |Function for representing the informants of justifications.
-  ltmsInformantString :: STRef s (i -> String)
+  ltmsInformantString :: STRef s (i -> LTMST s m String)
   }
 
 -- |Get the next node counter value, incrementing for future accesses.
@@ -441,43 +429,67 @@ nextClauseCounter jtms = sttLayer $ do
 
 {- ----------------------------------------------------------------- -}
 
+type NodeTruth = Maybe Bool
+
 -- |Wrapper for the datum associated with a node of the `ATMS`.
 --
--- Translated from @tms-node@ in @ltms.lisp@.
+-- Translated from @tms-node@ in @ltms.lisp@.  Don't know what to do
+-- with these two fields, so leaving untranslated for now.
 --
--- > (defstruct (tms-node (:PRINT-FUNCTION print-tms-node))
--- >   (index 0)                    ; unique namer for nodes
--- >   (datum nil)                     ; positive inference engine datum.
--- >   (label :UNKNOWN)             ; :UNKNOWN, :TRUE, or :FALSE.
--- >   (support nil)                ; clause which supports it,
--- >   (true-clauses nil)           ; clauses in which this node is true
--- >   (false-clauses nil)          ; clauses in which this node is false
--- >   (mark nil)                   ; marker for sweep algorithms
--- >   (assumption? nil)
--- >   (true-rules nil)             ; rules run when the node is true
--- >   (false-rules nil)            ; rules run when the node is false
--- >   (ltms nil)                   ; LTMS it is part of.
--- >   (true-literal nil)              ; True literal.
+-- >   (true-literal nil)           ; True literal.
 -- >   (false-literal nil))         ; False literal.
--- > ;; The last two fields have their names changed because there is
--- > ;; an obscure bug in ACLPC that causes it to barf if a field is
--- > ;; named TRUE or FALSE, even if there is a conc-name to be added.
--- > ;; The new names are more descriptive anyway.
-data (Monad m, NodeDatum d) => Node d i r s m = Node
+data (Monad m, NodeDatum d) => Node d i r s m = Node {
+  -- |Unique ID among nodes
+  nodeIndex :: Int,
+  -- |Datum associated with this node
+  nodeDatum :: d,
+  -- |A boolean value, if known
+  nodeLabel :: STRef s NodeTruth,
+  -- |Clause which supports it.
+  nodeSupport :: STRef s (Clause d i r s m),
+  -- |Clauses in which this node is true.
+  nodeTrueClauses :: STRef s [Clause d i r s m],
+  -- |Clauses in which this node is false.
+  nodeFalseClauses :: STRef s [Clause d i r s m],
+  -- >   (mark nil)                   ; marker for sweep algorithms
+  -- |Flag set to true when this node is an assumption.
+  nodeIsAssumption :: STRef s Bool,
+  -- |Rules run when the node is true.
+  nodeTrueRules :: STRef s [r],
+  -- |Rules run when the node is false.
+  nodeFalseRules :: STRef s [r],
+  -- |LTMS this node is part of.
+  nodeLtms :: LTMS d i r s m
+  }
 
--- | TODO
+{- ----------------------------------------------------------------- -}
+
+newtype Literal d i r s m = Literal (Node d i r s m, NodeTruth)
+
+-- | Representation of the status associated with a clause.
+data ClauseStatus = Subsumed | Queued | Dirty | NotIndexed | NilClause
+
+-- | Representation of a clause.
 --
 -- Translated from @clause@ in @ltms.lisp@.
---
--- > (defstruct (clause (:PRINT-FUNCTION print-clause))
--- >   (index 0)       ; Unique namer
--- >   (informant nil)
--- >   (literals nil)  ; a list of (<node> . <truth>)
--- >   (pvs 0)         ; Number of terms which potentially violate it.
--- >   (length 0)      ; Number of literals.
--- >   (sats 0)   ; Number of terms which satisfy it.
--- >   (status nil))   ; :SUBSUMED | :QUEUED | :DIRTY | :NOT-INDEXED | nil
-newtype (Monad m, NodeDatum d) => Clause d i r s m = Clause ()
+data (Monad m, NodeDatum d) => Clause d i r s m = Clause {
+  -- |Unique ID among clauses
+  clauseIndex :: Int,
+  -- |Informant value associated with this clause.
+  clauseInformant :: i,
+  -- |A list of (<node> . <truth>).
+  clauseLiterals :: STRef s [Literal d i r s m],
+  -- |Number of terms which potentially violate this clause.
+  clausePVs :: STRef s Int,
+  -- |Number of literals.
+  clauseLength :: STRef s Int,
+  -- |Number of terms which satisfy it.
+  clauseSats :: STRef s Int,
+  -- |Initially NilClause.
+  clauseStatus :: STRef s ClauseStatus
+  }
+
+{- ----------------------------------------------------------------- -}
 
 $(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
   [
@@ -492,113 +504,138 @@ $(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
      [|ltmsCheckingContradictions|]),
     ("DelaySat", noTyParams [t|Bool|], [|ltmsDelaySat|]),
     ("EnqueueProcedure", ruleTypeToVoidComp [t|LTMST|], [|ltmsEnqueueProcedure|]),
-    ("NodeString", fnToString $ withParams [t|Node|], [|ltmsNodeString|]),
-    ("DatumString", fnToString $ datumType, [|ltmsDatumString|]),
-    ("InformantString", fnToString $ informantType, [|ltmsInformantString|])
+    ("NodeString",
+     arrow (withParams [t|Node|]) $
+       compReturning [t|LTMST|] $ noTyParams [t|String|],
+     [|ltmsNodeString|]),
+    ("DatumString",
+     arrow datumType $ compReturning [t|LTMST|] $ noTyParams [t|String|],
+     [|ltmsDatumString|]),
+    ("InformantString",
+     arrow informantType $ compReturning [t|LTMST|] $ noTyParams [t|String|],
+     [|ltmsInformantString|])
   ])
+
+$(makeAccessors [t|Node|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
+  [
+  ] [
+    ("NodeLabel", noTyParams [t|NodeTruth|], [|nodeLabel|]),
+    ("NodeSupport", withParams [t|Clause|], [|nodeSupport|]),
+    ("NodeTrueClauses",  inList $ withParams [t|Clause|], [|nodeTrueClauses|]),
+    ("NodeFalseClauses", inList $ withParams [t|Clause|], [|nodeFalseClauses|]),
+    ("NodeIsAssumption", noTyParams [t|Bool|], [|nodeIsAssumption|])
+  ])
+
+$(makeAccessors [t|Clause|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
+  [
+  ] [
+    ("ClauseLiterals", inList $ withParams [t|Literal|], [|clauseLiterals|]),
+    ("ClausePVs", noTyParams [t|Int|], [|clausePVs|]),
+    ("ClauseLength", noTyParams [t|Int|], [|clauseLength|]),
+    ("ClauseSats", noTyParams [t|Int|], [|clauseSats|]),
+    ("ClauseStatus", noTyParams [t|ClauseStatus|], [|clauseStatus|])
+  ])
+
+{- ----------------------------------------------------------------- -}
 
 -- |When the data associated with `Node`s are all `String`s, we can
 -- direct the `LTMS` to display each datum as itself.
 setDatumStringViaString :: Monad m => LTMS String i r s m -> LTMST s m ()
-setDatumStringViaString ltms = setDatumString ltms id
+setDatumStringViaString ltms = setDatumString ltms return
 
 -- |When the data associated with `Node`s are of a type of class
 -- `Show`, we can direct the `LTMS` to display each datum using the
 -- `show` instance.
 setDatumStringViaShow ::
   (NodeDatum d, Show d, Monad m) => LTMS d i r s m -> LTMST s m ()
-setDatumStringViaShow ltms = setDatumString ltms show
+setDatumStringViaShow ltms = setDatumString ltms $ return . show
 
 -- |When the informants associated with `JustRule`s are all
 -- `String`s, we can direct the `LTMS` to display each informant as
 -- itself.
 setInformantStringViaString ::
   (Monad m, NodeDatum d) => LTMS d String r s m -> LTMST s m ()
-setInformantStringViaString ltms = setInformantString ltms id
+setInformantStringViaString ltms = setInformantString ltms return
 
 -- |When the informants associated with `JustRule`s are of a type of
 -- class `Show`, we can direct the `LTMS` to display each datum using
 -- the `show` instance.
 setInformantStringViaShow ::
   (Show i, Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m ()
-setInformantStringViaShow ltms = setInformantString ltms show
+setInformantStringViaShow ltms = setInformantString ltms $ return . show
 
--- | TODO
+{-
+-- |Give a verbose printout of an `LTMS`.
+instance NodeDatum d => Debugged (LTMS d i r) LTMST where
+  debug ltms = do
+    liftIO $ putStrLn $ "=============== " ++ ltmsTitle ltms
+    debugNodes ltms
+    debugJusts ltms
+    debugLtmsEnvs ltms
+    debugNogoods ltms
+    liftIO $ putStrLn "=============== "
+-}
+
+-- |Print the internal title signifying an LTMS.
 --
 -- Translated from @print-ltms@ in @ltms.lisp@.
---
--- > (defun print-ltms (ltms stream ignore)
--- >    (declare (ignore ignore))
--- >    (format stream "#<LTMS: ~A>" (ltms-title ltms)))
-printLtms :: a
-printLtms = error "TODO"
+instance NodeDatum d => Formatted (LTMS d i r) LTMST where
+  format ltms = return $ "#<LTMS: " ++ ltmsTitle ltms ++ ">"
 
--- | TODO
---
--- Translated from @print-tms-node@ in @ltms.lisp@.
---
--- > (defun print-tms-node (node stream ignore)
--- >    (declare (ignore ignore))
--- >    (format stream "#<NODE: ~A>" (node-string node)))
-printTmsNode :: a
-printTmsNode = error "TODO"
+instance NodeDatum d => Printed (LTMS d i r) LTMST where
+  pprint ltms = format ltms >>= liftIO . putStrLn
 
--- | TODO
---
--- Translated from @print-clause@ in @ltms.lisp@.
---
--- > (defun print-clause (clause stream ignore)
--- >    (declare (ignore ignore))
--- >    (format stream "#<Clause ~D>" (clause-index clause)))
-printClause :: a
-printClause = error "TODO"
+instance NodeDatum d => Formatted (Node d i r) LTMST where
+  format node = do
+    str <- nodeString node
+    return $ "#<Node: " ++ str ++ ">"
 
--- | TODO
+instance NodeDatum d => Printed (Node d i r) LTMST where
+  pprint ltms = format ltms >>= liftIO . putStrLn
+
+instance NodeDatum d => Formatted (Clause d i r) LTMST where
+  format clause = return $ "#<Clause " ++ show (clauseIndex clause) ++ ">"
+
+instance NodeDatum d => Printed (Clause d i r) LTMST where
+  pprint ltms = format ltms >>= liftIO . putStrLn
+
+-- | Convert a `Node` to the `String` represented currently determined
+-- by the `LTMS`.
 --
 -- Translated from @node-string@ in @ltms.lisp@.
---
--- > (defun node-string (node)
--- >   (funcall (ltms-node-string (tms-node-ltms node)) node))
-nodeString :: a
-nodeString = error "TODO"
+nodeString :: (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m String
+nodeString node = do
+  nodeStringFn <- getNodeString $ nodeLtms node
+  nodeStringFn node
 
 -- > (defmacro debugging-ltms (ltms msg &optional node &rest args)
 -- >   `(when (ltms-debugging ,ltms)
 -- >      (format *trace-output*
 -- >         ,msg (if ,node (node-string ,node)) ,@args)))
 
--- | TODO
---
--- Translated from @ltms-error@ in @ltms.lisp@.
---
--- > (defun ltms-error (string &optional thing) (error string thing))
-ltmsError :: a
-ltmsError = error "TODO"
-
--- | TODO
+-- | A default function for formatting `Node`s as `String`s.
 --
 -- Translated from @default-node-string@ in @ltms.lisp@.
---
--- > (defun default-node-string (n)
--- >   (format nil "~A" (TMSnode.datum n)))
-defaultNodeString :: a
-defaultNodeString = error "TODO"
+defaultNodeString ::
+  (Monad m, NodeDatum d, Show d) => Node d i r s m -> LTMST s m String
+defaultNodeString = return . show . nodeDatum
 
--- | TODO
+-- | Check whether a clause is satisfied: simply checks for a non-zero
+-- satisfier count.
 --
 -- Translated from @satisfied-clause?@ in @ltms.lisp@.
---
--- > (defmacro satisfied-clause? (clause) `(> (clause-sats ,clause) 0))
-isSatisfiedClause :: a
-isSatisfiedClause = error "TODO"
+isSatisfiedClause ::
+  (Monad m, NodeDatum d) => Clause d i r s m -> LTMST s m Bool
+{-# INLINE isSatisfiedClause #-}
+isSatisfiedClause = fmap (> 0) . getClauseSats
 
--- | TODO
+-- | Check whether a clause is violated via the violations count.
 --
 -- Translated from @violated-clause?@ in @ltms.lisp@.
---
--- > (defmacro violated-clause? (clause) `(= (clause-pvs ,clause) 0))
-isViolatedClause :: a
-isViolatedClause = error "TODO"
+isViolatedClause ::
+  (Monad m, NodeDatum d) => Clause d i r s m -> LTMST s m Bool
+{-# INLINE isViolatedClause #-}
+isViolatedClause = fmap (== 0) . getClausePVs
 
 -- | TODO
 --
@@ -612,94 +649,61 @@ isViolatedClause = error "TODO"
 walkClauses :: a
 walkClauses = error "TODO"
 
--- | TODO
+-- | Set up a new LTML.
 --
--- Translated from @create-ltms@ in @ltms.lisp@.
---
--- > (defun create-ltms (title &key (node-string 'default-node-string)
--- >                     (debugging NIL)
--- >                     (checking-contradictions T)
--- >                     (contradiction-handler 'ask-user-handler)
--- >                     (enqueue-procedure NIL)
--- >                     (cache-datums? T)
--- >                     (complete nil)
--- >                     (delay-sat T)
--- >                     &aux ltms)
--- >    ;; The CACHE-DATUMS? flag is new in this version.  When used as
--- >    ;; part of a larger system, the internal TMS cache tends to be redundant.
--- >    ;; Creating an LTMS with this flag turned off avoids the storage overhead
--- >    ;; of this redundancy, while still leaving a default mechanism in place
--- >    ;; for experimentation and systems that choose to use it.
--- >   (setq ltms
--- >    (make-ltms :TITLE title
--- >               :NODES (if cache-datums? (make-hash-table :TEST #'equal))
--- >               :NODE-STRING node-string
--- >               :DEBUGGING debugging
--- >               :CHECKING-CONTRADICTIONS checking-contradictions
--- >               :ENQUEUE-PROCEDURE enqueue-procedure
--- >               :CONTRADICTION-HANDLERS (list contradiction-handler)
--- >               :DELAY-SAT delay-sat
--- >               :COMPLETE complete))
--- >   ltms)
-createLtms :: a
-createLtms = error "TODO"
+-- Translated from @create-ltms@ in @ltms.lisp@.  Unlike the original,
+-- there are no optional parameters; use the various @set...@
+-- functions instead.
+createLtms ::
+  (Monad m, NodeDatum d) => String -> d -> LTMST s m (LTMS d i r s m)
+createLtms title datum = do
+  nodeCounter <- sttLayer $ newSTRef 0
+  clauseCounter <- sttLayer $ newSTRef 0
+  nodes <- sttLayer $ newSTRef []
+  clauses <- sttLayer $ newSTRef []
+  debugging <- sttLayer $ newSTRef False
+  checking <- sttLayer $ newSTRef False
+  nodeStrFn <- sttLayer $ newSTRef $ \ _ -> return "??"
+  pending <- sttLayer $ newSTRef []
+  enqueuer <- sttLayer $ newSTRef $ \ _ -> return ()
+  complete <- sttLayer $ newSTRef False
+  violatedClauses <- sttLayer $ newSTRef []
+  queue <- sttLayer $ newSTRef []
+  delaySatFlag <- sttLayer $ newSTRef False
+  datumStrFn <- sttLayer $ newSTRef $ \ _ -> return "??"
+  informantStrFn <- sttLayer $ newSTRef $ \ _ -> return "??"
+  return $ LTMS title nodeCounter clauseCounter nodes clauses
+                debugging checking nodeStrFn pending
+                enqueuer complete violatedClauses queue
+                delaySatFlag datumStrFn informantStrFn
 
--- | TODO
---
--- Translated from @change-ltms@ in @ltms.lisp@.
---
--- > (defun change-ltms (ltms &key (contradiction-handler nil contra?)
--- >                          node-string
--- >                          enqueue-procedure
--- >                          (debugging nil debugging?)
--- >                          (checking-contradictions nil checking?)
--- >                          (complete nil complete?)
--- >                          (delay-sat nil delay-sat?))
--- >   (if node-string (setf (ltms-node-string ltms) node-string))
--- >   (if debugging? (setf (ltms-debugging ltms) debugging))
--- >   (if checking? (setf (ltms-checking-contradictions ltms)
--- >                  checking-contradictions))
--- >   (if contra?
--- >       (setf (ltms-contradiction-handlers ltms)
--- >        (list contradiction-handler)))
--- >   (if enqueue-procedure
--- >       (setf (ltms-enqueue-procedure ltms) enqueue-procedure))
--- >   (if complete? (setf (ltms-complete ltms) complete))
--- >   (if delay-sat? (setf (ltms-delay-sat ltms) delay-sat)))
-changeLtms :: a
-changeLtms = error "TODO"
-
--- | TODO
+-- | Returns @True@ when the LTMS has no determination as to the truth
+-- label of the `Node`.
 --
 -- Translated from @unknown-node?@ in @ltms.lisp@.
---
--- > (defun unknown-node? (node) (eq (TMSnode.label node) :UNKNOWN))
-isUnknownNode :: a
-isUnknownNode = error "TODO"
+isUnknownNode :: (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m Bool
+isUnknownNode = fmap isNothing . getNodeLabel
 
--- | TODO
+-- | Returns @True@ when the LTMS has some determination as to the
+-- truth label of the `Node`.
 --
 -- Translated from @known-node?@ in @ltms.lisp@.
---
--- > (defun known-node? (node) (not (eq (TMSnode.label node) :UNKNOWN)))
-isKnownNode :: a
-isKnownNode = error "TODO"
+isKnownNode :: (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m Bool
+isKnownNode = fmap isJust . getNodeLabel
 
--- | TODO
+-- | Returns @True@ when the LTMS has determined the truth label of
+-- the `Node` to be true.
 --
 -- Translated from @true-node?@ in @ltms.lisp@.
---
--- > (defun true-node? (node) (eq (TMSnode.label node) :TRUE))
-isTrueNode :: a
-isTrueNode = error "TODO"
+isTrueNode :: (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m Bool
+isTrueNode = fmap (== Just True) . getNodeLabel
 
--- | TODO
+-- | Returns @True@ when the LTMS has determined the truth label of
+-- the `Node` to be false.
 --
 -- Translated from @false-node?@ in @ltms.lisp@.
---
--- > (defun false-node? (node) (eq (TMSnode.label node) :FALSE))
-isFalseNode :: a
-isFalseNode = error "TODO"
+isFalseNode :: (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m Bool
+isFalseNode = fmap (== Just False) . getNodeLabel
 
 -- | TODO
 --
@@ -738,8 +742,13 @@ tmsCreateNode = error "TODO"
 -- >    ((eq (tms-node-label node) :UNKNOWN)
 -- >     (top-set-truth node label :ENABLED-ASSUMPTION))
 -- >    (t (ltms-error "Can't set an already set node" node))))
-enableAssumption :: a
-enableAssumption = error "TODO"
+enableAssumption ::
+  (Monad m, NodeDatum d) => Node d i r s m -> NodeTruth -> LTMST s m ()
+enableAssumption node label = do
+  ifM (fmap not $ getNodeIsAssumption node)
+    (do str <- nodeString node
+        ltmsError $ CannotEnableNonassumption str $ nodeIndex node)
+    (error "TODO")
 
 -- | TODO
 --

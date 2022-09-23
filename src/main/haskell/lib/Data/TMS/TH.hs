@@ -5,7 +5,8 @@
 
 module Data.TMS.TH (
   makeAccessors,
-  TypeFormer, noTyParams, withParams, inList, inMaybe, fnToString, fnToVoid,
+  TypeFormer, noTyParams, withParams,
+  inList, inMaybe, inPair, fnToString, fnToVoid, arrow, compReturning,
   datumType, informantType, ruleType, ruleTypeToVoidComp, paramListToVoidComp
   ) where
 
@@ -37,6 +38,9 @@ withParams base d i r s m = [t| $base $d $i $r $s $m |]
 inList :: TypeFormer -> TypeFormer
 inList f d i r s m = [t| [ $(f d i r s m) ] |]
 
+inPair :: TypeFormer -> TypeFormer -> TypeFormer
+inPair f g d i r s m = [t| ( $(f d i r s m), $(g d i r s m) ) |]
+
 inMaybe :: TypeFormer -> TypeFormer
 inMaybe f d i r s m = [t| Maybe ($(f d i r s m)) |]
 
@@ -54,6 +58,14 @@ informantType d i r s m = i
 
 ruleType :: TypeFormer
 ruleType d i r s m = r
+
+arrow :: TypeFormer -> TypeFormer -> TypeFormer
+arrow typeFrom typeTo d i r s m =
+  [t| $(typeFrom d i r s m) -> $(typeTo d i r s m) |]
+
+compReturning :: Q Type -> TypeFormer -> TypeFormer
+compReturning comp res d i r s m =
+  [t| $comp $s $m ($(res d i r s m)) |]
 
 ruleTypeToVoidComp :: Q Type -> TypeFormer
 ruleTypeToVoidComp comp d i r s m = [t| $r -> $comp $s $m () |]
