@@ -78,7 +78,7 @@ module Data.TMS.LTMS (
 
   -- ** Nodes
   Node, NodeTruth,
-  tmsCreateNode,
+  createNode,
   isUnknownNode,
   isKnownNode,
   isTrueNode,
@@ -637,18 +637,6 @@ isViolatedClause ::
 {-# INLINE isViolatedClause #-}
 isViolatedClause = fmap (== 0) . getClausePVs
 
--- | TODO
---
--- Translated from @walk-clauses@ in @ltms.lisp@.
---
--- > (defmacro walk-clauses (ltms f)
--- >   `(if (ltms-complete ,ltms)
--- >        (walk-trie ,f (ltms-clauses ,ltms))
--- >        (mapc ,f (ltms-clauses ,ltms))))
--- > ;;; Basic inference-engine interface.
-walkClauses :: a
-walkClauses = error "TODO"
-
 -- | Set up a new LTML.
 --
 -- Translated from @create-ltms@ in @ltms.lisp@.  Unlike the original,
@@ -727,8 +715,10 @@ isFalseNode = fmap (== Just False) . getNodeLabel
 -- >       (dotimes (i (ltms-cons-size ltms))
 -- >    (push (cons nil nil) (ltms-conses ltms))))
 -- >     node))
-tmsCreateNode :: a
-tmsCreateNode = error "TODO"
+createNode ::
+  (Monad m, NodeDatum d) => LTMS d i r s m -> d -> LTMST s m (Node d i r s m)
+createNode ltms datum = do
+  error "TODO"
 
 -- | TODO
 --
@@ -759,8 +749,10 @@ enableAssumption node label = do
 -- >     (debugging-ltms (tms-node-ltms node)
 -- >                "~%Converting ~A into an assumption" node)
 -- >     (setf (tms-node-isAssumption node) T)))
-convertToAssumption :: a
-convertToAssumption = error "TODO"
+convertToAssumption ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+convertToAssumption = do
+  error "TODO"
 
 -- | TODO
 --
@@ -771,8 +763,10 @@ convertToAssumption = error "TODO"
 -- >         (eq (tms-node-support node) :ENABLED-ASSUMPTION))
 -- >     (find-alternative-support (tms-node-ltms node)
 -- >                          (propagate-unknownness node))))
-retractAssumption :: a
-retractAssumption = error "TODO"
+retractAssumption ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+retractAssumption = do
+  error "TODO"
 
 -- > ;;; Adding formulas to the LTMS.
 
@@ -786,8 +780,10 @@ retractAssumption = error "TODO"
 -- >     (unless (eq :TRUE (setq clause (simplify-clause clause)))
 -- >    (add-clause-internal clause informant T)))
 -- >   (check-for-contradictions ltms))
-addFormula :: a
-addFormula = error "TODO"
+addFormula ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+addFormula = do
+  error "TODO"
 
 -- | TODO
 --
@@ -803,7 +799,8 @@ addFormula = error "TODO"
 -- >       (return-from simplify-clause :TRUE))
 -- >      (t (rplacd tail (cdr next))))))
 simplifyClause :: a
-simplifyClause = error "TODO"
+simplifyClause = do
+  error "TODO"
 
 -- | TODO
 --
@@ -813,7 +810,8 @@ simplifyClause = error "TODO"
 -- >   (sort (copy-list literals) ;; Avoids shared structure bugs.
 -- >      #'< :KEY #'(lambda (n) (tms-node-index (car n)))))
 sortClause :: a
-sortClause = error "TODO"
+sortClause = do
+  error "TODO"
 
 -- > (defvar *ltms*)
 
@@ -822,8 +820,10 @@ sortClause = error "TODO"
 -- Translated from @normalize@ in @ltms.lisp@.
 --
 -- > (defun normalize (*ltms* exp) (normalize-1 exp nil))
-normalize :: a
-normalize = error "TODO"
+normalize ::
+  (Monad m, NodeDatum d) => Node d i r s m -> a
+normalize = do
+  error "TODO"
 
 -- | TODO
 --
@@ -846,7 +846,8 @@ normalize = error "TODO"
 -- >     (t (if negate `((,(tms-node-false-literal (find-node *ltms* exp))))
 -- >              `((,(tms-node-true-literal (find-node *ltms* exp))))))))
 normalize1 :: a
-normalize1 = error "TODO"
+normalize1 = do
+  error "TODO"
 
 -- | TODO
 --
@@ -866,7 +867,8 @@ normalize1 = error "TODO"
 -- >                        result))))
 -- >           negate))
 normalizeTax :: a
-normalizeTax = error "TODO"
+normalizeTax = do
+  error "TODO"
 
 -- | TODO
 --
@@ -875,7 +877,8 @@ normalizeTax = error "TODO"
 -- > (defun normalize-conjunction (exp negate)
 -- >   (mapcan #'(lambda (sub) (normalize-1 sub negate)) (cdr exp)))
 normalizeConjunction :: a
-normalizeConjunction = error "TODO"
+normalizeConjunction = do
+  error "TODO"
 
 -- | TODO
 --
@@ -885,7 +888,8 @@ normalizeConjunction = error "TODO"
 -- >   (nconc (normalize-1 `(:IMPLIES ,(cadr exp) ,(caddr exp)) negate)
 -- >     (normalize-1 `(:IMPLIES ,(caddr exp) ,(cadr exp)) negate)))
 normalizeIff :: a
-normalizeIff = error "TODO"
+normalizeIff = do
+  error "TODO"
 
 -- | TODO
 --
@@ -899,7 +903,8 @@ normalizeIff = error "TODO"
 -- >       ((null rest) result)
 -- >     (setq result (disjoin (normalize-1 (car rest) negate) result))))
 normalizeDisjunction :: a
-normalizeDisjunction = error "TODO"
+normalizeDisjunction = do
+  error "TODO"
 
 -- | TODO
 --
@@ -912,7 +917,8 @@ normalizeDisjunction = error "TODO"
 -- >                conj2))
 -- >      conj1))
 disjoin :: a
-disjoin = error "TODO"
+disjoin = do
+  error "TODO"
 
 -- | TODO
 --
@@ -922,62 +928,10 @@ disjoin = error "TODO"
 -- >   (cond ((typep name 'tms-node) name)
 -- >    ((if (ltms-nodes ltms) (gethash name (ltms-nodes ltms))))
 -- >    ((tms-create-node ltms name))))
-findNode :: a
-findNode = error "TODO"
-
--- | TODO
---
--- Translated from @compile-formula@ in @ltms.lisp@.
---
--- > (defmacro compile-formula (run-tms f &optional informant &aux ltms)
--- >   (setq ltms (create-ltms f))
--- >   (add-formula ltms (expand-formula f))
--- >   (generate-code ltms run-tms (if informant `(:IMPLIED-BY ,f ,informant))))
-compileFormula :: a
-compileFormula = error "TODO"
-
--- | TODO
---
--- Translated from @generate-code@ in @ltms.lisp@.
---
--- > (defun generate-code (ltms run-tms informant &aux result bound datum)
--- >   (maphash #'(lambda (ignore symbol)
--- >           (when (or (tms-node-true-clauses symbol)
--- >                     (tms-node-false-clauses symbol))
--- >             (setq datum (tms-node-datum symbol))
--- >             (when (listp datum)
--- >               (setf (tms-node-mark symbol) datum)
--- >               (setf (tms-node-datum symbol)
--- >                     (make-symbol (format nil "~A" (cadr datum))))
--- >               (push symbol bound))))
--- >       (ltms-nodes ltms))
--- >   (walk-clauses ltms
--- >            #'(lambda (clause &aux ps ns)
--- >                (dolist (lit (clause-literals clause))
--- >                  (if (eq (cdr lit) :TRUE)
--- >                      (push (tms-node-datum (car lit)) ps)
--- >                      (push (tms-node-datum (car lit)) ns)))
--- >                (push `(add-clause `(,,@ps) `(,,@ns) ,informant)
--- >                      result)))
--- >   `(let ,(mapcar #'(lambda (s)
--- >                 `(,(tms-node-datum s) (find-node ,run-tms ,(tms-node-mark s))))
--- >             bound)
--- >      ,@result))
--- > (defun expand-formula (x)
--- >   (setq x (macroexpand x))
--- >   (cond ((not (listp x)) x)
--- >    ((case (macroexpand (car x))
--- >       (QUOTE (partial (cadr x)))
--- >       (LIST (mapcar #'expand-formula (cdr x)))
--- >       (LIST* (if (cddr x)
--- >                  (cons (expand-formula (cadr x))
--- >                        (expand-formula `(LIST* .,(cddr x))))
--- >                  (expand-formula (cadr x))))
--- >       (CONS (cons (expand-formula (cadr x))
--- >                   (mapcar #'expand-formula (caddr x))))))
--- >    (t x)))
-generateCode :: a
-generateCode = error "TODO"
+findNode ::
+  (Monad m, NodeDatum d) => LTMS d i r s m -> Node d i r s m -> LTMST s m ()
+findNode = do
+  error "TODO"
 
 -- | TODO
 --
@@ -989,7 +943,8 @@ generateCode = error "TODO"
 -- >    ((not (listp x)) `',x)
 -- >    (t (cons (partial (car x)) (partial (cdr x))))))
 partial :: a
-partial = error "TODO"
+partial = do
+  error "TODO"
 
 -- > ;;; Adding clauses
 
@@ -1002,8 +957,10 @@ partial = error "TODO"
 -- >                          (mapcar #'tms-node-false false-nodes))
 -- >                   informant
 -- >                   nil))
-addClause :: a
-addClause = error "TODO"
+addClause ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+addClause = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1018,8 +975,10 @@ addClause = error "TODO"
 -- >       (push (bcp-add-clause ltms literals informant)
 -- >        (ltms-clauses ltms)))
 -- >   (unless internal (check-for-contradictions ltms)))
-addClauseInternal :: a
-addClauseInternal = error "TODO"
+addClauseInternal ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+addClauseInternal = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1045,8 +1004,11 @@ addClauseInternal = error "TODO"
 -- >     (incf (clause-sats cl)) (incf (clause-pvs cl))))))
 -- >   (if index (check-clauses ltms (list cl)))
 -- >   cl)
-bcpAddClause :: a
-bcpAddClause = error "TODO"
+bcpAddClause ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> lit {- TODO -} -> i -> LTMST s m (Clause d i r s m)
+bcpAddClause = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1054,8 +1016,10 @@ bcpAddClause = error "TODO"
 --
 -- > (defun insert-true-clause (cl node)
 -- >   (push cl (tms-node-true-clauses node)))
-insertTrueClause :: a
-insertTrueClause = error "TODO"
+insertTrueClause ::
+  (Monad m, NodeDatum d) => Clause d i r s m -> Node d i r s m -> LTMST s m ()
+insertTrueClause clause node = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1063,8 +1027,10 @@ insertTrueClause = error "TODO"
 --
 -- > (defun insert-false-clause (cl node)
 -- >   (push cl (tms-node-false-clauses node)))
-insertFalseClause :: a
-insertFalseClause = error "TODO"
+insertFalseClause ::
+  (Monad m, NodeDatum d) => Clause d i r s m -> Node d i r s m -> LTMST s m ()
+insertFalseClause clause node = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1075,8 +1041,11 @@ insertFalseClause = error "TODO"
 -- >     (ecase (if (eq a culprit) sign (tms-node-label a))
 -- >       (:TRUE (push a falses))
 -- >       (:FALSE (push a trues)))))
-addNogood :: a
-addNogood = error "TODO"
+addNogood ::
+  (Monad m, NodeDatum d) =>
+    Node d i r s m -> NodeTruth -> [Node d i r s m] -> LTMST s m ()
+addNogood culprit sign assumptions = do
+  error "TODO"
 
 -- > ;;; Boolean Constraint Propagation.
 -- > (proclaim '(special *clauses-to-check*))
@@ -1089,8 +1058,11 @@ addNogood = error "TODO"
 -- >   (debugging-ltms ltms "~% Beginning propagation...")
 -- >   (do nil ((null *clauses-to-check*))
 -- >     (check-clause ltms (pop *clauses-to-check*))))
-checkClauses :: a
-checkClauses = error "TODO"
+checkClauses ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> [Clause d i r s m] -> LTMST s m ()
+checkClauses ltms clausesToCheck = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1106,8 +1078,10 @@ checkClauses = error "TODO"
 -- >     (when unknown-pair ;must check, because it might have other
 -- >       (set-truth (car unknown-pair) ; support
 -- >                  (cdr unknown-pair) clause)))))
-checkClause :: a
-checkClause = error "TODO"
+checkClause ::
+  (Monad m, NodeDatum d) => LTMS d i r s m -> Clause d i r s m -> LTMST s m ()
+checkClause = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1116,8 +1090,10 @@ checkClause = error "TODO"
 -- > (defun find-unknown-pair (clause)
 -- >   (dolist (term-pair (clause-literals clause))
 -- >     (if (unknown-node? (car term-pair)) (return term-pair))))
-findUnknownPair :: a
-findUnknownPair = error "TODO"
+findUnknownPair ::
+  (Monad m, NodeDatum d) => Clause d i r s m -> LTMST s m ()
+findUnknownPair = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1127,8 +1103,11 @@ findUnknownPair = error "TODO"
 -- >   (set-truth node value reason)
 -- >   (check-clauses (tms-node-ltms node) *clauses-to-check*)
 -- >   (check-for-contradictions (tms-node-ltms node)))
-topSetTruth :: a
-topSetTruth = error "TODO"
+topSetTruth ::
+  (Monad m, NodeDatum d) =>
+    Node d i r s m -> NodeTruth -> Clause d i r s m -> LTMST s m ()
+topSetTruth node value reason = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1160,8 +1139,11 @@ topSetTruth = error "TODO"
 -- >        (dolist (clause (tms-node-true-clauses node))
 -- >          (if (< (decf (clause-pvs clause)) 2)
 -- >              (push clause *clauses-to-check*))))))
-setTruth :: a
-setTruth = error "TODO"
+setTruth ::
+  (Monad m, NodeDatum d) =>
+    Node d i r s m -> NodeTruth -> Clause d i r s m -> LTMST s m ()
+setTruth node value reason = do
+  error "TODO"
 
 -- > ;;; Retracting an assumption.
 
@@ -1191,8 +1173,10 @@ setTruth = error "TODO"
 -- >        (push node2 new))))
 -- >       (if (ltms-complete ltms)
 -- >      (propagate-more-unknownness old-value node ltms)))))
-propagateUnknownness :: a
-propagateUnknownness = error "TODO"
+propagateUnknownness ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+propagateUnknownness inNode = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1203,8 +1187,10 @@ propagateUnknownness = error "TODO"
 -- >     (when (eq (tms-node-label (car term-pair)) (cdr term-pair))
 -- >       (return (if (eq clause (tms-node-support (car term-pair)))
 -- >              (car term-pair))))))
-clauseConsequent :: a
-clauseConsequent = error "TODO"
+clauseConsequent ::
+  (Monad m, NodeDatum d) => Clause d i r s m -> LTMST s m a -- TODO
+clauseConsequent = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1216,8 +1202,11 @@ clauseConsequent = error "TODO"
 -- >       (check-clauses ltms (tms-node-true-clauses node))
 -- >       (check-clauses ltms (tms-node-false-clauses node))))
 -- >   (if (eq T (ltms-complete ltms)) (ipia ltms)))
-findAlternativeSupport :: a
-findAlternativeSupport = error "TODO"
+findAlternativeSupport ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> Node d i r s m -> LTMST s m a -- TODO
+findAlternativeSupport = do
+  error "TODO"
 
 -- > ;;; Contradiction handling interface.
 
@@ -1231,8 +1220,10 @@ findAlternativeSupport = error "TODO"
 -- >                   (ltms-violated-clauses ltms)))
 -- >   (setf (ltms-violated-clauses ltms) violated-clauses) ;; Cache them.
 -- >   (if violated-clauses (contradiction-handler ltms violated-clauses)))
-checkForContradictions :: a
-checkForContradictions = error "TODO"
+checkForContradictions ::
+  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m ()
+checkForContradictions = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1249,8 +1240,11 @@ checkForContradictions = error "TODO"
 -- >                (pushnew vc (ltms-pending-contradictions ltms)))))
 -- >    (t (dolist (handler (ltms-contradiction-handlers ltms))
 -- >         (if (funcall handler violated-clauses ltms) (return T))))))
-contradictionHandler :: a
-contradictionHandler = error "TODO"
+contradictionHandler ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> [Clause d i r s m] -> LTMST s m Bool
+contradictionHandler = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1258,8 +1252,10 @@ contradictionHandler = error "TODO"
 --
 -- > (defmacro without-contradiction-check (ltms &body body)
 -- >   (contradiction-check ltms nil body))
-withoutContradictionCheck :: a
-withoutContradictionCheck = error "TODO"
+withoutContradictionCheck ::
+  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m ()
+{-# INLINE withoutContradictionCheck #-}
+withoutContradictionCheck ltms = contradictionCheck ltms False
 
 -- | TODO
 --
@@ -1267,8 +1263,10 @@ withoutContradictionCheck = error "TODO"
 --
 -- > (defmacro with-contradiction-check (ltms &body body)
 -- >   (contradiction-check ltms t body))
-withContradictionCheck :: a
-withContradictionCheck = error "TODO"
+withContradictionCheck ::
+  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m ()
+{-# INLINE withContradictionCheck #-}
+withContradictionCheck ltms = contradictionCheck ltms True
 
 -- | TODO
 --
@@ -1281,8 +1279,10 @@ withContradictionCheck = error "TODO"
 -- >     (progn (setf (ltms-checking-contradictions .ltms.) ,flag)
 -- >            ,@body)
 -- >        (setf (ltms-checking-contradictions .ltms.) .old-value.))))
-contradictionCheck :: a
-contradictionCheck = error "TODO"
+contradictionCheck ::
+  (Monad m, NodeDatum d) => LTMS d i r s m -> Bool -> LTMST s m ()
+contradictionCheck ltms flag = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1294,8 +1294,11 @@ contradictionCheck = error "TODO"
 -- >     (progn (push ,handler (ltms-contradiction-handlers .ltms.))
 -- >            ,@ body)
 -- >        (pop (ltms-contradiction-handlers .ltms.)))))
-withContradictionHandler :: a
-withContradictionHandler = error "TODO"
+withContradictionHandler ::
+  (Monad m, NodeDatum d) => LTMS d i r s m -> hhhhhh {- TODO -} -> LTMST s m a
+{-# INLINE withContradictionHandler #-}
+withContradictionHandler = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1308,8 +1311,9 @@ withContradictionHandler = error "TODO"
 -- >                        (enable-assumption (car av) (cdr av)))
 -- >                     ,@ body)
 -- >      (dolist (av ,assumption-values) (retract-assumption (car av)))))
-withAssumptions :: a
-withAssumptions = error "TODO"
+withAssumptions :: [(Node d i r s m, NodeTruth)] -> LTMST s m ()
+withAssumptions nvs = do
+  error "TODO"
 
 -- > ;;; Inquiring about well-founded support
 
@@ -1324,8 +1328,10 @@ withAssumptions = error "TODO"
 -- >         (unless (eq (car pair) node)
 -- >           (push (car pair) result)))
 -- >       (values result (clause-informant support)))))
-supportForNode :: a
-supportForNode = error "TODO"
+supportForNode ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+supportForNode = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1335,8 +1341,10 @@ supportForNode = error "TODO"
 -- >   (cond ((eq :ENABLED-ASSUMPTION (tms-node-support node)) (list node))
 -- >    ((known-node? node)
 -- >     (assumptions-of-clause (tms-node-support node)))))
-assumptionsOfNode :: a
-assumptionsOfNode = error "TODO"
+assumptionsOfNode ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+assumptionsOfNode = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1359,8 +1367,10 @@ assumptionsOfNode = error "TODO"
 -- >            ((null (tms-node-support node)) (ltms-error "Node is unknown" node))
 -- >            (t (push (tms-node-support node) new-clauses))))
 -- >    (setf (tms-node-mark node) mark)))))
-assumptionsOfClause :: a
-assumptionsOfClause = error "TODO"
+assumptionsOfClause ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+assumptionsOfClause = do
+  error "TODO"
 
 -- > ;;; Simple user interface
 -- > (proclaim '(special *contra-assumptions*))
@@ -1374,8 +1384,10 @@ assumptionsOfClause = error "TODO"
 -- >   (dolist (contradiction contradictions)
 -- >     (if (violated-clause? contradiction)
 -- >    (handle-one-contradiction contradiction))))
-askUserHandler :: a
-askUserHandler = error "TODO"
+askUserHandler ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+askUserHandler = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1396,8 +1408,10 @@ askUserHandler = error "TODO"
 -- >       (if the-answer
 -- >          (retract-assumption (nth (1- the-answer)
 -- >                                 *contra-assumptions*)))))
-handleOneContradiction :: a
-handleOneContradiction = error "TODO"
+handleOneContradiction ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+handleOneContradiction = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1409,8 +1423,10 @@ handleOneContradiction = error "TODO"
 -- >       ((null nn))
 -- >     (format t "~%~A ~A" counter
 -- >        (node-string (car nn)))))
-printContraList :: a
-printContraList = error "TODO"
+printContraList ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+printContraList = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1425,7 +1441,8 @@ printContraList = error "TODO"
 -- >      (format t "~%Ignoring answer, too small"))
 -- >       (format t "~%Ignoring answer, must be an integer.")))
 tmsAnswer :: a
-tmsAnswer = error "TODO"
+tmsAnswer = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1441,8 +1458,10 @@ tmsAnswer = error "TODO"
 -- >       (retract-assumption culprit)
 -- >       (add-nogood culprit sign culprits)
 -- >       t)))
-avoidAll :: a
-avoidAll = error "TODO"
+avoidAll ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+avoidAll = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1452,8 +1471,10 @@ avoidAll = error "TODO"
 -- >   (dolist (pair (clause-literals clause) result)
 -- >     (unless (eq (tms-node-support (car pair)) clause)
 -- >       (push (car pair) result))))
-clauseAntecedents :: a
-clauseAntecedents = error "TODO"
+clauseAntecedents ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+clauseAntecedents = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1463,8 +1484,10 @@ clauseAntecedents = error "TODO"
 -- >   (if (true-node? node) (node-string node)
 -- >       (format nil "~:[Unknown~;Not~][~A]"
 -- >          (false-node? node) (node-string node))))
-signedNodeString :: a
-signedNodeString = error "TODO"
+signedNodeString ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+signedNodeString = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1478,8 +1501,10 @@ signedNodeString = error "TODO"
 -- >       (setq conseq (clause-consequent cl))
 -- >       (if conseq (push conseq conseqs))))
 -- >   conseqs)
-nodeConsequences :: a
-nodeConsequences = error "TODO"
+nodeConsequences ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+nodeConsequences = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1506,8 +1531,10 @@ nodeConsequences = error "TODO"
 -- >                   (node-string (car term-pair))
 -- >                   (tms-node-label (car term-pair)))))))
 -- >   node)
-whyNode :: a
-whyNode = error "TODO"
+whyNode ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+whyNode = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1515,8 +1542,10 @@ whyNode = error "TODO"
 --
 -- > (defun why-nodes (ltms)
 -- >   (maphash #'(lambda (ignore n) (why-node n)) (ltms-nodes ltms)))
-whyNodes :: a
-whyNodes = error "TODO"
+whyNodes ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+whyNodes = do
+  error "TODO"
 
 -- > (defvar *line-count*)
 
@@ -1530,8 +1559,10 @@ whyNodes = error "TODO"
 -- >     (maphash #'(lambda (ignore node) (setf (tms-node-mark node) nil))
 -- >         (ltms-nodes (tms-node-ltms node)))
 -- >     (explain-1 node)))
-explainNode :: a
-explainNode = error "TODO"
+explainNode ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+explainNode = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1550,19 +1581,10 @@ explainNode = error "TODO"
 -- >               (node-string node) antecedents)
 -- >       (pretty-print-clause (tms-node-support node))
 -- >       (setf (tms-node-mark node) *line-count*))))
-explain1 :: a
-explain1 = error "TODO"
-
--- | TODO
---
--- Translated from @pretty-print-clauses@ in @ltms.lisp@.
---
--- > (defun pretty-print-clauses (ltms)
--- >   (walk-clauses ltms #'(lambda (l)
--- >                     (format T "~% ")
--- >                     (pretty-print-clause l))))
-prettyPrintClauses :: a
-prettyPrintClauses = error "TODO"
+explain1 ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+explain1 = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1574,8 +1596,10 @@ prettyPrintClauses = error "TODO"
 -- >     (format T " ~:[(:NOT ~A)~;~A~]"
 -- >        (eq :TRUE (cdr literal)) (node-string (car literal))))
 -- >   (format T ")"))
-prettyPrintClause :: a
-prettyPrintClause = error "TODO"
+prettyPrintClause ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+prettyPrintClause = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1588,8 +1612,10 @@ prettyPrintClause = error "TODO"
 -- >       (dolist (conseq conseqs)
 -- >               (format t "~%  ~A" (signed-node-string conseq))))
 -- >      (t (format t "~% ~A has no consequences." (node-string node))))))
-showNodeConsequences :: a
-showNodeConsequences = error "TODO"
+showNodeConsequences ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+showNodeConsequences = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1601,8 +1627,10 @@ showNodeConsequences = error "TODO"
 -- >     (format T "~%") (pretty-print-clause cl))
 -- >   (dolist (cl (tms-node-false-clauses node))
 -- >     (format T "~%") (pretty-print-clause cl)))
-nodeShowClauses :: a
-nodeShowClauses = error "TODO"
+nodeShowClauses ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+nodeShowClauses = do
+  error "TODO"
 
 -- | TODO
 --
@@ -1650,5 +1678,89 @@ nodeShowClauses = error "TODO"
 -- >          (setq good? choice)
 -- >          (format t "~% Must be q, a, c or an integer from 0 to ~D."
 -- >                    olen)))))
-exploreNetwork :: a
-exploreNetwork = error "TODO"
+exploreNetwork ::
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m a
+exploreNetwork = do
+  error "TODO"
+
+{- ================================================================
+These functions (directly or indirectly) call walk-trie, defined in
+cltms with a different version of walk-clauses.
+================================================================ -}
+
+-- | TODO
+--
+-- Translated from @walk-clauses@ in @ltms.lisp@.
+--
+-- > (defmacro walk-clauses (ltms f)
+-- >   `(if (ltms-complete ,ltms)
+-- >        (walk-trie ,f (ltms-clauses ,ltms))
+-- >        (mapc ,f (ltms-clauses ,ltms))))
+-- > ;;; Basic inference-engine interface.
+walkClauses :: a
+walkClauses = error "TODO"
+
+-- | TODO
+--
+-- Translated from @generate-code@ in @ltms.lisp@.
+--
+-- > (defun generate-code (ltms run-tms informant &aux result bound datum)
+-- >   (maphash #'(lambda (ignore symbol)
+-- >           (when (or (tms-node-true-clauses symbol)
+-- >                     (tms-node-false-clauses symbol))
+-- >             (setq datum (tms-node-datum symbol))
+-- >             (when (listp datum)
+-- >               (setf (tms-node-mark symbol) datum)
+-- >               (setf (tms-node-datum symbol)
+-- >                     (make-symbol (format nil "~A" (cadr datum))))
+-- >               (push symbol bound))))
+-- >       (ltms-nodes ltms))
+-- >   (walk-clauses ltms
+-- >            #'(lambda (clause &aux ps ns)
+-- >                (dolist (lit (clause-literals clause))
+-- >                  (if (eq (cdr lit) :TRUE)
+-- >                      (push (tms-node-datum (car lit)) ps)
+-- >                      (push (tms-node-datum (car lit)) ns)))
+-- >                (push `(add-clause `(,,@ps) `(,,@ns) ,informant)
+-- >                      result)))
+-- >   `(let ,(mapcar #'(lambda (s)
+-- >                 `(,(tms-node-datum s) (find-node ,run-tms ,(tms-node-mark s))))
+-- >             bound)
+-- >      ,@result))
+-- > (defun expand-formula (x)
+-- >   (setq x (macroexpand x))
+-- >   (cond ((not (listp x)) x)
+-- >    ((case (macroexpand (car x))
+-- >       (QUOTE (partial (cadr x)))
+-- >       (LIST (mapcar #'expand-formula (cdr x)))
+-- >       (LIST* (if (cddr x)
+-- >                  (cons (expand-formula (cadr x))
+-- >                        (expand-formula `(LIST* .,(cddr x))))
+-- >                  (expand-formula (cadr x))))
+-- >       (CONS (cons (expand-formula (cadr x))
+-- >                   (mapcar #'expand-formula (caddr x))))))
+-- >    (t x)))
+generateCode :: a
+generateCode = error "TODO"
+
+-- | TODO
+--
+-- Translated from @compile-formula@ in @ltms.lisp@.
+--
+-- > (defmacro compile-formula (run-tms f &optional informant &aux ltms)
+-- >   (setq ltms (create-ltms f))
+-- >   (add-formula ltms (expand-formula f))
+-- >   (generate-code ltms run-tms (if informant `(:IMPLIED-BY ,f ,informant))))
+compileFormula :: a
+compileFormula = error "TODO"
+
+-- | TODO
+--
+-- Translated from @pretty-print-clauses@ in @ltms.lisp@.
+--
+-- > (defun pretty-print-clauses (ltms)
+-- >   (walk-clauses ltms #'(lambda (l)
+-- >                     (format T "~% ")
+-- >                     (pretty-print-clause l))))
+prettyPrintClauses :: a
+prettyPrintClauses = error "TODO"
