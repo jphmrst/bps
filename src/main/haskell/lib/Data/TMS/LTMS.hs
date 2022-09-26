@@ -49,7 +49,7 @@ module Data.TMS.LTMS (
   LTMST,
   LtmsErr(DuplicatedDatum, CannotEnableNonassumption, RedundantNodeEnable,
           NullClause, UnknownNode, GlobalContradiction, TotalContradiction,
-          FromMonadFail),
+          FromMonadFail, ToBeTranslated),
   runLTMST,
   defaultNodeString,
 
@@ -60,8 +60,7 @@ module Data.TMS.LTMS (
   createLtms,
 
   -- *** LTMS components
-  ltmsTitle,
-  getNodes, getClauses,
+  ltmsTitle, getClauses,
   getDebugging, setDebugging,
   getCheckingContradictions, setCheckingContradictions,
   getNodeString, setNodeString,
@@ -74,7 +73,6 @@ module Data.TMS.LTMS (
   getInformantString, setInformantString,
   setInformantStringViaString, setInformantStringViaShow,
   getEnqueueProcedure, setEnqueueProcedure,
-  nextNodeCounter, nextClauseCounter,
 
   -- ** Nodes
   Node, NodeTruth,
@@ -207,6 +205,8 @@ import Control.Monad.ST
 import Control.Monad.ST.Trans
 import Control.Monad.Trans.Except
 import Data.List
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Maybe
 import Data.Symbol
 import Data.TMS.Common (NodeDatum, contradictionNodeDatum)
@@ -250,6 +250,9 @@ data LtmsErr = DuplicatedDatum String Int
              | FromMonadFail String
                -- ^ Indicates a pattern-matching failure within an
                -- `LTMST` operation, or other described failure.
+             | ToBeTranslated String
+               -- ^ Temporary error, flagging an section of Lisp code
+               -- not yet translated
   deriving Show
 
 {- ===== Internal state of an LTMST. =================================== -}
@@ -384,7 +387,7 @@ data (Monad m, NodeDatum d) => LTMS d i r s m = LTMS {
   -- |Unique namer for clauses.
   ltmsClauseCounter :: STRef s Int,
   -- |List of all TMS nodes.
-  ltmsNodes :: STRef s [Node d i r s m],
+  ltmsNodes :: STRef s (Map d (Node d i r s m)),
   -- |List of all clauses.
   ltmsClauses :: STRef s [Clause d i r s m],
   -- |Set to `True` when we wish to debug this LTMS.
@@ -431,13 +434,22 @@ nextClauseCounter jtms = sttLayer $ do
 
 type NodeTruth = Maybe Bool
 
+labelUnknown :: NodeTruth
+labelUnknown = Nothing
+labelTrue :: NodeTruth
+labelTrue = Just True
+labelFalse :: NodeTruth
+labelFalse = Just False
+
+data Literal d i r s m = Literal (Node d i r s m) NodeTruth
+
+data NodeSupport d i r s m =
+  ByClause (Clause d i r s m) | EnabledAssumption | NoSupport
+  deriving Eq
+
 -- |Wrapper for the datum associated with a node of the `ATMS`.
 --
--- Translated from @tms-node@ in @ltms.lisp@.  Don't know what to do
--- with these two fields, so leaving untranslated for now.
---
--- >   (true-literal nil)           ; True literal.
--- >   (false-literal nil))         ; False literal.
+-- Translated from @tms-node@ in @ltms.lisp@.
 data (Monad m, NodeDatum d) => Node d i r s m = Node {
   -- |Unique ID among nodes
   nodeIndex :: Int,
@@ -446,7 +458,7 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node {
   -- |A boolean value, if known
   nodeLabel :: STRef s NodeTruth,
   -- |Clause which supports it.
-  nodeSupport :: STRef s (Clause d i r s m),
+  nodeSupport :: STRef s (NodeSupport d i r s m),
   -- |Clauses in which this node is true.
   nodeTrueClauses :: STRef s [Clause d i r s m],
   -- |Clauses in which this node is false.
@@ -459,15 +471,18 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node {
   -- |Rules run when the node is false.
   nodeFalseRules :: STRef s [r],
   -- |LTMS this node is part of.
-  nodeLtms :: LTMS d i r s m
+  nodeLtms :: LTMS d i r s m,
+  -- |Literal asserting that this node should be true.
+  trueLiteral :: Literal d i r s m,
+  -- |Literal asserting that this node should be false.
+  falseLiteral :: Literal d i r s m
   }
 
 {- ----------------------------------------------------------------- -}
 
-newtype Literal d i r s m = Literal (Node d i r s m, NodeTruth)
-
 -- | Representation of the status associated with a clause.
 data ClauseStatus = Subsumed | Queued | Dirty | NotIndexed | NilClause
+  deriving Eq
 
 -- | Representation of a clause.
 --
@@ -489,15 +504,18 @@ data (Monad m, NodeDatum d) => Clause d i r s m = Clause {
   clauseStatus :: STRef s ClauseStatus
   }
 
+instance (Monad m, NodeDatum d) => Eq (Clause d i r s m) where
+  c1 == c2  =  clauseIndex c1 == clauseIndex c2
+
 {- ----------------------------------------------------------------- -}
 
 $(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
   [
-    ("Nodes", inList $ withParams [t|Node|], [|ltmsNodes|]),
     ("Clauses", inList $ withParams [t|Clause|], [|ltmsClauses|]),
     ("PendingContradictions", inList $ withParams [t|Node|], [|ltmsPendingContradictions|]),
     ("ViolatedClauses", inList $ withParams [t|Clause|], [|ltmsViolatedClauses|])
   ] [
+    ("Nodes", inMap datumType (withParams [t|Node|]), [|ltmsNodes|]),
     ("Debugging", noTyParams [t|Bool|], [|ltmsDebugging|]),
     ("Complete", noTyParams [t|Bool|], [|ltmsComplete|]),
     ("CheckingContradictions", noTyParams [t|Bool|],
@@ -516,11 +534,25 @@ $(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
      [|ltmsInformantString|])
   ])
 
+addNode ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> d -> Node d i r s m -> LTMST s m ()
+addNode ltms datum node = do
+  oldMap <- getNodes ltms
+  setNodes ltms $ Map.insert datum node oldMap
+
+getNode ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> d -> LTMST s m (Maybe (Node d i r s m))
+getNode ltms datum = do
+  map <- getNodes ltms
+  return $ Map.lookup datum map
+
 $(makeAccessors [t|Node|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
   [
   ] [
     ("NodeLabel", noTyParams [t|NodeTruth|], [|nodeLabel|]),
-    ("NodeSupport", withParams [t|Clause|], [|nodeSupport|]),
+    ("NodeSupport", withParams [t|NodeSupport|], [|nodeSupport|]),
     ("NodeTrueClauses",  inList $ withParams [t|Clause|], [|nodeTrueClauses|]),
     ("NodeFalseClauses", inList $ withParams [t|Clause|], [|nodeFalseClauses|]),
     ("NodeIsAssumption", noTyParams [t|Bool|], [|nodeIsAssumption|])
@@ -639,15 +671,15 @@ isViolatedClause = fmap (== 0) . getClausePVs
 
 -- | Set up a new LTML.
 --
--- Translated from @create-ltms@ in @ltms.lisp@.  Unlike the original,
--- there are no optional parameters; use the various @set...@
--- functions instead.
+-- Translated from @create-ltms@ in @ltms.lisp@.  Unlike with the
+-- original Lisp, in Haskell there are no optional parameters; use the
+-- various @set...@ functions instead.
 createLtms ::
   (Monad m, NodeDatum d) => String -> d -> LTMST s m (LTMS d i r s m)
 createLtms title datum = do
   nodeCounter <- sttLayer $ newSTRef 0
   clauseCounter <- sttLayer $ newSTRef 0
-  nodes <- sttLayer $ newSTRef []
+  nodes <- sttLayer $ newSTRef Map.empty
   clauses <- sttLayer $ newSTRef []
   debugging <- sttLayer $ newSTRef False
   checking <- sttLayer $ newSTRef False
@@ -709,16 +741,35 @@ isFalseNode = fmap (== Just False) . getNodeLabel
 -- >     (if (ltms-nodes ltms) ;; Insert if locally caching
 -- >        (setf (gethash datum (ltms-nodes ltms)) node))
 -- >     (when (and (ltms-complete ltms)
--- >           (> (ltms-node-counter ltms) (ltms-cons-size ltms)))
+-- >                (> (ltms-node-counter ltms) (ltms-cons-size ltms)))
 -- >       (setf (ltms-conses ltms) nil)
 -- >       (incf (ltms-cons-size ltms) 50.)
 -- >       (dotimes (i (ltms-cons-size ltms))
--- >    (push (cons nil nil) (ltms-conses ltms))))
+-- >         (push (cons nil nil) (ltms-conses ltms))))
 -- >     node))
 createNode ::
   (Monad m, NodeDatum d) => LTMS d i r s m -> d -> LTMST s m (Node d i r s m)
 createNode ltms datum = do
-  error "TODO"
+  maybeAlready <- getNode ltms datum
+  case maybeAlready of
+    Just already -> do
+      str <- nodeString already
+      ltmsError $ DuplicatedDatum str $ nodeIndex already
+    Nothing -> do
+      index <- nextNodeCounter ltms
+      label <- sttLayer $ newSTRef Nothing
+      support <- sttLayer $ newSTRef NoSupport
+      trueClauses <- sttLayer $ newSTRef []
+      falseClauses <- sttLayer $ newSTRef []
+      isAssumption <- sttLayer $ newSTRef False
+      trueRules <- sttLayer $ newSTRef []
+      falseRules <- sttLayer $ newSTRef []
+      let node = Node index datum label support trueClauses falseClauses
+                      isAssumption trueRules falseRules ltms
+                      (Literal node labelTrue) (Literal node labelFalse)
+      addNode ltms datum node
+      ltmsError $ ToBeTranslated "TODO --- the when block"
+      return node
 
 -- | TODO
 --
@@ -738,9 +789,16 @@ enableAssumption node label = do
   ifM (fmap not $ getNodeIsAssumption node)
     (do str <- nodeString node
         ltmsError $ CannotEnableNonassumption str $ nodeIndex node)
-    (error "TODO")
+    (do currentLabel <- getNodeLabel node
+        if currentLabel == label
+          then setNodeSupport node EnabledAssumption
+          else if currentLabel == labelUnknown
+               then topSetTruth node label EnabledAssumption
+               else do str <- nodeString node
+                       ltmsError $ RedundantNodeEnable str $ nodeIndex node)
 
--- | TODO
+-- | Mark a `Node` as an assumption.  Does nothing if the node is
+-- already an assumption.
 --
 -- Translated from @convert-to-assumption@ in @ltms.lisp@.
 --
@@ -750,9 +808,13 @@ enableAssumption node label = do
 -- >                "~%Converting ~A into an assumption" node)
 -- >     (setf (tms-node-isAssumption node) T)))
 convertToAssumption ::
-  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
-convertToAssumption = do
-  error "TODO"
+  (Debuggable m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+convertToAssumption node = ifM (getNodeIsAssumption node)
+  (return ())
+  (do $(dbg [| do n <- nodeString node
+                  liftIO $ putStr $
+                    "Converting " ++ n ++ " into an assumption" |])
+      setNodeIsAssumption node True)
 
 -- | TODO
 --
@@ -762,28 +824,42 @@ convertToAssumption = do
 -- >   (when (and (known-node? node)
 -- >         (eq (tms-node-support node) :ENABLED-ASSUMPTION))
 -- >     (find-alternative-support (tms-node-ltms node)
--- >                          (propagate-unknownness node))))
-retractAssumption ::
-  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
-retractAssumption = do
-  error "TODO"
+-- >                               (propagate-unknownness node))))
+retractAssumption :: (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+retractAssumption node =
+  whenM (isKnownNode node) $ do
+    support <- getNodeSupport node
+    when (support == EnabledAssumption) $ do
+      nodes <- propagateUnknownness node
+      findAlternativeSupport (nodeLtms node) nodes
 
 -- > ;;; Adding formulas to the LTMS.
 
 -- | TODO
 --
--- Translated from @add-formula@ in @ltms.lisp@.
+-- Translated from @add-formula@ in @ltms.lisp@.  Note that the
+-- @informant@ parameter is not optional in this translation.
 --
 -- > (defun add-formula (ltms formula &optional informant)
 -- >   (setq informant (list :IMPLIED-BY formula informant))
 -- >   (dolist (clause (normalize ltms formula))
 -- >     (unless (eq :TRUE (setq clause (simplify-clause clause)))
--- >    (add-clause-internal clause informant T)))
+-- >       (add-clause-internal clause informant T)))
 -- >   (check-for-contradictions ltms))
 addFormula ::
-  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
-addFormula = do
-  error "TODO"
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> Formula d i r s m -> i -> LTMST s m ()
+addFormula ltms formula informant = do
+  litss <- normalize ltms formula
+  forM_ litss $ \lits -> do
+    simplified <- simplifyClause lits
+    case simplified of
+      ToTrue -> return ()
+      ToLiterals ls -> addClauseInternal ls informant True
+    checkForContradictions ltms
+
+data (Monad m, NodeDatum d) => ClauseSimplification d i r s m =
+  ToLiterals [Literal d i r s m] | ToTrue
 
 -- | TODO
 --
@@ -798,8 +874,10 @@ addFormula = do
 -- >      ((not (eq (cdar tail) (cdar next)))
 -- >       (return-from simplify-clause :TRUE))
 -- >      (t (rplacd tail (cdr next))))))
-simplifyClause :: a
-simplifyClause = do
+simplifyClause ::
+  (Monad m, NodeDatum d) =>
+    [Literal d i r s m] -> LTMST s m (ClauseSimplification d i r s m)
+simplifyClause literals = do
   error "TODO"
 
 -- | TODO
@@ -809,8 +887,10 @@ simplifyClause = do
 -- > (defun sort-clause (literals)
 -- >   (sort (copy-list literals) ;; Avoids shared structure bugs.
 -- >      #'< :KEY #'(lambda (n) (tms-node-index (car n)))))
-sortClause :: a
-sortClause = do
+sortClause ::
+  (Monad m, NodeDatum d) =>
+    [Literal d i r s m] -> LTMST s m [Literal d i r s m]
+sortClause literals = do
   error "TODO"
 
 -- > (defvar *ltms*)
@@ -821,9 +901,18 @@ sortClause = do
 --
 -- > (defun normalize (*ltms* exp) (normalize-1 exp nil))
 normalize ::
-  (Monad m, NodeDatum d) => Node d i r s m -> a
-normalize = do
-  error "TODO"
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> Formula d i r s m -> LTMST s m [[Literal d i r s m]]
+normalize ltms exp = normalize1 ltms exp False
+
+data (Monad m, NodeDatum d) => Formula d i r s m =
+  Implication (Formula d i r s m) (Formula d i r s m)
+  | Iff (Formula d i r s m) (Formula d i r s m)
+  | Or (Formula d i r s m) (Formula d i r s m)
+  | And (Formula d i r s m) (Formula d i r s m)
+  | Not (Formula d i r s m)
+  -- TODO | Taxonomy taxonomy
+  | Datum d
 
 -- | TODO
 --
@@ -845,7 +934,10 @@ normalize = do
 -- >     (:TAXONOMY (normalize-tax exp negate))
 -- >     (t (if negate `((,(tms-node-false-literal (find-node *ltms* exp))))
 -- >              `((,(tms-node-true-literal (find-node *ltms* exp))))))))
-normalize1 :: a
+normalize1 ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> Formula d i r s m -> Bool ->
+      LTMST s m [[Literal d i r s m]]
 normalize1 = do
   error "TODO"
 
@@ -886,7 +978,7 @@ normalizeConjunction = do
 --
 -- > (defun normalize-iff (exp negate)
 -- >   (nconc (normalize-1 `(:IMPLIES ,(cadr exp) ,(caddr exp)) negate)
--- >     (normalize-1 `(:IMPLIES ,(caddr exp) ,(cadr exp)) negate)))
+-- >          (normalize-1 `(:IMPLIES ,(caddr exp) ,(cadr exp)) negate)))
 normalizeIff :: a
 normalizeIff = do
   error "TODO"
@@ -925,12 +1017,13 @@ disjoin = do
 -- Translated from @find-node@ in @ltms.lisp@.
 --
 -- > (defun find-node (ltms name)
--- >   (cond ((typep name 'tms-node) name)
+-- >   (cond
+-- >    ((typep name 'tms-node) name)
 -- >    ((if (ltms-nodes ltms) (gethash name (ltms-nodes ltms))))
 -- >    ((tms-create-node ltms name))))
 findNode ::
-  (Monad m, NodeDatum d) => LTMS d i r s m -> Node d i r s m -> LTMST s m ()
-findNode = do
+  (Monad m, NodeDatum d) => LTMS d i r s m -> d -> LTMST s m (Node d i r s m)
+findNode ltms datum = do
   error "TODO"
 
 -- | TODO
@@ -976,8 +1069,8 @@ addClause = do
 -- >        (ltms-clauses ltms)))
 -- >   (unless internal (check-for-contradictions ltms)))
 addClauseInternal ::
-  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
-addClauseInternal = do
+  (Monad m, NodeDatum d) => [Literal d i r s m] -> i -> Bool -> LTMST s m ()
+addClauseInternal literals informant internal = do
   error "TODO"
 
 -- | TODO
@@ -1105,7 +1198,7 @@ findUnknownPair = do
 -- >   (check-for-contradictions (tms-node-ltms node)))
 topSetTruth ::
   (Monad m, NodeDatum d) =>
-    Node d i r s m -> NodeTruth -> Clause d i r s m -> LTMST s m ()
+    Node d i r s m -> NodeTruth -> NodeSupport d i r s m -> LTMST s m ()
 topSetTruth node value reason = do
   error "TODO"
 
@@ -1155,26 +1248,26 @@ setTruth node value reason = do
 -- >   (let (node old-value node2 unknown-queue ltms)
 -- >     (setq ltms (tms-node-ltms in-node))
 -- >     (do ((forget-queue (cons in-node nil) (nconc forget-queue new))
--- >     (new nil nil))
--- >    ((null forget-queue) unknown-queue)
+-- >          (new nil nil))
+-- >         ((null forget-queue) unknown-queue)
 -- >       (setq forget-queue (prog1 (cdr forget-queue)
 -- >                            (rplacd forget-queue unknown-queue)
 -- >                            (setq unknown-queue forget-queue))
--- >        node (car unknown-queue))
+-- >             node (car unknown-queue))
 -- >       (debugging-ltms ltms "~% Retracting ~A." node)
 -- >       (setq old-value (tms-node-label node))
 -- >       (setf (tms-node-label node) :UNKNOWN)
 -- >       (setf (tms-node-support node) nil)
 -- >       (dolist (clause (ecase old-value
--- >                    (:TRUE (tms-node-false-clauses node))
--- >                    (:FALSE (tms-node-true-clauses node))))
--- >    (when (= (incf (clause-pvs clause)) 2)
--- >      (when (setq node2 (clause-consequent clause))
--- >        (push node2 new))))
+-- >                         (:TRUE (tms-node-false-clauses node))
+-- >                         (:FALSE (tms-node-true-clauses node))))
+-- >         (when (= (incf (clause-pvs clause)) 2)
+-- >           (when (setq node2 (clause-consequent clause))
+-- >             (push node2 new))))
 -- >       (if (ltms-complete ltms)
--- >      (propagate-more-unknownness old-value node ltms)))))
+-- >           (propagate-more-unknownness old-value node ltms)))))
 propagateUnknownness ::
-  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m [Node d i r s m]
 propagateUnknownness inNode = do
   error "TODO"
 
@@ -1204,8 +1297,8 @@ clauseConsequent = do
 -- >   (if (eq T (ltms-complete ltms)) (ipia ltms)))
 findAlternativeSupport ::
   (Monad m, NodeDatum d) =>
-    LTMS d i r s m -> Node d i r s m -> LTMST s m a -- TODO
-findAlternativeSupport = do
+    LTMS d i r s m -> [Node d i r s m] -> LTMST s m a -- TODO
+findAlternativeSupport ltms nodes = do
   error "TODO"
 
 -- > ;;; Contradiction handling interface.

@@ -6,12 +6,13 @@
 module Data.TMS.TH (
   makeAccessors,
   TypeFormer, noTyParams, withParams,
-  inList, inMaybe, inPair, fnToString, fnToVoid, arrow, compReturning,
+  inList, inMap, inMaybe, inPair, fnToString, fnToVoid, arrow, compReturning,
   datumType, informantType, ruleType, ruleTypeToVoidComp, paramListToVoidComp
   ) where
 
 import Language.Haskell.TH.Syntax
 import Control.Monad.ST.Trans
+import Data.Map (Map)
 
 type AccessorSpec = (String, TypeFormer, Q Exp)
 
@@ -37,6 +38,9 @@ withParams base d i r s m = [t| $base $d $i $r $s $m |]
 
 inList :: TypeFormer -> TypeFormer
 inList f d i r s m = [t| [ $(f d i r s m) ] |]
+
+inMap :: TypeFormer -> TypeFormer -> TypeFormer
+inMap k v  d i r s m = [t| Map $(k d i r s m) $(v d i r s m) |]
 
 inPair :: TypeFormer -> TypeFormer -> TypeFormer
 inPair f g d i r s m = [t| ( $(f d i r s m), $(g d i r s m) ) |]

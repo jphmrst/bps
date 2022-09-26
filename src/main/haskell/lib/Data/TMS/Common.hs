@@ -23,7 +23,7 @@ import Data.Symbol
 
 -- |Class of type which can be used as the datum underlying a @Node@
 -- in a TMS.
-class NodeDatum d where
+class (Eq d, Ord d) => NodeDatum d where
   -- |The datum associated with the contradiction node in a
   -- newly-initialized `ATMS` with `Node` data of this type.
   contradictionNodeDatum :: d
