@@ -107,11 +107,6 @@ module Data.TMS.LTMS (
   simplifyClause,
   sortClause,
   normalize,
-  normalize1,
-  normalizeTax,
-  normalizeConjunction,
-  normalizeIff,
-  normalizeDisjunction,
 
   -- *** Clause components
   clauseIndex, clauseInformant, clauseStatus,
@@ -155,7 +150,6 @@ module Data.TMS.LTMS (
   -- * TODO
   -- ltmsError,
   addFormula,
-  disjoin,
   findNode,
   walkClauses,
   generateCode,
@@ -237,6 +231,9 @@ data LtmsErr = DuplicatedDatum String Int
                -- ^ Thrown when an attempt is made to enable a `Node`
                -- which is already enabled.  The `String` and
                -- `Int`eger values are of the relevant node.
+             | NoSuchNode String
+               -- ^ Thrown when an attempt to retrieve a `Node` by
+               -- datum fails.
              | NullClause String
                -- ^ Thrown when a null (thus contradictory) clause is
                -- added.  The `String` refers to the
@@ -895,6 +892,15 @@ sortClause literals = do
 
 -- > (defvar *ltms*)
 
+data (Monad m, NodeDatum d) => Formula d i r s m =
+  Implication (Formula d i r s m) (Formula d i r s m)
+  | Iff (Formula d i r s m) (Formula d i r s m)
+  | Or [Formula d i r s m]
+  | And [Formula d i r s m]
+  | Not (Formula d i r s m)
+  -- TODO | Taxonomy taxonomy
+  | Datum d
+
 -- | TODO
 --
 -- Translated from @normalize@ in @ltms.lisp@.
@@ -903,114 +909,135 @@ sortClause literals = do
 normalize ::
   (Monad m, NodeDatum d) =>
     LTMS d i r s m -> Formula d i r s m -> LTMST s m [[Literal d i r s m]]
-normalize ltms exp = normalize1 ltms exp False
+normalize ltms exp = normalize' ltms exp False
+  where -- | TODO
+        --
+        -- Translated from @normalize-1@ in @ltms.lisp@.  Currently
+        -- skipping one csae:
+        --
+        -- >     (:TAXONOMY (normalize-tax exp negate))
+        normalize' ::
+          (Monad m, NodeDatum d) =>
+            LTMS d i r s m -> Formula d i r s m -> Bool ->
+              LTMST s m [[Literal d i r s m]]
+        normalize' ltms exp negate = case exp of
+          Implication e1 e2 -> if negate
+                               then do
+                                 ls1 <- normalize' ltms e1 False
+                                 ls2 <- normalize' ltms e2 True
+                                 return $ ls1 ++ ls2
+                               else do
+                                 ls1 <- normalize' ltms e1 True
+                                 ls2 <- normalize' ltms e2 False
+                                 return $ disjoin ls1 ls2
+          Iff e1 e2 -> normalizeIff ltms e1 e2 negate
+          Or es -> if negate
+            then normalizeConjunction ltms es negate
+            else normalizeDisjunction ltms es negate
+          And es ->
+            (if negate then normalizeDisjunction else normalizeConjunction)
+              ltms es negate
+          Not exp'  -> normalize' ltms exp' (not negate)
+          -- Taxonomy taxonomy -> error "TODO"
+          Datum d -> do
+            maybeNode <- getNode ltms d
+            case maybeNode of
+              Nothing -> do
+                strFn <- getDatumString ltms
+                str <- strFn d
+                ltmsError $ NoSuchNode $ str
+              Just node -> return $ if negate
+                                    then [[falseLiteral node]]
+                                    else [[trueLiteral node]]
 
-data (Monad m, NodeDatum d) => Formula d i r s m =
-  Implication (Formula d i r s m) (Formula d i r s m)
-  | Iff (Formula d i r s m) (Formula d i r s m)
-  | Or (Formula d i r s m) (Formula d i r s m)
-  | And (Formula d i r s m) (Formula d i r s m)
-  | Not (Formula d i r s m)
-  -- TODO | Taxonomy taxonomy
-  | Datum d
+        {-
+        -- | TODO
+        --
+        -- Translated from @normalize-tax@ in @ltms.lisp@.
+        --
+        -- > (defun normalize-tax (exp negate)
+        -- >   (normalize-1 `(:AND (:OR ,@ (copy-list (cdr exp))) ;one must be true
+        -- >                  ;; The list is copied above to prevent very nasty bugs, since
+        -- >                  ;; the rest of normalize side effects structure continually for
+        -- >                  ;; efficiency.
+        -- >                  ,@ (do ((firsts (cdr exp) (cdr firsts))
+        -- >                   (rests (cddr exp) (cdr rests))
+        -- >                   (result nil))
+        -- >                  ((null rests) result)
+        -- >                (dolist (other rests)
+        -- >                  (push `(:NOT (:AND ,(car firsts) ,other))
+        -- >                        result))))
+        -- >           negate))
+        normalizeTax :: a
+        normalizeTax = do
+          error "TODO"
+        -}
 
--- | TODO
---
--- Translated from @normalize-1@ in @ltms.lisp@.
---
--- > (defun normalize-1 (exp negate)
--- >   (case (and (listp exp) (car exp))
--- >     (:IMPLIES (if negate
--- >              (nconc (normalize-1 (cadr exp) nil)
--- >                     (normalize-1 (caddr exp) t))
--- >              (disjoin (normalize-1 (cadr exp) t)
--- >                       (normalize-1 (caddr exp) nil))))
--- >     (:IFF (normalize-iff exp negate))
--- >     (:OR (if negate (normalize-conjunction exp t)
--- >         (normalize-disjunction exp nil)))
--- >     (:AND (if negate (normalize-disjunction exp t)
--- >                 (normalize-conjunction exp nil)))
--- >     (:NOT (normalize-1 (cadr exp) (not negate)))
--- >     (:TAXONOMY (normalize-tax exp negate))
--- >     (t (if negate `((,(tms-node-false-literal (find-node *ltms* exp))))
--- >              `((,(tms-node-true-literal (find-node *ltms* exp))))))))
-normalize1 ::
-  (Monad m, NodeDatum d) =>
-    LTMS d i r s m -> Formula d i r s m -> Bool ->
-      LTMST s m [[Literal d i r s m]]
-normalize1 = do
-  error "TODO"
+        -- | TODO
+        --
+        -- Translated from @normalize-conjunction@ in @ltms.lisp@.
+        --
+        -- > (defun normalize-conjunction (exp negate)
+        -- >   (mapcan #'(lambda (sub) (normalize-1 sub negate)) (cdr exp)))
+        normalizeConjunction ::
+          (Monad m, NodeDatum d) =>
+            LTMS d i r s m -> [Formula d i r s m] -> Bool ->
+              LTMST s m [[Literal d i r s m]]
+        normalizeConjunction ltms fs negate =
+          fmap concat $ mapM (\ f -> normalize' ltms f negate) fs
 
--- | TODO
---
--- Translated from @normalize-tax@ in @ltms.lisp@.
---
--- > (defun normalize-tax (exp negate)
--- >   (normalize-1 `(:AND (:OR ,@ (copy-list (cdr exp))) ;one must be true
--- >                  ;; The list is copied above to prevent very nasty bugs, since
--- >                  ;; the rest of normalize side effects structure continually for
--- >                  ;; efficiency.
--- >                  ,@ (do ((firsts (cdr exp) (cdr firsts))
--- >                   (rests (cddr exp) (cdr rests))
--- >                   (result nil))
--- >                  ((null rests) result)
--- >                (dolist (other rests)
--- >                  (push `(:NOT (:AND ,(car firsts) ,other))
--- >                        result))))
--- >           negate))
-normalizeTax :: a
-normalizeTax = do
-  error "TODO"
+        -- | TODO
+        --
+        -- Translated from @normalize-iff@ in @ltms.lisp@.
+        --
+        -- > (defun normalize-iff (exp negate)
+        -- >   (nconc (normalize-1 `(:IMPLIES ,(cadr exp) ,(caddr exp)) negate)
+        -- >          (normalize-1 `(:IMPLIES ,(caddr exp) ,(cadr exp)) negate)))
+        normalizeIff ::
+          (Monad m, NodeDatum d) =>
+            LTMS d i r s m -> Formula d i r s m -> Formula d i r s m -> Bool ->
+              LTMST s m [[Literal d i r s m]]
+        normalizeIff ltms e1 e2 negate = do
+          lss1 <- normalize' ltms e1 negate
+          lss2 <- normalize' ltms e2 negate
+          return $ lss1 ++ lss2
 
--- | TODO
---
--- Translated from @normalize-conjunction@ in @ltms.lisp@.
---
--- > (defun normalize-conjunction (exp negate)
--- >   (mapcan #'(lambda (sub) (normalize-1 sub negate)) (cdr exp)))
-normalizeConjunction :: a
-normalizeConjunction = do
-  error "TODO"
+        -- | TODO
+        --
+        -- Translated from @normalize-disjunction@ in @ltms.lisp@.
+        --
+        -- > (defun normalize-disjunction (exp negate)
+        -- >   (unless (cdr exp)
+        -- >     (return-from normalize-disjunction (list nil)))
+        -- >   (do ((result (normalize-1 (cadr exp) negate))
+        -- >        (rest (cddr exp) (cdr rest)))
+        -- >       ((null rest) result)
+        -- >     (setq result
+        -- >           (disjoin (normalize-1 (car rest) negate) result))))
+        normalizeDisjunction ::
+          (Monad m, NodeDatum d) =>
+            LTMS d i r s m -> [Formula d i r s m] -> Bool ->
+              LTMST s m [[Literal d i r s m]]
+        normalizeDisjunction _ [] _ = return [[]]
+        normalizeDisjunction ltms fs negate = do
+          error "TODO"
 
--- | TODO
---
--- Translated from @normalize-iff@ in @ltms.lisp@.
---
--- > (defun normalize-iff (exp negate)
--- >   (nconc (normalize-1 `(:IMPLIES ,(cadr exp) ,(caddr exp)) negate)
--- >          (normalize-1 `(:IMPLIES ,(caddr exp) ,(cadr exp)) negate)))
-normalizeIff :: a
-normalizeIff = do
-  error "TODO"
-
--- | TODO
---
--- Translated from @normalize-disjunction@ in @ltms.lisp@.
---
--- > (defun normalize-disjunction (exp negate)
--- >   (unless (cdr exp)
--- >     (return-from normalize-disjunction (list nil)))
--- >   (do ((result (normalize-1 (cadr exp) negate))
--- >        (rest (cddr exp) (cdr rest)))
--- >       ((null rest) result)
--- >     (setq result (disjoin (normalize-1 (car rest) negate) result))))
-normalizeDisjunction :: a
-normalizeDisjunction = do
-  error "TODO"
-
--- | TODO
---
--- Translated from @disjoin@ in @ltms.lisp@.
---
--- > (defun disjoin (conj1 conj2)
--- >   (unless (or conj1 conj2) (return-from disjoin nil))
--- >   (mapcan #'(lambda (disj1)
--- >        (mapcar #'(lambda (disj2) (append disj1 disj2))
--- >                conj2))
--- >      conj1))
-disjoin :: a
-disjoin = do
-  error "TODO"
+        -- | TODO
+        --
+        -- Translated from @disjoin@ in @ltms.lisp@.
+        --
+        -- > (defun disjoin (conj1 conj2)
+        -- >   (unless (or conj1 conj2) (return-from disjoin nil))
+        -- >   (mapcan #'(lambda (disj1)
+        -- >        (mapcar #'(lambda (disj2) (append disj1 disj2))
+        -- >                conj2))
+        -- >      conj1))
+        disjoin ::
+          (Monad m, NodeDatum d) =>
+            [[Literal d i r s m]] -> [[Literal d i r s m]] ->
+              [[Literal d i r s m]]
+        disjoin ls1 ls2 = do
+          error "TODO"
 
 -- | TODO
 --
