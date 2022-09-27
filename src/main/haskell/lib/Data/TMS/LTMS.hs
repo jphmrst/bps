@@ -107,6 +107,13 @@ module Data.TMS.LTMS (
   simplifyClause,
   sortClause,
   normalize,
+  addClause,
+  addClauseInternal,
+  bcpAddClause,
+  insertTrueClause,
+  insertFalseClause,
+  checkClauses,
+  checkClause,
 
   -- *** Clause components
   clauseIndex, clauseInformant, clauseStatus,
@@ -146,6 +153,9 @@ module Data.TMS.LTMS (
   -- ** Nodes and node lists
 
   -- ** Environments, labels, and tables
+  prettyPrintClauses,
+  prettyPrintClause,
+  printContraList,
 
   -- * TODO
   -- ltmsError,
@@ -153,15 +163,8 @@ module Data.TMS.LTMS (
   findNode,
   walkClauses,
   generateCode,
-  partial,
-  addClause,
-  addClauseInternal,
-  bcpAddClause,
-  insertTrueClause,
-  insertFalseClause,
+  -- partial,
   addNogood,
-  checkClauses,
-  checkClause,
   findUnknownPair,
   topSetTruth,
   setTruth,
@@ -180,17 +183,16 @@ module Data.TMS.LTMS (
   assumptionsOfClause,
   askUserHandler,
   handleOneContradiction,
-  printContraList,
   tmsAnswer,
   avoidAll,
   clauseAntecedents,
-  prettyPrintClauses,
-  prettyPrintClause,
   showNodeConsequences,
   nodeShowClauses,
   exploreNetwork
   ) where
 
+import Control.Bool ((<|=>), (<&=>), notM)
+  -- Full import of Control.Bool conflicts with Control.Monad.Extra.
 import Control.Monad
 import Control.Monad.Except
 import Control.Monad.Extra
@@ -202,6 +204,7 @@ import Data.List
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe
+import Data.Sort
 import Data.Symbol
 import Data.TMS.Common (NodeDatum, contradictionNodeDatum)
 import Data.TMS.Formatters
@@ -371,11 +374,6 @@ runLTMST ltmst = do
 
 -- | Top-level representation of a logic-based truth maintenance
 -- system.
---
--- These fields from the Lisp code are not (yet) translated into Lisp.
---
--- >   (conses nil)            ; Source of conses to reuse in inner loop.
--- >   (cons-size 0)           ; Size of temporary structure.
 data (Monad m, NodeDatum d) => LTMS d i r s m = LTMS {
   -- |Name of this LTMS.
   ltmsTitle :: String,
@@ -409,6 +407,11 @@ data (Monad m, NodeDatum d) => LTMS d i r s m = LTMS {
   ltmsDatumString :: STRef s (d -> LTMST s m String),
   -- |Function for representing the informants of justifications.
   ltmsInformantString :: STRef s (i -> LTMST s m String)
+  {- Leaving these off for now
+  -- |Size of temporary structure.
+  ltmsConsSize :: STRef s Int
+  -- >   (conses nil)            ; Source of conses to reuse in inner loop.
+   -}
   }
 
 -- |Get the next node counter value, incrementing for future accesses.
@@ -510,7 +513,8 @@ $(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
   [
     ("Clauses", inList $ withParams [t|Clause|], [|ltmsClauses|]),
     ("PendingContradictions", inList $ withParams [t|Node|], [|ltmsPendingContradictions|]),
-    ("ViolatedClauses", inList $ withParams [t|Clause|], [|ltmsViolatedClauses|])
+    ("ViolatedClauses", inList $ withParams [t|Clause|], [|ltmsViolatedClauses|]),
+    ("NodeCounter", noTyParams [t|Int|], [|ltmsNodeCounter|])
   ] [
     ("Nodes", inMap datumType (withParams [t|Node|]), [|ltmsNodes|]),
     ("Debugging", noTyParams [t|Bool|], [|ltmsDebugging|]),
@@ -529,6 +533,8 @@ $(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
     ("InformantString",
      arrow informantType $ compReturning [t|LTMST|] $ noTyParams [t|String|],
      [|ltmsInformantString|])
+    -- ,
+    -- ("ConsSize", noTyParams [t|Int|], [|ltmsConsSize|])
   ])
 
 addNode ::
@@ -689,10 +695,11 @@ createLtms title datum = do
   delaySatFlag <- sttLayer $ newSTRef False
   datumStrFn <- sttLayer $ newSTRef $ \ _ -> return "??"
   informantStrFn <- sttLayer $ newSTRef $ \ _ -> return "??"
+  -- consSize <- sttLayer $ newSTRef 0
   return $ LTMS title nodeCounter clauseCounter nodes clauses
                 debugging checking nodeStrFn pending
                 enqueuer complete violatedClauses queue
-                delaySatFlag datumStrFn informantStrFn
+                delaySatFlag datumStrFn informantStrFn -- consSize
 
 -- | Returns @True@ when the LTMS has no determination as to the truth
 -- label of the `Node`.
@@ -722,7 +729,7 @@ isTrueNode = fmap (== Just True) . getNodeLabel
 isFalseNode :: (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m Bool
 isFalseNode = fmap (== Just False) . getNodeLabel
 
--- | TODO
+-- | Create a new node
 --
 -- Translated from @tms-create-node@ in @ltms.lisp@.
 --
@@ -765,10 +772,14 @@ createNode ltms datum = do
                       isAssumption trueRules falseRules ltms
                       (Literal node labelTrue) (Literal node labelFalse)
       addNode ltms datum node
-      ltmsError $ ToBeTranslated "TODO --- the when block"
+      {- -- Omitted for now
+      whenM (getComplete ltms
+               <&=> (getNodeCounter ltms >~ getConsSize ltms)) $ do
+        ltmsError $ ToBeTranslated "TODO --- the when block body"
+          -}
       return node
 
--- | TODO
+-- | Mark that a node should be taken as an assumption.
 --
 -- Translated from @enable-assumption@ in @ltms.lisp@.
 --
@@ -813,7 +824,7 @@ convertToAssumption node = ifM (getNodeIsAssumption node)
                     "Converting " ++ n ++ " into an assumption" |])
       setNodeIsAssumption node True)
 
--- | TODO
+-- | Deactivate the assumption of a `Node` as true.
 --
 -- Translated from @retract-assumption@ in @ltms.lisp@.
 --
@@ -832,7 +843,7 @@ retractAssumption node =
 
 -- > ;;; Adding formulas to the LTMS.
 
--- | TODO
+-- | Add a formula to an LTMS.
 --
 -- Translated from @add-formula@ in @ltms.lisp@.  Note that the
 -- @informant@ parameter is not optional in this translation.
@@ -874,10 +885,11 @@ data (Monad m, NodeDatum d) => ClauseSimplification d i r s m =
 simplifyClause ::
   (Monad m, NodeDatum d) =>
     [Literal d i r s m] -> LTMST s m (ClauseSimplification d i r s m)
-simplifyClause literals = do
+simplifyClause ls = do
+  let literals = sortClause ls
   error "TODO"
 
--- | TODO
+-- | Order literals by `Node` index.
 --
 -- Translated from @sort-clause@ in @ltms.lisp@.
 --
@@ -885,10 +897,12 @@ simplifyClause literals = do
 -- >   (sort (copy-list literals) ;; Avoids shared structure bugs.
 -- >      #'< :KEY #'(lambda (n) (tms-node-index (car n)))))
 sortClause ::
-  (Monad m, NodeDatum d) =>
-    [Literal d i r s m] -> LTMST s m [Literal d i r s m]
-sortClause literals = do
-  error "TODO"
+  (Monad m, NodeDatum d) => [Literal d i r s m] -> [Literal d i r s m]
+sortClause = sortBy sorter
+  where sorter :: (Monad m, NodeDatum d) =>
+          Literal d i r s m -> Literal d i r s m -> Ordering
+        sorter (Literal n1 l1) (Literal n2 l2) =
+          compare (nodeIndex n1) (nodeIndex n2)
 
 -- > (defvar *ltms*)
 
@@ -901,7 +915,7 @@ data (Monad m, NodeDatum d) => Formula d i r s m =
   -- TODO | Taxonomy taxonomy
   | Datum d
 
--- | TODO
+-- | Translate a formula into a CNF list of lists of literals
 --
 -- Translated from @normalize@ in @ltms.lisp@.
 --
@@ -910,7 +924,7 @@ normalize ::
   (Monad m, NodeDatum d) =>
     LTMS d i r s m -> Formula d i r s m -> LTMST s m [[Literal d i r s m]]
 normalize ltms exp = normalize' ltms exp False
-  where -- | TODO
+  where -- | Main normalization function.
         --
         -- Translated from @normalize-1@ in @ltms.lisp@.  Currently
         -- skipping one csae:
@@ -973,7 +987,8 @@ normalize ltms exp = normalize' ltms exp False
           error "TODO"
         -}
 
-        -- | TODO
+        -- | Normalize a series of `Formula`s taken to be in
+        -- conjunction as a CNF list of lists of literals.
         --
         -- Translated from @normalize-conjunction@ in @ltms.lisp@.
         --
@@ -986,7 +1001,8 @@ normalize ltms exp = normalize' ltms exp False
         normalizeConjunction ltms fs negate =
           fmap concat $ mapM (\ f -> normalize' ltms f negate) fs
 
-        -- | TODO
+        -- | Normalize an iff formula as the conjunction of its two
+        -- directions
         --
         -- Translated from @normalize-iff@ in @ltms.lisp@.
         --
@@ -1002,7 +1018,8 @@ normalize ltms exp = normalize' ltms exp False
           lss2 <- normalize' ltms e2 negate
           return $ lss1 ++ lss2
 
-        -- | TODO
+        -- | Normalize a series of `Formula`s taken to be in
+        -- disjunction as a CNF list of lists of literals.
         --
         -- Translated from @normalize-disjunction@ in @ltms.lisp@.
         --
@@ -1019,27 +1036,39 @@ normalize ltms exp = normalize' ltms exp False
             LTMS d i r s m -> [Formula d i r s m] -> Bool ->
               LTMST s m [[Literal d i r s m]]
         normalizeDisjunction _ [] _ = return [[]]
-        normalizeDisjunction ltms fs negate = do
-          error "TODO"
+        normalizeDisjunction ltms (f:fs) negate = do
+          first <- normalize' ltms f negate
+          norm' ltms first fs negate
+          where norm' ::
+                  (Monad m, NodeDatum d) =>
+                    LTMS d i r s m -> [[Literal d i r s m]] ->
+                      [Formula d i r s m] -> Bool ->
+                        LTMST s m [[Literal d i r s m]]
+                norm' _ lss [] _ = return lss
+                norm' ltms lss (f:fs) negate = do
+                  ls <- normalize' ltms f negate
+                  let lss' = disjoin ls lss
+                  norm' ltms lss' fs negate
 
-        -- | TODO
+        -- | Take the disjunction of two literal-list lists.
         --
         -- Translated from @disjoin@ in @ltms.lisp@.
         --
         -- > (defun disjoin (conj1 conj2)
         -- >   (unless (or conj1 conj2) (return-from disjoin nil))
         -- >   (mapcan #'(lambda (disj1)
-        -- >        (mapcar #'(lambda (disj2) (append disj1 disj2))
-        -- >                conj2))
+        -- >               (mapcar #'(lambda (disj2) (append disj1 disj2))
+        -- >                       conj2))
         -- >      conj1))
         disjoin ::
           (Monad m, NodeDatum d) =>
             [[Literal d i r s m]] -> [[Literal d i r s m]] ->
               [[Literal d i r s m]]
-        disjoin ls1 ls2 = do
-          error "TODO"
+        disjoin [] _ = []
+        disjoin _ [] = []
+        disjoin ls1 ls2 = map (\d1 -> concat $ map (\d2 -> d1 ++ d2) ls2) ls1
 
--- | TODO
+-- | Retrieve a node by the datum associated with it.
 --
 -- Translated from @find-node@ in @ltms.lisp@.
 --
@@ -1051,8 +1080,14 @@ normalize ltms exp = normalize' ltms exp False
 findNode ::
   (Monad m, NodeDatum d) => LTMS d i r s m -> d -> LTMST s m (Node d i r s m)
 findNode ltms datum = do
-  error "TODO"
+  maybeNode <- getNode ltms datum
+  case maybeNode of
+    Nothing -> do strFn <- getDatumString ltms
+                  str <- strFn datum
+                  ltmsError $ NoSuchNode $ str
+    Just n -> return n
 
+{-------------------------------------------------------------
 -- | TODO
 --
 -- Translated from @partial@ in @ltms.lisp@.
@@ -1065,6 +1100,7 @@ findNode ltms datum = do
 partial :: a
 partial = do
   error "TODO"
+-------------------------------------------------------------}
 
 -- > ;;; Adding clauses
 
@@ -1078,7 +1114,7 @@ partial = do
 -- >                   informant
 -- >                   nil))
 addClause ::
-  (Monad m, NodeDatum d) => Node d i r s m -> LTMST s m ()
+  (Monad m, NodeDatum d) => [Node d i r s m] -> [Node d i r s m] -> i -> LTMST s m ()
 addClause = do
   error "TODO"
 

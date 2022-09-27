@@ -19,6 +19,7 @@ language governing permissions and limitations under the License.
 
 module Data.TMS.Helpers where
 
+import Control.Monad
 import Control.Monad.State
 import Control.Monad.ST.Trans
 import Control.Monad.Except
@@ -249,3 +250,10 @@ commaList f xs = foldl1 (\ x y -> x ++ ", " ++ y) $ map f xs
 unmaybe [] = []
 unmaybe (Just a : xs) = a : unmaybe xs
 unmaybe (_ : xs) = unmaybe xs
+
+-- * Monadic ordered operators
+
+infix >~
+
+(>~) :: (Monad m, Ord a) => m a -> m a -> m Bool
+(>~) = liftM2 (>)

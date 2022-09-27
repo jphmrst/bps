@@ -27,6 +27,8 @@ dependencies:
 - transformers >= 0.5.6 && < 0.6
 - symbol       >= 0.2.4 && < 0.3
 - containers   >= 0.6.0 && < 0.7
+- control-bool >= 0.2.1 && < 0.3
+- sort         >= 1.0.0 && < 1.1
 
 library:
   source-dirs: src/main/haskell/lib
