@@ -42,7 +42,7 @@ import Control.Monad.IO.Class
 import Control.Monad.ST.Trans
 import Control.Monad.Trans.Class
 import Test.TLT
-import AtmsUtils
+import UtilsATMS
 
 type ATMS1ty s m = ATMS String String Void s m
 type Node1ty s m = Node String String Void s m

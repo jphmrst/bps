@@ -28,7 +28,7 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module AtmsUtils where
+module UtilsATMS where
 
 import Data.List
 import Data.Symbol
