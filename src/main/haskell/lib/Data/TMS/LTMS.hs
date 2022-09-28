@@ -76,7 +76,7 @@ module Data.TMS.LTMS (
   getEnqueueProcedure, setEnqueueProcedure,
 
   -- ** Nodes
-  Node, NodeTruth,
+  Node,
   createNode,
   isUnknownNode,
   isKnownNode,
@@ -90,6 +90,9 @@ module Data.TMS.LTMS (
   whyNodes,
   explainNode,
   explain1,
+
+  -- *** Node labels
+  NodeTruth, labelUnknown, labelTrue, labelFalse,
 
   -- *** Node components
   nodeIndex, nodeDatum, nodeLabel, nodeLtms,
@@ -121,9 +124,9 @@ module Data.TMS.LTMS (
 
   -- *** Setting clause status
 
-  -- ** Justifications
-
-  -- ** Environments and tables
+  -- ** Formulas
+  Formula(Implication, Iff, Or, And, Not, {- Taxonomy, -} Datum, DNode),
+  compileFormula,
 
   -- * Deduction and search utilities
 
@@ -847,7 +850,8 @@ retractAssumption node =
 -- | Add a formula to an LTMS.
 --
 -- Translated from @add-formula@ in @ltms.lisp@.  Note that the
--- @informant@ parameter is not optional in this translation.
+-- @informant@ parameter is not optional in this translation, and
+-- moreover preceeds the formula.
 --
 -- > (defun add-formula (ltms formula &optional informant)
 -- >   (setq informant (list :IMPLIED-BY formula informant))
@@ -857,8 +861,8 @@ retractAssumption node =
 -- >   (check-for-contradictions ltms))
 addFormula ::
   (Monad m, NodeDatum d) =>
-    LTMS d i r s (m :: * -> *) -> Formula d i r s m -> i -> LTMST s m ()
-addFormula ltms formula informant = do
+    LTMS d i r s (m :: * -> *) -> i -> Formula d i r s m -> LTMST s m ()
+addFormula ltms informant formula = do
   litss <- normalize ltms formula
   forM_ litss $ \lits -> do
     simplified <- simplifyClause lits
@@ -915,6 +919,7 @@ data {- (Monad m, NodeDatum d) => -} Formula d i r s (m :: * -> *) =
   | Not (Formula d i r s m)
   -- TODO | Taxonomy taxonomy
   | Datum d
+  | DNode (Node d i r s m)
 
 -- | Translate a formula into a CNF list of lists of literals
 --
@@ -961,9 +966,11 @@ normalize ltms exp = normalize' ltms exp False
                 strFn <- getDatumString ltms
                 str <- strFn d
                 ltmsError $ NoSuchNode $ str
-              Just node -> return $ if negate
-                                    then [[falseLiteral node]]
-                                    else [[trueLiteral node]]
+              Just node -> returnNode node
+          DNode n -> returnNode n
+          where returnNode n = return $ if negate
+                                        then [[falseLiteral n]]
+                                        else [[trueLiteral n]]
 
         {-
         -- | TODO
