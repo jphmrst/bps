@@ -46,3 +46,4 @@ main = do
       ex1AndTest
     inGroup "LTMS tests" $ runLTMST $ do
       void $ ltmsTest0
+      void $ ltmsTest1
