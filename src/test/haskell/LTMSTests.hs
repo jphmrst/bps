@@ -46,22 +46,59 @@ import Test.TLT
 instance MonadTLT m n => MonadTLT (LTMST s m) n where
   liftTLT = lift . liftTLT
 
--- type LTMS1ty s m = LTMS String String Void s m
--- type Node1ty s m = Node String String Void s m
-ltmsTest1 :: MonadIO m => LTMST s (TLT m) ()
-ltmsTest1 = {- inGroup "LTMS Test 1" $ -} do
+ltmsTest0 :: MonadIO m => LTMST s (TLT m) (LTMS String String () s (TLT m))
+ltmsTest0 = inGroup "LTMS Test 1" $ do
   ltms <- createLTMS "Ex1"
   setInformantStringViaString ltms
   setDatumStringViaString ltms
+  return ltms
 
-{-
-  inGroup "Freshly created LTMS" $ do
-    assertAssumptionsAre ltms []
-    assertContradictionsAre ltms []
+-- | From @test-explain@ in @ltms-ex.lisp@.
+ltmsTestExplain ::
+  MonadIO m => LTMST s (TLT m) (LTMS String String () s (TLT m))
+ltmsTestExplain = inGroup "defun test-explain" $ do
+  ltms <- createLTMS "test-explain"
+  setInformantStringViaString ltms
+  setDatumStringViaString ltms
 
-  na <- createNode ltms "A" True False
-  inGroup "Created Node A" $ do
-    assertSingleSelfLabel na
-    assertAssumptionsAre ltms [na]
-    assertContradictionsAre ltms []
--}
+  x <- createNode ltms "x"
+  compileFormula ltms $ Or [Datum "x", Datum "y"]
+  compileFormula ltms $ Or [Not (Datum "y"), Datum "z"]
+  compileFormula ltms $ Or [Not (Datum "z"), Datum "r"]
+  enableAssumption x labelFalse
+  -- whyNodes ltms
+  return ltms
+
+-- | From @test-explain@ in @ltms-ex.lisp@.
+ltmsTestAsk ::
+  MonadIO m => LTMST s (TLT m) (LTMS String String () s (TLT m))
+ltmsTestAsk = inGroup "defun test-ask" $ do
+  ltms <- createLTMS "test-ask"
+  setInformantStringViaString ltms
+  setDatumStringViaString ltms
+  n1 <- createNode ltms "N1"
+  convertToAssumption n1
+  n2 <- createNode ltms "N2"
+  convertToAssumption n2
+  enableAssumption n1 labelFalse
+  enableAssumption n2 labelFalse
+  compileFormula ltms $ Or [Datum "N1", DNode n2]
+  -- whyNodes ltms
+  return ltms
+
+-- | From @test1@ in @ltms-ex.lisp@.
+ltmsTest1 ::
+  MonadIO m => LTMST s (TLT m) (LTMS String String () s (TLT m))
+ltmsTest1 = inGroup "defun test1" $ do
+  ltms <- createLTMS "test1"
+  setInformantStringViaString ltms
+  setDatumStringViaString ltms
+  setComplete ltms True
+  x <- createNode ltms "x"
+  y <- createNode ltms "y"
+  addFormula ltms "f1" $ Or [DNode x, DNode y]
+  addFormula ltms "f2" $ Or [DNode x, Not $ DNode y]
+  -- completeLtms ltms
+  "Node x should be true" ~: True @== isTrueNode x
+  -- TODO Assert (true-node? x)
+  return ltms
