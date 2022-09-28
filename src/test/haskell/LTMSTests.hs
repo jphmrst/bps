@@ -42,12 +42,14 @@ import Control.Monad.IO.Class
 import Control.Monad.ST.Trans
 import Control.Monad.Trans.Class
 import Test.TLT
-import Testers
+
+instance MonadTLT m n => MonadTLT (LTMST s m) n where
+  liftTLT = lift . liftTLT
 
 -- type LTMS1ty s m = LTMS String String Void s m
 -- type Node1ty s m = Node String String Void s m
 ltmsTest1 :: MonadIO m => LTMST s (TLT m) ()
-ltmsTest1 = inGroup "LTMS Test 1" $ do
+ltmsTest1 = {- inGroup "LTMS Test 1" $ -} do
   ltms <- createLTMS "Ex1"
   setInformantStringViaString ltms
   setDatumStringViaString ltms
