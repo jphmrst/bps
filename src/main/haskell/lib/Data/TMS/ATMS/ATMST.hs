@@ -197,7 +197,7 @@ type ATMSTInner s m a =
   Monad m => ExceptT AtmsErr (StateT AtmstState (STT s m)) a
 
 -- |The process of building and using a mutable ATMS.
-newtype Monad m => ATMST s m a = AtmsT { unwrap :: ATMSTInner s m a }
+newtype {- Monad m => -} ATMST s m a = AtmsT { unwrap :: ATMSTInner s m a }
 
 -- |Internal unwrapper preserving rank-2 polymorphism of the state
 -- thread in the wrapper `STT`.
@@ -279,7 +279,7 @@ runATMST atmst = do
 
 -- |Top-level representation of an assumption-based truth maintenance
 -- system.
-data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
+data {- (Monad m, NodeDatum d) => -} ATMS d i r s m = ATMS {
   -- |Name of this ATMS.
   atmsTitle :: String,
   -- |Unique namer for nodes.
@@ -328,7 +328,7 @@ data (Monad m, NodeDatum d) => ATMS d i r s m = ATMS {
 -- |Wrapper for the datum associated with a node of the `ATMS`.
 --
 -- Translated from @(tms-node@ in @atms.lisp@.
-data (Monad m, NodeDatum d) => Node d i r s m = Node {
+data {- (Monad m, NodeDatum d) => -} Node d i r s m = Node {
   nodeIndex :: Int,
   -- |Retrieve the datum associated with a `Node`.
   nodeDatum :: d,
@@ -343,7 +343,7 @@ data (Monad m, NodeDatum d) => Node d i r s m = Node {
 }
 
 -- |The justification of one `ATMS` `Node` by zero or more others.
-data (Monad m, NodeDatum d) => JustRule d i r s m = JustRule {
+data {- (Monad m, NodeDatum d) => -} JustRule d i r s m = JustRule {
   justIndex :: Int,
   -- |The informant associated with applying this inference rule.
   justInformant :: i,
@@ -359,7 +359,7 @@ data Justification d i r s m =
 
 -- |An environment of `Node`s which may be used as the basis of
 -- reasoning in an `ATMS`.
-data (Monad m, NodeDatum d) => Env d i r s m = Env {
+data {- (Monad m, NodeDatum d) => -} Env d i r s m = Env {
   -- |The unique nomber of this `Env` within its `ATMS`.
   envIndex :: Int,
   -- |The number of assumptions contained within this `Env`.

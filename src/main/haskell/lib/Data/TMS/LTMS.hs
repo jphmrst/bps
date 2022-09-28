@@ -43,6 +43,7 @@ language governing permissions and limitations under the License.
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Data.TMS.LTMS (
   -- * The LTMST monad
@@ -57,7 +58,7 @@ module Data.TMS.LTMS (
 
   -- ** Top-level LTMS
   LTMS,
-  createLtms,
+  createLTMS,
 
   -- *** LTMS components
   ltmsTitle, getClauses,
@@ -284,7 +285,7 @@ type LTMSTInner s m a =
   Monad m => ExceptT LtmsErr (StateT LtmstState (STT s m)) a
 
 -- |The process of building and using a mutable LTMS.
-newtype Monad m => LTMST s m a = LtmsT { unwrap :: LTMSTInner s m a }
+newtype {- Monad m => -} LTMST s m a = LtmsT { unwrap :: LTMSTInner s m a }
 
 -- |Internal unwrapper preserving rank-2 polymorphism of the state
 -- thread in the wrapper `STT`.
@@ -374,7 +375,7 @@ runLTMST ltmst = do
 
 -- | Top-level representation of a logic-based truth maintenance
 -- system.
-data (Monad m, NodeDatum d) => LTMS d i r s m = LTMS {
+data {- (Monad m, NodeDatum d) => -} LTMS d i r s m = LTMS {
   -- |Name of this LTMS.
   ltmsTitle :: String,
   -- |Unique namer for nodes.
@@ -450,7 +451,7 @@ data NodeSupport d i r s m =
 -- |Wrapper for the datum associated with a node of the `ATMS`.
 --
 -- Translated from @tms-node@ in @ltms.lisp@.
-data (Monad m, NodeDatum d) => Node d i r s m = Node {
+data {- (Monad m, NodeDatum d) => -} Node d i r s m = Node {
   -- |Unique ID among nodes
   nodeIndex :: Int,
   -- |Datum associated with this node
@@ -487,7 +488,7 @@ data ClauseStatus = Subsumed | Queued | Dirty | NotIndexed | NilClause
 -- | Representation of a clause.
 --
 -- Translated from @clause@ in @ltms.lisp@.
-data (Monad m, NodeDatum d) => Clause d i r s m = Clause {
+data {- (Monad m, NodeDatum d) => -} Clause d i r s m = Clause {
   -- |Unique ID among clauses
   clauseIndex :: Int,
   -- |Informant value associated with this clause.
@@ -677,9 +678,9 @@ isViolatedClause = fmap (== 0) . getClausePVs
 -- Translated from @create-ltms@ in @ltms.lisp@.  Unlike with the
 -- original Lisp, in Haskell there are no optional parameters; use the
 -- various @set...@ functions instead.
-createLtms ::
-  (Monad m, NodeDatum d) => String -> d -> LTMST s m (LTMS d i r s m)
-createLtms title datum = do
+createLTMS ::
+  (Monad m, NodeDatum d) => String -> LTMST s m (LTMS d i r s m)
+createLTMS title = do
   nodeCounter <- sttLayer $ newSTRef 0
   clauseCounter <- sttLayer $ newSTRef 0
   nodes <- sttLayer $ newSTRef Map.empty
@@ -856,7 +857,7 @@ retractAssumption node =
 -- >   (check-for-contradictions ltms))
 addFormula ::
   (Monad m, NodeDatum d) =>
-    LTMS d i r s m -> Formula d i r s m -> i -> LTMST s m ()
+    LTMS d i r s (m :: * -> *) -> Formula d i r s m -> i -> LTMST s m ()
 addFormula ltms formula informant = do
   litss <- normalize ltms formula
   forM_ litss $ \lits -> do
@@ -866,7 +867,7 @@ addFormula ltms formula informant = do
       ToLiterals ls -> addClauseInternal ls informant True
     checkForContradictions ltms
 
-data (Monad m, NodeDatum d) => ClauseSimplification d i r s m =
+data {- (Monad m, NodeDatum d) => -} ClauseSimplification d i r s m =
   ToLiterals [Literal d i r s m] | ToTrue
 
 -- | TODO
@@ -906,7 +907,7 @@ sortClause = sortBy sorter
 
 -- > (defvar *ltms*)
 
-data (Monad m, NodeDatum d) => Formula d i r s m =
+data {- (Monad m, NodeDatum d) => -} Formula d i r s (m :: * -> *) =
   Implication (Formula d i r s m) (Formula d i r s m)
   | Iff (Formula d i r s m) (Formula d i r s m)
   | Or [Formula d i r s m]

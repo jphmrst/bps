@@ -135,7 +135,7 @@ data JtmsErr = CannotEnableNonassumption String Int deriving Show
 type JTMSTInner s m a = Monad m => ExceptT JtmsErr (STT s m) a
 
 -- |The process of building and using a mutable JTMS.
-newtype Monad m => JTMST s m a = JtmsT { unwrap :: JTMSTInner s m a }
+newtype {- Monad m => -} JTMST s m a = JtmsT { unwrap :: JTMSTInner s m a }
 
 -- |Internal unwrapper preserving rank-2 polymorphism of the state
 -- thread in the wrapper `STT`.
@@ -212,7 +212,7 @@ runJTMST jtmst = runSTT $ runExceptT $ unwrap2 jtmst
 -- >   (node-string nil)
 -- >   (contradiction-handler nil)
 -- >   (enqueue-procedure nil))
-data Monad m => JTMS d i r s m = JTMS {
+data {- Monad m => -} JTMS d i r s m = JTMS {
   -- |Name of this JTMS.
   jtmsTitle :: String,
   -- |Unique namer for nodes.
@@ -295,7 +295,7 @@ printJTMS jtms = liftIO $ putStr $ "#<JTMS: " ++ jtmsTitle jtms ++ ">"
 -- >   (in-rules nil)     ;; Rules that should be triggered when node goes in
 -- >   (out-rules nil)    ;; Rules that should be triggered when node goes out
 -- >   (jtms nil))           ;; The JTMS in which this node appears.
-data Monad m => Node d i r s m = Node {
+data {- Monad m => -} Node d i r s m = Node {
   nodeIndex :: Int,
   nodeDatum :: d, -- ^Returns the piece of data associated with this node.
   nodeJTMS :: JTMS d i r s m,
@@ -328,7 +328,7 @@ instance Monad m => Eq (Node d i r s m) where
 -- >   informant
 -- >   consequence
 -- >   antecedents)
-data Monad m => JustRule d i r s m = JustRule {
+data {- Monad m => -} JustRule d i r s m = JustRule {
   justIndex :: Int,
   justInformant :: i,
   justConsequence :: Node d i r s m,
@@ -355,7 +355,7 @@ printJustRule just =
 -- |Forms of data which might signal support for a node.  The original
 -- Lisp does not need this declaration since it is untyped; the latter
 -- two cases are simply symbols.
-data Monad m => Justification d i r s m =
+data {- Monad m => -} Justification d i r s m =
   ByRule (JustRule d i r s m) | EnabledAssumption | UserStipulation
 
 $(makeAccessors [t|JTMS|] [t|JTMST|] [|jLiftSTT|] Nothing
