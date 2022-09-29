@@ -44,7 +44,8 @@ packages:
 # extra-deps: []
 
 extra-deps:
-- TLT-0.4.0.0
+- ../TLT/
+# - TLT-0.5.0.0
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
