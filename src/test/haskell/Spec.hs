@@ -29,8 +29,10 @@ language governing permissions and limitations under the License.
 import Data.TMS.ATMS.ATMST
 import Data.TMS.LTMS
 import Data.TMS.JTMS
+import Data.TMS.Formatters
 import Control.Monad (void)
 import Control.Monad.ST.Trans
+import Control.Monad.IO.Class
 import Test.TLT
 import JTMSTests
 import ATMSTests
@@ -45,5 +47,5 @@ main = do
     inGroup "ATMS tests" $ runATMST $ do
       ex1AndTest
     inGroup "LTMS tests" $ runLTMST $ do
-      void $ ltmsTest0
-      void $ ltmsTest1
+      noUncaught "ltmsTest0" $ ltmsTest0
+      noUncaught "ltmsTest1" $ ltmsTest1

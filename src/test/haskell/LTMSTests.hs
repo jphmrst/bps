@@ -40,11 +40,18 @@ import Control.Monad
 import Control.Monad.Extra
 import Control.Monad.IO.Class
 import Control.Monad.ST.Trans
+import Control.Monad.State
 import Control.Monad.Trans.Class
 import Test.TLT
 
 instance MonadTLT m n => MonadTLT (LTMST s m) n where
   liftTLT = lift . liftTLT
+
+instance MonadTLT m n =>
+         MonadTLTExcept (LTMST s m) LtmsErr n (StateT LtmstState (STT s m))
+  where
+    liftTLTExcept m = LtmsT m
+    runToExcept = unwrap
 
 ltmsTest0 :: MonadIO m => LTMST s (TLT m) (LTMS String String () s (TLT m))
 ltmsTest0 = inGroup "LTMS Test 1" $ do
@@ -62,9 +69,9 @@ ltmsTestExplain = inGroup "defun test-explain" $ do
   setDatumStringViaString ltms
 
   x <- createNode ltms "x"
-  compileFormula ltms $ Or [Datum "x", Datum "y"]
-  compileFormula ltms $ Or [Not (Datum "y"), Datum "z"]
-  compileFormula ltms $ Or [Not (Datum "z"), Datum "r"]
+  compileFormula ltms "f1" $ Or [Datum "x", Datum "y"]
+  compileFormula ltms "f2" $ Or [Not (Datum "y"), Datum "z"]
+  compileFormula ltms "f3" $ Or [Not (Datum "z"), Datum "r"]
   enableAssumption x labelFalse
   -- whyNodes ltms
   return ltms
@@ -82,7 +89,7 @@ ltmsTestAsk = inGroup "defun test-ask" $ do
   convertToAssumption n2
   enableAssumption n1 labelFalse
   enableAssumption n2 labelFalse
-  compileFormula ltms $ Or [Datum "N1", DNode n2]
+  compileFormula ltms "f" $ Or [Datum "N1", DNode n2]
   -- whyNodes ltms
   return ltms
 
