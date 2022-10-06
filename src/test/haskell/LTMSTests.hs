@@ -100,7 +100,7 @@ ltmsTest1 = inGroup "defun test1" $ do
   ltms <- createLTMS "test1"
   setInformantStringViaString ltms
   setDatumStringViaString ltms
-  setComplete ltms True
+  setComplete ltms Complete
   x <- createNode ltms "x"
   y <- createNode ltms "y"
   addFormula ltms "f1" $ Or [DNode x, DNode y]

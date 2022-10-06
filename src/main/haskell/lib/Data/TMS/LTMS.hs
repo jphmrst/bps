@@ -57,8 +57,8 @@ module Data.TMS.LTMS (
   -- * LTMS data structures
 
   -- ** Top-level LTMS
-  LTMS,
-  createLTMS,
+  LtmsCompletion(Complete, Delay, NoComplete), isCompletion,
+  LTMS, createLTMS,
 
   -- *** LTMS components
   ltmsTitle, getClauses,
@@ -251,6 +251,8 @@ data LtmsErr = DuplicatedDatum String Int
                -- ^ Thrown from `handleOneContradiction`.
              | TotalContradiction
                -- ^ Thrown from `avoidAll`.
+             | TotalContradictionNullClause
+               -- ^ Thrown from `addClauseInternal`.
              | FromMonadFail String
                -- ^ Indicates a pattern-matching failure within an
                -- `LTMST` operation, or other described failure.
@@ -376,6 +378,13 @@ runLTMST ltmst = do
 
 {- ===== LTMS structure types. ============================================ -}
 
+data LtmsCompletion = Complete | Delay | NoComplete
+  deriving (Eq, Show)
+
+isCompletion :: LtmsCompletion -> Bool
+isCompletion NoComplete = False
+isCompletion _ = True
+
 -- | Top-level representation of a logic-based truth maintenance
 -- system.
 data {- (Monad m, NodeDatum d) => -} LTMS d i r s m = LTMS {
@@ -400,7 +409,7 @@ data {- (Monad m, NodeDatum d) => -} LTMS d i r s m = LTMS {
   -- |List of external procedures to be executed for this LTMS.
   ltmsEnqueueProcedure :: STRef s (r -> LTMST s m ()),
   -- |Set to `True` when this is a complete LTMS.
-  ltmsComplete :: STRef s Bool,
+  ltmsComplete :: STRef s LtmsCompletion,
   -- |List of violated clauses.
   ltmsViolatedClauses :: STRef s [Clause d i r s m],
   -- |Queue of clauses to resolve.
@@ -454,7 +463,7 @@ data NodeSupport d i r s m =
 -- |Wrapper for the datum associated with a node of the `ATMS`.
 --
 -- Translated from @tms-node@ in @ltms.lisp@.
-data {- (Monad m, NodeDatum d) => -} Node d i r s m = Node {
+data Node d i r s m = Node {
   -- |Unique ID among nodes
   nodeIndex :: Int,
   -- |Datum associated with this node
@@ -481,6 +490,9 @@ data {- (Monad m, NodeDatum d) => -} Node d i r s m = Node {
   -- |Literal asserting that this node should be false.
   falseLiteral :: Literal d i r s m
   }
+
+instance (Monad m, NodeDatum d) => Eq (Node d i r s m) where
+  n1 == n2  =  nodeIndex n1 == nodeIndex n2
 
 {- ----------------------------------------------------------------- -}
 
@@ -515,14 +527,14 @@ instance (Monad m, NodeDatum d) => Eq (Clause d i r s m) where
 
 $(makeAccessors [t|LTMS|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
   [
-    ("Clauses", inList $ withParams [t|Clause|], [|ltmsClauses|]),
     ("PendingContradictions", inList $ withParams [t|Node|], [|ltmsPendingContradictions|]),
     ("ViolatedClauses", inList $ withParams [t|Clause|], [|ltmsViolatedClauses|]),
     ("NodeCounter", noTyParams [t|Int|], [|ltmsNodeCounter|])
   ] [
+    ("Clauses", inList $ withParams [t|Clause|], [|ltmsClauses|]),
     ("Nodes", inMap datumType (withParams [t|Node|]), [|ltmsNodes|]),
     ("Debugging", noTyParams [t|Bool|], [|ltmsDebugging|]),
-    ("Complete", noTyParams [t|Bool|], [|ltmsComplete|]),
+    ("Complete", noTyParams [t|LtmsCompletion|], [|ltmsComplete|]),
     ("CheckingContradictions", noTyParams [t|Bool|],
      [|ltmsCheckingContradictions|]),
     ("DelaySat", noTyParams [t|Bool|], [|ltmsDelaySat|]),
@@ -554,6 +566,13 @@ getNode ::
 getNode ltms datum = do
   map <- getNodes ltms
   return $ Map.lookup datum map
+
+pushClause ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> Clause d i r s m -> LTMST s m ()
+pushClause ltms clause = do
+  clauses <- getClauses ltms
+  setClauses ltms $ clause : clauses
 
 $(makeAccessors [t|Node|] [t|LTMST|] [|sttLayer|] (Just [t|NodeDatum|])
   [
@@ -693,7 +712,7 @@ createLTMS title = do
   nodeStrFn <- sttLayer $ newSTRef $ \ _ -> return "??"
   pending <- sttLayer $ newSTRef []
   enqueuer <- sttLayer $ newSTRef $ \ _ -> return ()
-  complete <- sttLayer $ newSTRef False
+  complete <- sttLayer $ newSTRef NoComplete
   violatedClauses <- sttLayer $ newSTRef []
   queue <- sttLayer $ newSTRef []
   delaySatFlag <- sttLayer $ newSTRef False
@@ -883,7 +902,8 @@ data {- (Monad m, NodeDatum d) => -} ClauseSimplification d i r s m =
 -- >   (do ((tail literals next)
 -- >        (next (cdr literals) (cdr next)))
 -- >       ((null next) literals)
--- >     (cond ((not (eq (caar tail) (caar next))))
+-- >     (cond
+-- >      ((not (eq (caar tail) (caar next))))
 -- >      ((not (eq (cdar tail) (cdar next)))
 -- >       (return-from simplify-clause :TRUE))
 -- >      (t (rplacd tail (cdr next))))))
@@ -892,7 +912,18 @@ simplifyClause ::
     [Literal d i r s m] -> LTMST s m (ClauseSimplification d i r s m)
 simplifyClause ls = do
   let literals = sortClause ls
-  ltmsError $ ToBeTranslated "TODO --- simplifyClause"
+  return $ simplifyClause' literals []
+  where simplifyClause' ::
+          (Monad m, NodeDatum d) =>
+            [Literal d i r s m] -> [Literal d i r s m] ->
+              ClauseSimplification d i r s m
+        simplifyClause' [] acc = ToLiterals $ reverse acc
+        simplifyClause' [l] acc = simplifyClause' [] $ l : acc
+        simplifyClause' (l1@(Literal n1 _):ls@((Literal n2 _):_)) acc | n1/=n2 =
+          simplifyClause' ls (l1:acc)
+        simplifyClause' ((Literal _ v1):ls@((Literal _ v2):_)) acc | v1 /= v2 =
+          ToTrue
+        simplifyClause' (_:ls) acc = simplifyClause' ls acc
 
 -- | Order literals by `Node` index.
 --
@@ -1095,7 +1126,7 @@ findNode ltms datum = do
                   ltmsError $ NoSuchNode $ str
     Just n -> return n
 
-{-------------------------------------------------------------
+{-----------------------------------------------------------
 -- | TODO
 --
 -- Translated from @partial@ in @ltms.lisp@.
@@ -1141,12 +1172,21 @@ addClause trueNodes falseNodes informant = do
 -- >   (unless internal (check-for-contradictions ltms)))
 addClauseInternal ::
   (Monad m, NodeDatum d) => [Literal d i r s m] -> i -> Bool -> LTMST s m ()
-addClauseInternal literals informant internal = do
-  ltmsError $ ToBeTranslated "TODO --- addClauseInternal"
+addClauseInternal [] _ _ = ltmsError TotalContradictionNullClause
+addClauseInternal literals@((Literal n v):ls) informant internal = do
+  let ltms = nodeLtms n
+  ifM (fmap isCompletion $ getComplete ltms)
+    (fullAddClause ltms literals informant)
+    (do clause <- bcpAddClause ltms literals informant False
+        pushClause ltms clause)
+  when internal $ checkForContradictions ltms
 
 -- | TODO
 --
--- Translated from @bcp-add-clause@ in @ltms.lisp@.
+-- Translated from @bcp-add-clause@ in @ltms.lisp@.  Note that the
+-- @index@ argument is not optional in this translation.
+--
+-- Translated from @bcp-add-clause@ in @cltms.lisp@.
 --
 -- > (defun bcp-add-clause (ltms literals informant &optional (index T)
 -- >                                           &aux cl label)
@@ -1174,6 +1214,238 @@ bcpAddClause ::
       LTMST s m (Clause d i r s m)
 bcpAddClause ltms literals informant index = do
   ltmsError $ ToBeTranslated "TODO --- bcpAddClause"
+
+-- | TODO
+--
+-- Translated from @full-add-clause@ in @cltms.lisp@.
+--
+-- > (defun full-add-clause (ltms literals informant)
+-- >   (when (and (install-clause ltms literals informant)
+-- >              (not (eq (ltms-complete ltms) :DELAY)))
+-- >     (check-for-contradictions ltms)
+-- >     (ipia ltms)))
+fullAddClause ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> [Literal d i r s m] -> i -> LTMST s m ()
+fullAddClause ltms literals informant = do
+  maybeClause <- installClause ltms literals informant
+  case maybeClause of
+    Nothing -> return ()
+    Just _ -> whenM (fmap (== Delay) $ getComplete ltms) $ do
+      checkForContradictions ltms
+      ipia ltms
+
+-- | TODO
+--
+-- Translated from @install-clause@ in @cltms.lisp@.
+--
+-- > (defun install-clause (ltms literals informant)
+-- >   (unless (subsumed? literals (ltms-clauses ltms))
+-- >     (process-clause ltms literals informant nil)))
+-- >
+installClause ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> [Literal d i r s m] -> i ->
+      LTMST s m (Maybe (Clause d i r s m))
+installClause ltms literals informant = do
+    ltmsError $ ToBeTranslated "TODO --- installClause"
+
+-- | TODO
+--
+-- Translated from @subsumed?@ in @cltms.lisp@.
+--
+-- > (defun subsumed? (lits trie &aux it slot)
+-- >   (dolist (entry trie)
+-- >     (unless lits (return nil))
+-- >     (when (setq slot (member (car entry) lits))
+-- >       (unless (listp (cdr entry))
+-- >         (return (cdr entry)))
+-- >       (if (setq it (subsumed? (cdr slot) (cdr entry)))
+-- >         (return it)))))
+isSubsumed ::
+  (Monad m, NodeDatum d) =>
+    [Literal d i r s m] -> [Clause d i r s m] -> LTMST s m ()
+isSubsumed literals informant = do
+    ltmsError $ ToBeTranslated "TODO --- isSubsumed"
+
+-- | TODO
+--
+-- Translated from @process-clause@ in @cltms.lisp@.
+--
+-- > (defun process-clause (ltms literals informant internal &aux cl)
+-- >   (setq cl (bcp-add-clause ltms literals informant nil))
+-- >   (remove-subsumed #'(lambda (old-clause)
+-- >                        (remove-clause old-clause cl))
+-- >                    literals ltms)
+-- >   (add-to-trie cl ltms)
+-- >   (cond (internal)
+-- >         ((delay-sat? cl ltms)
+-- >          (index-clause cl ltms))
+-- >         (t (index-clause cl ltms)
+-- >            (insert-queue cl ltms)))
+-- >   cl)
+-- >
+-- > (defmacro delay-sat? (clause ltms)
+-- >   `(when (and (ltms-delay-sat ,ltms) (satisfied-clause? ,clause))
+-- >     (setf (clause-status ,clause) :DIRTY)))
+-- >
+processClause ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> [Literal d i r s m] -> i -> Bool ->
+      LTMST s m (Clause d i r s m)
+processClause ltms literals informant internal = do
+    ltmsError $ ToBeTranslated "TODO --- processClause"
+
+-- | TODO
+--
+-- Translated from @index-clause@ in @cltms.lisp@.
+--
+-- > (defun index-clause (cl ltms)
+-- >   (dolist (term (clause-literals cl))
+-- >     (ecase (cdr term)
+-- >       (:TRUE (insert-true-clause cl (car term)))
+-- >       (:FALSE (insert-false-clause cl (car term)))))
+-- >   (check-clauses ltms (list cl)))
+-- >
+indexClause ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> [Literal d i r s m] -> i -> LTMST s m ()
+indexClause ltms literals informant = do
+    ltmsError $ ToBeTranslated "TODO --- indexClause"
+
+-- | TODO
+--
+-- Translated from @add-to-trie@ in @cltms.lisp@.
+--
+-- > (defun add-to-trie (cl ltms &aux lits slot trie index entry)
+-- >   (setq lits (if (listp cl) cl (clause-literals cl)))
+-- >   (unless (setq trie (ltms-clauses ltms))
+-- >     (setf (ltms-clauses ltms) (build-trie lits cl))
+-- >     (return-from add-to-trie nil))
+-- >   (do ((lits lits (cdr lits))) (nil)
+-- >     (setq index (tms-node-index (caar lits)) slot nil)
+-- >     (do nil (nil)
+-- >       (setq entry (car trie))
+-- >       (cond ((eq (car lits) (car entry))
+-- >              (setq slot entry)
+-- >              (return nil))
+-- >             ((> (tms-node-index (caar entry)) index) (return nil))
+-- >             ((null (cdr trie)) (setq entry nil) (return nil)))
+-- >       (setq trie (cdr trie)))
+-- >     (unless slot
+-- >       (setq slot (build-trie lits cl))
+-- >       (cond (entry (rplacd slot (cdr trie))
+-- >                    (rplacd trie slot)
+-- >                    (rplaca trie (car slot))
+-- >                    (rplaca slot entry))
+-- >             (t (rplacd trie slot)))
+-- >       (return nil))
+-- >     (setq trie (cdr slot))))
+-- >
+addToTrie ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> [Literal d i r s m] -> i -> LTMST s m ()
+addToTrie ltms literals informant = do
+    ltmsError $ ToBeTranslated "TODO --- addToTrie"
+
+-- | TODO
+--
+-- Translated from @remove-subsumed@ in @cltms.lisp@.
+--
+-- > (defun remove-subsumed (function lits ltms)
+-- >   (if (remove-subsumed-1 function lits (ltms-clauses ltms))
+-- >       (setf (ltms-clauses ltms) nil)))
+-- >
+removeSubsumed ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> [Literal d i r s m] -> i -> LTMST s m ()
+removeSubsumed ltms literals informant = do
+    ltmsError $ ToBeTranslated "TODO --- removeSubsumed"
+
+-- | TODO
+--
+-- Translated from @remove-subsumed-1@ in @cltms.lisp@.
+--
+-- > (defun remove-subsumed-1 (function lits trie &aux au)
+-- >   (cond ((null lits) (walk-trie function trie) T)
+-- >         ((atom trie) nil)
+-- >         (t (setq au (tms-node-index (caar lits)))
+-- >            (do ((subtrie trie)
+-- >                 (entry nil)
+-- >                 (previous nil))
+-- >                ((null subtrie))
+-- >              (setq entry (car subtrie))
+-- >              (if (cond ((>= (tms-node-index (caar entry)) au)
+-- >                         (cond ((eq (car lits) (car entry))
+-- >                                (remove-subsumed-1 function (cdr lits) (cdr entry)))
+-- >                               ((> (tms-node-index (caar entry)) au) (return nil))))
+-- >                        (t (remove-subsumed-1 function lits (cdr entry))))
+-- >                  (cond ((null (cdr trie)) (return T))
+-- >                        (previous (rplacd previous (cdr subtrie))
+-- >                                  (setq subtrie (cdr subtrie)))
+-- >                        (t (rplaca subtrie (cadr subtrie))
+-- >                           (rplacd subtrie (cddr subtrie))))
+-- >                  (setq previous subtrie subtrie (cdr subtrie)))))))
+-- >
+removeSubsumed' ::
+  (Monad m, NodeDatum d) =>
+    LTMS d i r s m -> [Literal d i r s m] -> i -> LTMST s m Bool
+removeSubsumed' ltms literals informant = do
+    ltmsError $ ToBeTranslated "TODO --- removeSubsumed'"
+
+-- | TODO
+--
+-- Translated from @insert-queue@ in @cltms.lisp@.
+--
+-- > (defun insert-queue (cl ltms)
+-- >   (setf (clause-status cl) :QUEUED)
+-- >   (insert-list2 cl (ltms-queue ltms)))
+insertQueue ::
+  (Monad m, NodeDatum d) => Clause d i r s m -> LTMS d i r s m -> LTMST s m ()
+insertQueue clause ltms = do
+    ltmsError $ ToBeTranslated "TODO --- insertQueue"
+
+-- | TODO
+--
+-- Translated from @ipia@ in @cltms.lisp@.
+--
+-- > (defun ipia (ltms &aux px pxs sigma c slot)
+-- >   (do nil ((null (setq slot (car (ltms-queue ltms)))))
+-- >     (setq c (cadr slot))
+-- >     (if (cddr slot) (rplacd slot (cddr slot)) (pop (ltms-queue ltms)))
+-- >     (when (and (eq (clause-status c) :QUEUED)
+-- >           (not (delay-sat? c ltms)))
+-- >       (setq sigma nil pxs nil)
+-- >       (insert-list c sigma)
+-- >       (dolist (lit (clause-literals c))
+-- >    (setq px nil)
+-- >    (dolist (p (literal-connections lit))
+-- >      (cond ((eq (clause-status p) :QUEUED))
+-- >            ((eq (clause-status p) :SUBSUMED))
+-- >            ((and (eq (clause-status p) :DIRTY) (delay-sat? p ltms)))
+-- >            ((not (simplify-consensus c p lit (ltms-conses ltms))))
+-- >            ((delay-sat? p ltms))
+-- >            (t (push p px))))
+-- >    (push px pxs))
+-- >       (when (setq pxs (nreverse pxs))
+-- >    (dolist (lit (clause-literals c))
+-- >      (when (setq px (pop pxs))
+-- >        (dolist (l sigma)
+-- >          (dolist (s (cdr l))
+-- >            (cond ((eq (clause-status s) :SUBSUMED))
+-- >                  ((not (member lit (clause-literals s))))
+-- >                  ((delay-sat? s ltms))
+-- >                  (t (setq sigma (ipia-inner ltms sigma px s lit)))))))))
+-- >       (if (eq (clause-status c) :QUEUED) (setf (clause-status c) nil))
+-- >       (dolist (l sigma)
+-- >    (dolist (s (cdr l))
+-- >      (when (eq (clause-status s) :NOT-INDEXED)
+-- >        (index-clause s ltms) (setf (clause-status s) nil)))))
+-- >     (check-for-contradictions ltms)))
+ipia ::
+  (Monad m, NodeDatum d) => LTMS d i r s m -> LTMST s m ()
+ipia ltms = do
+    ltmsError $ ToBeTranslated "TODO --- ipia"
 
 -- | TODO
 --
